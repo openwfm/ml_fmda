@@ -1,0 +1,17 @@
+name: ml_fmda
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - herbie-data
+  - synopticpy
+  - xgboost
+  - pandas
+  - matplotlib
+  - scikit-learn
+  - jupyterlab
+  - xarray
+  - rioxarray
+  - pip
+  - pip:
+      - tensorflow
