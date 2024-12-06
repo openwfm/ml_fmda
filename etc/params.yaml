@@ -1,0 +1,133 @@
+# File used to store hyperparameters.
+
+# RNN Params
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# Stateless RNN, batch_size declared at fit step
+rnn:
+    timesteps: 12 # number of time steps that constistutes one single input sample
+    batch_size: 32 # number of sequences of length `timesteps` that are processed independently in an iteration of weight updates
+    hidden_layers: [lstm, dense, dropout] # Sequential order of neural network hidden layers, one of 'dense', 'rnn', 'lstm', 'attention', 'dropout'
+    hidden_units: [32, 16, null] # Corresponding number of units for layers, attention & dropout layers should have None for this
+    hidden_activation: [tanh, relu, null] # Corresponding activation func for layers, attention & dropout layers should have None for this
+    dropout: 0.2 # Used automatically internally in LSTM and RNN layers, used for value if entire dropout layer is specified (typically after a dense)
+    recurrent_dropout: 0.2 # Used internally in recurrent layers
+    output_layer: dense # Output specifications should not be changed unless input data is restructured. Currently outputing single scalar at each input time step
+    output_activation: linear # continuous output, could also possibly use ReLU or another function
+    output_dimension: 1 # One-dim output (FMC)
+    learning_rate: 0.0002
+    early_stopping_patience: 5 # Number of epochs with no improvement after which training will be stopped.
+    epochs: 100
+    reset_states: true # Resets hidden states at end of Epochs, and additional times depending on batch_schedule_type
+    bmin: 10 # Used if batch_schedule_type is not None, lower bound on number of batches to run before resetting hidden state
+    bmax: 200 # Used if batch_schedule_type is not None, upper bound on number of batches to run before resetting hidden state
+    batch_schedule_type: step # Shape of function used to transition from bmin to bmax, one of 'constant', 'linear', 'exp', 'log', 'step'
+    estep: 5 # Used only if batch_schedule_type == "step"
+    features_list: [doy, hod, Ed, Ew, rain, elev, lon, lat, solar, wind]
+    scaler: standard # One of standard, MinMax. NOTE: MinMax more strongly depends on test data being within range of train data, otherwise scales certain data outside of 0,1 range and then you get nonsense
+    time_fracs: [0.8, 0.1, 0.1] # Percentage of data based on time span for train/val/test
+    space_fracs: [0.8, 0.1, 0.1] # Percentage of data based on location for train/val/test
+    stateful: true
+    verbose_fit: true # If True, prints loss metrics on each epoch of training
+    verbose_weights: true # If True, prints some extra info on model weights, including unique hashes of values
+    return_sequences: true  # whether or not the LAST recurrent layer should return sequences. If multiple, all previous need to be True
+    predict_spinup_hours: 5 # Number of hours to run through the model before prediction errors evaluated. Used to stabilize hidden state. NOTE: not implemented yet as of 2024-10-17
+
+
+# Stateless RNN, batch_size declared at fit step
+rnn_repro:
+    timesteps: 12 # number of time steps that constistutes one single input sample
+    batch_size: 32 # number of sequences of length `timesteps` that are processed independently in an iteration of weight updates
+    hidden_layers: ['lstm', 'dense'] # Sequential order of neural network hidden layers, one of 'dense', 'rnn', 'lstm', 'attention', 'dropout'
+    hidden_units: [30, 30] # Corresponding number of units for layers, attention & dropout layers should have None for this
+    hidden_activation: ['tanh', 'relu'] # Corresponding activation func for layers, attention & dropout layers should have None for this
+    dropout: 0.2 # Used automatically internally in LSTM and RNN layers, used for value if entire dropout layer is specified (typically after a dense)
+    recurrent_dropout: 0.2 # Used internally in recurrent layers
+    output_layer: dense # Output specifications should not be changed unless input data is restructured. Currently outputing single scalar at each input time step
+    output_activation: linear # continuous output, could also possibly use ReLU or another function
+    output_dimension: 1 # One-dim output (FMC)
+    learning_rate: 0.001
+    early_stopping_patience: 5 # Number of epochs with no improvement after which training will be stopped.
+    epochs: 30
+    reset_states: true # Resets hidden states at end of Epochs, and additional times depending on batch_schedule_type
+    bmin: 10 # Used if batch_schedule_type is not None, lower bound on number of batches to run before resetting hidden state
+    bmax: 200 # Used if batch_schedule_type is not None, upper bound on number of batches to run before resetting hidden state
+    batch_schedule_type: step # Shape of function used to transition from bmin to bmax, one of 'constant', 'linear', 'exp', 'log', 'step'
+    estep: 5 # Used only if batch_schedule_type == "step"
+    # features_list: [Ed, Ew, rain, elev, lon, lat, solar, wind]
+    scaler: standard # One of standard, MinMax. NOTE: MinMax more strongly depends on test data being within range of train data, otherwise scales certain data outside of 0,1 range and then you get nonsense
+    time_fracs: [0.8, 0.1, 0.1] # Percentage of data based on time span for train/val/test
+    space_fracs: [0.8, 0.1, 0.1] # Percentage of data based on location for train/val/test
+    stateful: true
+    features_list_single: ['Ed', 'Ew', 'solar', 'wind', 'rain']
+    features_list_spatial: ['Ed', 'Ew', 'solar', 'wind', 'rain', 'lon', 'lat', 'elev']      
+    verbose_fit: true # If True, prints loss metrics on each epoch of training
+    verbose_weights: true # If True, prints some extra info on model weights, including unique hashes of values
+    return_sequences: false  # whether or not the LAST recurrent layer should return sequences. If multiple, all previous need to be True
+    predict_spinup_hours: 5 # Number of hours to run through the model before prediction errors evaluated. Used to stabilize hidden state. NOTE: not implemented yet as of 2024-10-17
+    phys_initialize: false
+
+
+
+
+# Other ML Params
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+xgb:
+  max_depth: 3
+  eta: 0.1
+  min_child_weight: 1
+  subsample: 0.8
+  colsample_bytree: 0.9
+  scale_pos_weight: 1
+  n_estimators: 100
+  gamma: .1
+  scaler: 'standard'
+  features_list: ['Ed', 'Ew', 'solar', 'wind', 'rain']
+  time_fracs: [0.8, 0.1, 0.1] # Percentage of data based on time span for train/val/test
+  space_fracs: [0.8, 0.1, 0.1] # Percentage of data based on location for train/val/test
+
+  ### Params sent by Schreck, slow and less accurate for this dataset
+    # objective: "reg:squarederror"
+    # n_splits: 1
+    # learning_rate: 0.1 
+    # n_estimators: 1000
+    # max_depth: 10
+    # n_jobs: 8
+    # colsample_bytree: 0.8995496645826047
+    # gamma: 0.6148001693726943
+    # learning_rate: 0.07773680788294579
+    # max_depth: 10 
+    # subsample: 0.7898672617361431
+    # metric: "valid_rmse"
+
+rf:
+  n_estimators: 25 # Number of trees in the forest
+  criterion: "squared_error" # Function to measure the quality of a split (previously "mse")
+  max_depth: 5 # Maximum depth of the tree
+  min_samples_split: 2 # Minimum number of samples required to split an internal node
+  min_samples_leaf: 1 # Minimum number of samples required to be at a leaf node
+  max_features: .8 # Number of features to consider when looking for the best split
+  bootstrap: true # Whether bootstrap samples are used when building trees
+  max_samples: null # If bootstrap is True, the number of samples to draw from X to train each base estimator
+  random_state: null # Controls both the randomness of the bootstrapping of the samples and the sampling of the features
+  verbose: 0 # Controls the verbosity when fitting and predicting
+  warm_start: false # When set to True, reuse the solution of the previous call to fit and add more estimators to the ensemble
+  scaler: null
+  features_list: ['Ed', 'Ew', 'solar', 'wind', 'rain']
+  time_fracs: [0.8, 0.1, 0.1] # Percentage of data based on time span for train/val/test
+  space_fracs: [0.8, 0.1, 0.1] # Percentage of data based on location for train/val/test
+  
+lm:
+  fit_intercept: true
+  scaler: null
+  features_list: ['Ed', 'Ew', 'solar', 'wind', 'rain']
+  time_fracs: [0.8, 0.1, 0.1] # Percentage of data based on time span for train/val/test
+  space_fracs: [0.8, 0.1, 0.1] # Percentage of data based on location for train/val/test  
+
+
+
+
+
+
+  

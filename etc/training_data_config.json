@@ -1,0 +1,9 @@
+{
+    "start_time": "2024-01-01_00:00:00",
+    "end_time": "2024-01-01_02:00:00",
+    "bbox": [37,-111,46,-95],
+    "forecast_step": 3,
+    "training_data_filename": "train.pkl",
+    "data_params_path": "params_data.yaml",
+    "raws_stash_path": "..."
+}

@@ -1,0 +1,26 @@
+# File used to store parameters associated with data filters
+# Assumed units: 
+## FM: percent from 0-100 (or more)
+## Rain: mm/hr
+## Wind: m/s, see https://www.metoffice.gov.uk/weather/guides/coast-and-sea/beaufort-scale
+## Solar Rad: W/m^2, see https://viirsland.gsfc.nasa.gov/PDF/VIIRS_DSRPAR_UserGuide_v1.2.pdf
+## Soil Moisture: % (fraction)
+
+max_intp_time: 10 # maximum number of hours that can be interpolated 
+zero_lag_threshold: 10 # number of hours where flagged if zero change in FMC content over that period
+hours: 720 # total hours to build timeseries, break up longer into this length. Used to help with filters related to over-interpolation
+min_fm: 1 # minimum FMC value allowed (assumes scaled 0-100)
+max_fm: 90 # maximum FMC value allowed (assumes scaled 0-100), see VanderKamp 2016 Table 1
+min_rain: 0 # minimum rain value allowed
+max_rain: 100 # maximum rain value allowed, assuming mm/hr units
+min_wind: 0 # minimum wind threshold value
+max_wind: 35 # maximum wind threshold value, this corresponds to a hurricane
+min_solar: 0 # minimum wind threshold value
+max_solar: 1400 # maximum solar threshold value
+min_soilm: 0 # minimum soil moisture threshold value
+# max_soilm: 0 # minimum soil moisture threshold value, TODO: look up
+# features_all: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'soilm', 'canopyw', 'groundflux', 'rain'] # list of all features to try to process
+
+
+
+
