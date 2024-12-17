@@ -48,6 +48,25 @@ feature_df = pd.DataFrame({
 })
 
 
+def calc_eq(ds):
+    if ds.t2m.units == "C":
+        print("Converting from C to K")
+        ds.t2m = ds.t2m + 273.15
+    
+    temp = ds.t2m
+    rh = ds.r2
+
+    print("Calculating equilibrium moisture content from air temp and rh")
+    Ed = 0.924 * rh**0.679 + 0.000499 * np.exp(0.1 * rh) + 0.18 * (21.1 + 273.15 - temp) * (1 - np.exp(-0.115 * rh))
+    Ew = 0.618 * rh**0.753 + 0.000454 * np.exp(0.1 * rh) + 0.18 * (21.1 + 273.15 - temp) * (1 - np.exp(-0.115 * rh))
+
+    ds["Ed"] = Ed
+    ds["Ew"] = Ew
+
+    # Doing in-place modifying
+    # return ds
+
+
 
 
 def int2fstep(forecast_step):
