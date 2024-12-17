@@ -6,9 +6,14 @@ import synoptic
 import numpy as np
 import polars as pl
 import pandas as pd
+import pickle
+import json
+###################
+# FOR TESTING, In production, this is set in the shell file
 import sys
-sys.path.append("..")
-from utils import filter_nan_values, time_intp
+sys.path.append("src")
+###################
+from utils import Dict, filter_nan_values, time_intp, str2time
 
 # Hard-coded dictionary used to distinguish unchanging physical attributes of RAWS, or static variables, from time dynamic attributes that may be subject to temporal interpolation, or the weather vars
 raws_vars_dict = {
@@ -192,6 +197,45 @@ def rename_raws_columns(df: pl.DataFrame) -> pl.DataFrame:
     
     # Rename the columns
     return df.rename(rename_dict)
+
+
+
+# Executed Code ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## expects a config file with times and bbox, option argument saves output
+## Config bbox format should match format in wrfxpy rtma_cycler: [latmin, lonmin, latmax, lonmax]
+
+if __name__ == '__main__':
+
+    if len(sys.argv) not in {2, 3}: 
+        print(f"Invalid arguments. {len(sys.argv)} was given but 2 or 3 expected")
+        print(('Usage: %s <config_file> <optional_output_file>' % sys.argv[0]))
+        print("Example: python src/ingest/retrieve_raws_api.py etc/training_data_config.json data/raws.pkl")
+        sys.exit(-1)
+
+    # Handle config
+    conf_file = sys.argv[1]
+    with open(conf_file, "r") as json_file:
+        config = json.load(json_file)   
+        config = Dict(config)
+    print(json.dumps(config, indent=4))
+
+    bbox = config.bbox
+    start = config.start_time
+    end = config.end_time
+    
+    # Get station metadata within bbox and time period
+    bbox_reordered = [bbox[1], bbox[0], bbox[3], bbox[2]] # Synoptic uses different bbox order
+    start_dt = str2time(start)
+    end_dt = str2time(end)
+    sts = synoptic.Metadata(
+        bbox=bbox_reordered,
+        vars=["fuel_moisture"], # Note we only want to include stations with FMC. Other "raws_vars" are bonus later
+        obrange=(start_dt, end_dt),
+    ).df()
+
+    sts
+    
+
 
 
 
