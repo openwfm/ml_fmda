@@ -1,6 +1,8 @@
 # Set of functions to manipulate RAWS data
-# RAWS Data is retrieved using SynopticPy python package, which engages the Synoptic Data API
-# Credit to Brian Blaylock for SynopticPy package
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## RAWS Data is retrieved using SynopticPy python package, which engages the Synoptic Data API
+## Credit to Brian Blaylock for SynopticPy package
+## NOTE: Polars dataframes are used in SynopticPy instead of pandas. We use polars for the code here but convert to pandas to allow for pickle save which is listed as not implemented in polars as of Dec 17 2024
 
 import synoptic
 import numpy as np
@@ -8,6 +10,9 @@ import polars as pl
 import pandas as pd
 import pickle
 import json
+import os.path as osp
+from datetime import datetime, timezone
+from dateutil.relativedelta import relativedelta
 ###################
 # FOR TESTING, In production, this is set in the shell file
 import sys
@@ -200,19 +205,24 @@ def rename_raws_columns(df: pl.DataFrame) -> pl.DataFrame:
 
 
 
-# Executed Code ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## expects a config file with times and bbox, option argument saves output
-## Config bbox format should match format in wrfxpy rtma_cycler: [latmin, lonmin, latmax, lonmax]
+# Executed Code 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if __name__ == '__main__':
 
+    # Handle arguments
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ## expects a config file with times and bbox, option argument saves output
+    ## Config bbox format should match format in wrfxpy rtma_cycler: [latmin, lonmin, latmax, lonmax]
     if len(sys.argv) not in {2, 3}: 
         print(f"Invalid arguments. {len(sys.argv)} was given but 2 or 3 expected")
         print(('Usage: %s <config_file> <optional_output_file>' % sys.argv[0]))
         print("Example: python src/ingest/retrieve_raws_api.py etc/training_data_config.json data/raws.pkl")
         sys.exit(-1)
 
+    
     # Handle config
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     conf_file = sys.argv[1]
     with open(conf_file, "r") as json_file:
         config = json.load(json_file)   
@@ -222,23 +232,86 @@ if __name__ == '__main__':
     bbox = config.bbox
     start = config.start_time
     end = config.end_time
+    print(f"Start Date of RAWS retrieval: {start}")
+    print(f"End Date of retrieval: {end}")
+    print(f"Spatial Domain: {bbox}")
+
     
     # Get station metadata within bbox and time period
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     bbox_reordered = [bbox[1], bbox[0], bbox[3], bbox[2]] # Synoptic uses different bbox order
     start_dt = str2time(start)
     end_dt = str2time(end)
     sts = synoptic.Metadata(
         bbox=bbox_reordered,
         vars=["fuel_moisture"], # Note we only want to include stations with FMC. Other "raws_vars" are bonus later
-        obrange=(start_dt, end_dt),
+        obrange=(start_dt-relativedelta(hours=1), end_dt),
     ).df()
 
-    sts
     
+    # Collect RAWS data
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ## FMC is required, but collect all other available weather data
+    ## Shifting the start time by 1 hour since most stations return data some minutes after requested time, we do this for time interpolation to have endpoints
+    raws_dict = {}
+    
+    for st in sts['stid']:
+        print("~"*50)
+        print(f"Attempting retrival of station {st}")
+        try:
+            df = synoptic.TimeSeries(
+                stid=st,
+                start=start_dt-relativedelta(hours=1),
+                end=end_dt,
+                vars=raws_vars_dict["raws_weather_vars"],
+                units = "metric"
+            ).df()
+        
+            dat, units = format_raws(df)
+            loc = get_static(dat)
+            raws_dict[st] = {
+                'RAWS': dat,
+                'units': units,
+                'loc': loc,
+                'misc': "Data retrieved using `synoptic.TimeSeries` and formatted with custom functions within `ml_fmda` project."
+            }
+        except Exception as e:
+            print(f"An error occured: {e}")
 
 
+    # Fix Time and Interpolate
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    times = pl.datetime_range(
+        start=start_dt,
+        end=end_dt,
+        interval="1h",
+        time_zone = "UTC",
+        eager=True
+    ).alias("time")
+    times = np.array(times.to_list())
+
+    print(f"Interpolating missing data in time from {times.min()} to {times.max()}")
+    for st in raws_dict:
+        nsteps = raws_dict[st]["RAWS"].shape[0]
+        raws_dict[st]["RAWS"] = time_intp_df(raws_dict[st]["RAWS"], times)
+        raws_dict[st]["RAWS"] = pd.DataFrame(raws_dict[st]["RAWS"], columns = raws_dict[st]["RAWS"].columns) # convert to pandas for pickle save
+        raws_dict[st]["times"] = times
+        if raws_dict[st]["RAWS"].shape[0] != nsteps:
+            print("~"*75)
+            print(st)
+            raws_dict[st]["misc"] += " Interpolated data with numpy linear interpolation."
+            print(f"    Original Dataframe time steps: {nsteps}")
+            print(f"    Interpolated DataFrame time steps: {raws_dict[st]['RAWS'].shape[0]}")
+            print(f"        interpolated {raws_dict[st]['RAWS'].shape[0] - nsteps} time steps")
 
 
+    # Write output if path provided
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
 
+    if len(sys.argv) == 3:
+        output_path = sys.argv[2]
+        print(f"Writing output to {output_path}")
+        with open(output_path, 'wb') as file:
+            pickle.dump(raws_dict, file)
 
     
