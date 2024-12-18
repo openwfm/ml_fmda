@@ -13,47 +13,43 @@ import numpy as np
 import sys
 sys.path.append("src")
 ###################
-from utils import str2time
+from utils import Dict, str2time, read_yml
 
-# Dataframe used to track names and metadata for various HRRR bands. The names used within the HRRR grib files differs from the xarray objects returned by Herbie, and we want to standardize those names to those used within this project from other data sources e.g. RAWS
-hrrr_name_df = pd.DataFrame({
-    'band_prs': [616, 620, 624, 629, 661, (561, 563, 565, 567, 569, 571, 573, 575, 577), (560, 562, 564, 566, 568, 570, 572, 574, 576), 612, 643, 610, 615, 613, 607, 639, 640],
-    'hrrr_name': ['TMP', 'RH', "WIND", 'APCP',
-                  'DSWRF', 'SOILW', "TSOIL", 'CNWAT', 'GFLUX', "ASNOW", "SNOD", "WEASD", "PRES", "SFCR", "FRICV"],
-    'hrrr_level': ["2m", "2m", "10m", "surface", "surface", "multiple", "multiple",
-                  "surface", "surface", "surface", "surface", "surface", "surface", "surface", "surface"],
-    'herbie_str': ["TMP:2 m", "RH:2 m", "WIND:10 m", ":APCP:surface:2-3 hour acc", "DSWRF:surface", ":SOILW:", 
-                   ":TSOIL:", "CNWAT:surface", "GFLUX:surface", "ASNOW:surface", ":SNOD:surface:3 hour fcst", ":WEASD:surface:2-3 hour acc", 
-                   ":PRES:surface:3 hour fcst", ":SFCR:surface:3 hour fcst", ":FRICV:surface:3 hour fcst	"],
-    'xarray_name': ["t2m", "r2", "si10", "tp", "dswrf", "soilw", "tsoil", "cnwat", "gflux", "unknown", "sde", "sdwe", "sp", "fsr", "fricv"],
-    'fmda_name': ["temp", "rh", "wind", "precip_accum",
-                 "solar", "soilm", "soilt", "canopyw", "groundflux", "asnow", "snod", "weasd", "pres", "rough", "fricv"],
-    'descr': ['2m Temperature [K]', 
-              '2m Relative Humidity [%]', 
-              '10m Wind Speed [m/s]',
-              'surface Total Precipitation [kg/m^2]',
-              'surface Downward Short-Wave Radiation Flux [W/m^2]',
-              'Volumetric Soil Moisture Content [Fraction]',
-              'Soil Temperature [K]',
-              'Plant Canopy Surface Water [kg/m^2]',
-              'surface Ground Heat Flux [W/m^2]',
-              'Total Snowfall [m]',
-              'Snow Depth [m]',
-              'Water Equivalent of Accumulated Snow Depth [kg/m^2]',
-              'Surface air pressure [Pa]',
-              'Surface Roughness [m]',
-              'Frictional Velocity [m/s]'
-             ],
-    'notes': ["", "", "", "", "", "9 different depths, from 0-3m below ground", "9 different depths, from 0-3m below ground", "", "", "0-3 hr accumulated", "", 
-              "0-3 hr accumulated, listed as `deprecated` in gribs", "", "", ""]
-})
+# Read in metadata dictionary for features
+feat_dict = read_yml("../etc/variable_metadata/features_metadata.yaml")
 
-# Dataframe used to control which HRRR bands need to be retrieved given an input list of features
-derived_feature_df = pd.DataFrame({
-    'feature_name': ["Ed", "Ew", "rain", "hod", "doy"],
-    'required_fmda_name': [("rh", "temp"), ("rh", "temp"), "precip_accum", "time", "time"]
-})
+def features_to_searchstr(flist):
+    """
+    Given features list, return dictionary of search strings to be used in Herbie package
+    """
+    # Initialize the output dictionary
+    search_strings = {
+        "surface": "",
+        "2m": "",
+        "10m": ""
+    }
 
+    for feat in flist:
+        feature_info = Dict(feat_dict[feat])
+        feature_type = feature_info.feature_type
+        
+        if feature_type == "hrrr_data":
+            layer = feature_info.layer
+            ss = feature_info.herbie_str
+            search_strings[layer] += f"|{ss}"
+        elif feature_type == "engineered_data":
+            fnames = feature_info.required_fmda_names
+            for fn in fnames:
+                feature_info2 = Dict(feat_dict[fn])
+                layer = feature_info2.layer
+                ss = feature_info2.herbie_str
+                search_strings[layer] += f"|{ss}"
+    # Remove the initial pipe if it exists
+    for key in search_strings:
+        search_strings[key] = search_strings[key][1:] if search_strings[key].startswith("|") else search_strings[key]    
+    
+    return search_strings
+    
 
 def calc_eq(ds):
     """
@@ -113,3 +109,47 @@ def int2fstep(forecast_step):
         
     fstep='f'+str(forecast_step).zfill(2)
     return fstep
+
+
+
+# Old Commented Out Stuff
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~``
+
+# # Dataframe used to track names and metadata for various HRRR bands. The names used within the HRRR grib files differs from the xarray objects returned by Herbie, and we want to standardize those names to those used within this project from other data sources e.g. RAWS
+# hrrr_name_df = pd.DataFrame({
+#     'band_prs': [616, 620, 624, 629, 661, (561, 563, 565, 567, 569, 571, 573, 575, 577), (560, 562, 564, 566, 568, 570, 572, 574, 576), 612, 643, 610, 615, 613, 607, 639, 640],
+#     'hrrr_name': ['TMP', 'RH', "WIND", 'APCP',
+#                   'DSWRF', 'SOILW', "TSOIL", 'CNWAT', 'GFLUX', "ASNOW", "SNOD", "WEASD", "PRES", "SFCR", "FRICV"],
+#     'hrrr_level': ["2m", "2m", "10m", "surface", "surface", "multiple", "multiple",
+#                   "surface", "surface", "surface", "surface", "surface", "surface", "surface", "surface"],
+#     'herbie_str': ["TMP:2 m", "RH:2 m", "WIND:10 m", ":APCP:surface:2-3 hour acc", "DSWRF:surface", ":SOILW:", 
+#                    ":TSOIL:", "CNWAT:surface", "GFLUX:surface", "ASNOW:surface", ":SNOD:surface:3 hour fcst", ":WEASD:surface:2-3 hour acc", 
+#                    ":PRES:surface:3 hour fcst", ":SFCR:surface:3 hour fcst", ":FRICV:surface:3 hour fcst	"],
+#     'xarray_name': ["t2m", "r2", "si10", "tp", "dswrf", "soilw", "tsoil", "cnwat", "gflux", "unknown", "sde", "sdwe", "sp", "fsr", "fricv"],
+#     'fmda_name': ["temp", "rh", "wind", "precip_accum",
+#                  "solar", "soilm", "soilt", "canopyw", "groundflux", "asnow", "snod", "weasd", "pres", "rough", "fricv"],
+#     'descr': ['2m Temperature [K]', 
+#               '2m Relative Humidity [%]', 
+#               '10m Wind Speed [m/s]',
+#               'surface Total Precipitation [kg/m^2]',
+#               'surface Downward Short-Wave Radiation Flux [W/m^2]',
+#               'Volumetric Soil Moisture Content [Fraction]',
+#               'Soil Temperature [K]',
+#               'Plant Canopy Surface Water [kg/m^2]',
+#               'surface Ground Heat Flux [W/m^2]',
+#               'Total Snowfall [m]',
+#               'Snow Depth [m]',
+#               'Water Equivalent of Accumulated Snow Depth [kg/m^2]',
+#               'Surface air pressure [Pa]',
+#               'Surface Roughness [m]',
+#               'Frictional Velocity [m/s]'
+#              ],
+#     'notes': ["", "", "", "", "", "9 different depths, from 0-3m below ground", "9 different depths, from 0-3m below ground", "", "", "0-3 hr accumulated", "", 
+#               "0-3 hr accumulated, listed as `deprecated` in gribs", "", "", ""]
+# })
+
+# # Dataframe used to control which HRRR bands need to be retrieved given an input list of features
+# derived_feature_df = pd.DataFrame({
+#     'feature_name': ["Ed", "Ew", "rain", "hod", "doy"],
+#     'required_fmda_name': [("rh", "temp"), ("rh", "temp"), "precip_accum", "time", "time"]
+# })
