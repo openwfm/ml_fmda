@@ -8,13 +8,20 @@ import herbie
 from herbie import FastHerbie
 from datetime import datetime
 import numpy as np
-
+###################
+# FOR TESTING, In production, this is set in the shell file
+import sys
+sys.path.append("src")
+###################
+from utils import str2time
 
 # Dataframe used to track names and metadata for various HRRR bands. The names used within the HRRR grib files differs from the xarray objects returned by Herbie, and we want to standardize those names to those used within this project from other data sources e.g. RAWS
-name_df_hrrr = pd.DataFrame({
+hrrr_name_df = pd.DataFrame({
     'band_prs': [616, 620, 624, 629, 661, (561, 563, 565, 567, 569, 571, 573, 575, 577), (560, 562, 564, 566, 568, 570, 572, 574, 576), 612, 643, 610, 615, 613, 607, 639, 640],
     'hrrr_name': ['TMP', 'RH', "WIND", 'APCP',
                   'DSWRF', 'SOILW', "TSOIL", 'CNWAT', 'GFLUX', "ASNOW", "SNOD", "WEASD", "PRES", "SFCR", "FRICV"],
+    'hrrr_level': ["2m", "2m", "10m", "surface", "surface", "multiple", "multiple",
+                  "surface", "surface", "surface", "surface", "surface", "surface", "surface", "surface"],
     'herbie_str': ["TMP:2 m", "RH:2 m", "WIND:10 m", ":APCP:surface:2-3 hour acc", "DSWRF:surface", ":SOILW:", 
                    ":TSOIL:", "CNWAT:surface", "GFLUX:surface", "ASNOW:surface", ":SNOD:surface:3 hour fcst", ":WEASD:surface:2-3 hour acc", 
                    ":PRES:surface:3 hour fcst", ":SFCR:surface:3 hour fcst", ":FRICV:surface:3 hour fcst	"],
@@ -42,13 +49,22 @@ name_df_hrrr = pd.DataFrame({
 })
 
 # Dataframe used to control which HRRR bands need to be retrieved given an input list of features
-feature_df = pd.DataFrame({
-    'feature_name': ["Ed", "Ew", "rain"],
-    'required_fmda_name': [("rh", "temp"), ("rh", "temp"), "precip_accum"]
+derived_feature_df = pd.DataFrame({
+    'feature_name': ["Ed", "Ew", "rain", "hod", "doy"],
+    'required_fmda_name': [("rh", "temp"), ("rh", "temp"), "precip_accum", "time", "time"]
 })
 
 
 def calc_eq(ds):
+    """
+    Calculate wetting and drying equilibrium moisture content from the relative humidity and air temp
+
+    Parameters:
+        - ds: xarray dataset
+    
+    Returns: None
+        Operation is in-place
+    """
     if ds.t2m.units == "C":
         print("Converting from C to K")
         ds.t2m = ds.t2m + 273.15
