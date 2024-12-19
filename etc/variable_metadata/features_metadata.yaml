@@ -12,14 +12,14 @@ Ed:
     units: "%"
     descr: "Calculated from rh and air temp"
     feature_type: "engineered_data"
-    required_fmda_names: ("rh", "temp")
+    required_fmda_names: ["rh", "temp"]
 
-Ed: 
+Ew: 
     long_name: "Wetting equilibrium"
     units: "%"
     descr: "Calculated from rh and air temp"
     feature_type: "engineered_data"
-    required_fmda_names: ("rh", "temp")
+    required_fmda_names: ["rh", "temp"]
 
 temp:
     long_name: "Air temperature"
@@ -65,7 +65,7 @@ solar:
     units: "W/m^2"
     descr: "surface Downward Short-Wave Radiation Flux"
     feature_type: "hrrr_data"
-    layer: "10m"
+    layer: "surface"
     hrrr_name: "DSWRF"
     herbie_str: "DSWRF:surface"
 
@@ -83,7 +83,11 @@ lon:
     feature_type: "hrrr_dim"
     hrrr_name: "longitude"
 
-
+elev:
+    long_name: "Elevation above sea level"
+    units: "m"
+    feature_type: "TODO"
+    
 hod:
     long_name: "Hour of day"
     units: "hours"

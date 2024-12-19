@@ -1,4 +1,4 @@
-# Set of functions to manipulate RAWS data
+# Set of functions and executable to retrieve and manipulate RAWS data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## RAWS Data is retrieved using SynopticPy python package, which engages the Synoptic Data API
 ## Credit to Brian Blaylock for SynopticPy package
