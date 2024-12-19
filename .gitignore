@@ -1,1 +1,4 @@
 data/*
+.ipynb_checkpoints/
+.virtual_documents/
+.DS_Store
