@@ -135,31 +135,38 @@ def format_raws(df,
     return dat, units
 
 
-def get_static(df, static_vars=raws_meta["raws_static_vars"]):
-    """
-    Given dataframe of timeseries observations from RAWS station, get dictionary of static info, such as identifiers and physical attributes of station.
+# def get_static(df, static_vars=raws_meta["raws_static_vars"]):
+#     """
+#     Given dataframe of timeseries observations from RAWS station, get dictionary of static info, such as identifiers and physical attributes of station.
     
-    Parameters:
-    -----------
-        df: Input dataframe with timeseries observations.
-        static_vars: List of column names to extract static information from.
+#     Parameters:
+#     -----------
+#         df: Input dataframe with timeseries observations.
+#         static_vars: List of column names to extract static information from.
     
-    Returns:
-    -----------
-        A dictionary called "loc" containing the unique value for each column in static_vars.
+#     Returns:
+#     -----------
+#         A dictionary called "loc" containing the unique value for each column in static_vars.
     
-    """
+#     """
     
-    loc = {}
-    for col in static_vars:
-        if col in df.columns:
-            unique_values = df[col].unique()
-            if len(unique_values) == 1:
-                loc[col] = unique_values[0]
-            else:
-                raise ValueError(f"Column '{col}' has more than one unique value: {unique_values}")
-        else:
-            raise KeyError(f"Column '{col}' not found in the dataframe.")
+#     loc = {}
+#     for col in static_vars:
+#         if col in df.columns:
+#             unique_values = df[col].unique()
+#             if len(unique_values) == 1:
+#                 loc[col] = unique_values[0]
+#             else:
+#                 raise ValueError(f"Column '{col}' has more than one unique value: {unique_values}")
+#         else:
+#             raise KeyError(f"Column '{col}' not found in the dataframe.")
+#     return loc
+
+def get_static(df, st, static_vars=raws_meta["raws_static_vars"], name_mapping = raws_meta["rename_pairs"]):
+    loc = {col: values[0] for col, values in df.filter(df["stid"] == st).select(static_vars).to_dict(as_series=False).items()}
+    loc = rename_dict(loc, name_mapping)
+    loc["elev"] = loc["elev"] * 0.3048 # Convert ft to M
+    
     return loc
 
 
@@ -217,7 +224,7 @@ def build_raws_dict(config, rename=True, verbose = True):
     bbox_reordered = [bbox[1], bbox[0], bbox[3], bbox[2]] # Synoptic uses different bbox order
     start_dt = str2time(start)
     end_dt = str2time(end)
-    sts = get_stations(bbox_reordered, start_dt, end_dt)["stid"]
+    sts = get_stations(bbox_reordered, start_dt, end_dt)
 
     # Collect RAWS data
     ## FMC is required, but collect all other available weather data
@@ -225,7 +232,7 @@ def build_raws_dict(config, rename=True, verbose = True):
     raws_weather_vars = config.get("raws_weather_vars", raws_meta["raws_weather_vars"])
     raws_dict = {}
     
-    for st in sts:
+    for st in sts["stid"]:
         print("~"*50)
         print(f"Attempting retrival of station {st}")
         try:
@@ -238,7 +245,7 @@ def build_raws_dict(config, rename=True, verbose = True):
             ).df()
         
             dat, units = format_raws(df)
-            loc = get_static(dat)
+            loc = get_static(sts, st)
             raws_dict[st] = {
                 'RAWS': dat,
                 'units': units,
