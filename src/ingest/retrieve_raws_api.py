@@ -67,7 +67,7 @@ def get_stations(bounding_box, start, end):
         obrange=(start-relativedelta(hours=1), end),
     ).df()
 
-    return list(sts["stid"])
+    return sts
 
 def format_raws(df, 
                 static_vars=raws_meta["raws_static_vars"], 
@@ -217,7 +217,7 @@ def build_raws_dict(config, rename=True, verbose = True):
     bbox_reordered = [bbox[1], bbox[0], bbox[3], bbox[2]] # Synoptic uses different bbox order
     start_dt = str2time(start)
     end_dt = str2time(end)
-    sts = get_stations(bbox_reordered, start_dt, end_dt)
+    sts = get_stations(bbox_reordered, start_dt, end_dt)["stid"]
 
     # Collect RAWS data
     ## FMC is required, but collect all other available weather data
