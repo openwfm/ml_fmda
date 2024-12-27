@@ -41,6 +41,34 @@ raws_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "raws_metadata.ya
 # Module Functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+def get_stations(bounding_box, start, end):
+    """
+    Return a polars dataframe of RAWS sensor data and associated units. Shift the start time by 1 hour since most stations return data some minutes after requested time, we do this for time interpolation to have endpoints
+    
+    Parameters:
+    -----------
+    bounding_box : list of numeric
+        Format [min_lon, min_lat, max_lon, max_lat], NOTE different format than wrfxpy rtma_cycler
+
+    start : datetime
+        Start time of retrieval
+    end : datetime
+        End time of retrieval 
+        
+    Returns:
+    --------
+    st : list
+        List of RAWS STIDs
+
+    """ 
+    sts = synoptic.Metadata(
+        bbox=bounding_box,
+        vars=["fuel_moisture"], # We only want to include stations with FMC. Other "raws_vars" are bonus later
+        obrange=(start-relativedelta(hours=1), end),
+    ).df()
+
+    return list(sts["stid"])
+
 def format_raws(df, 
                 static_vars=raws_meta["raws_static_vars"], 
                 weather_vars=raws_meta["raws_weather_vars"]
@@ -189,11 +217,7 @@ def build_raws_dict(config, rename=True, verbose = True):
     bbox_reordered = [bbox[1], bbox[0], bbox[3], bbox[2]] # Synoptic uses different bbox order
     start_dt = str2time(start)
     end_dt = str2time(end)
-    sts = synoptic.Metadata(
-        bbox=bbox_reordered,
-        vars=["fuel_moisture"], # We only want to include stations with FMC. Other "raws_vars" are bonus later
-        obrange=(start_dt-relativedelta(hours=1), end_dt),
-    ).df()
+    sts = get_stations(bbox_reordered, start_dt, end_dt)
 
     # Collect RAWS data
     ## FMC is required, but collect all other available weather data
@@ -201,7 +225,7 @@ def build_raws_dict(config, rename=True, verbose = True):
     raws_weather_vars = config.get("raws_weather_vars", raws_meta["raws_weather_vars"])
     raws_dict = {}
     
-    for st in sts['stid']:
+    for st in sts:
         print("~"*50)
         print(f"Attempting retrival of station {st}")
         try:
@@ -255,6 +279,7 @@ def build_raws_dict(config, rename=True, verbose = True):
             raws_dict[st]["units"] = rename_dict(raws_dict[st]["units"], raws_meta["rename_pairs"])
             raws_dict[st]["RAWS"] = raws_dict[st]["RAWS"].rename(columns = raws_meta["rename_pairs"])
             raws_dict[st]["loc"] = rename_dict(raws_dict[st]["loc"], raws_meta["rename_pairs"])
+            
     return raws_dict
 
 
