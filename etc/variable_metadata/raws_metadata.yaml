@@ -2,7 +2,8 @@
 
 
 raws_weather_vars: ["air_temp", "relative_humidity", "precip_accum", "fuel_moisture", "wind_speed", "solar_radiation", "pressure", "soil_moisture", "soil_temp", "snow_depth", "snow_accum", "wind_direction"]
-raws_weather_vars: ["stid", "latitude", "longitude", "elevation", "name", "state", "id"]
+
+raws_static_vars: ["stid", "latitude", "longitude", "elevation", "name", "state", "id"]
 
 
 

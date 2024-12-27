@@ -1,8 +1,9 @@
 {
     "start_time": "2024-01-01T00:00:00Z",
-    "stop_time": "2024-01-01T05:00:00Z",
-    "bbox": [37,-111,46,-95],
+    "end_time": "2024-01-01T05:00:00Z",
+    "bbox": [40,-105,45,-100],
     "forecast_step": 3,
     "model_path": ".../model.keras",
+    "raws_weather_vars": "fuel_moisture",
     "time_code": true
 }
