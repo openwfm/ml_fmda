@@ -30,6 +30,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import read_yml, Dict, time_intp, str2time
+from data_funcs import rename_dict
 
 
 # Read RAWS Metadata
@@ -171,7 +172,7 @@ def time_intp_df(df, target_times,
     return result_df
 
 
-def build_raws_dict(config, verbose = True):
+def build_raws_dict(config, rename=True, verbose = True):
     """
     Wrapper function that applies the module functions. Given config dictionary, it returns a formatted dictionary of RAWS data
     """
@@ -223,7 +224,7 @@ def build_raws_dict(config, verbose = True):
         except Exception as e:
             print(f"An error occured: {e}")
 
-    # Fix Time and Interpolate
+    # Fix Time, Interpolate, and Rename 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     times = pl.datetime_range(
         start=start_dt,
@@ -235,6 +236,8 @@ def build_raws_dict(config, verbose = True):
     times = np.array(times.to_list())
 
     print(f"Interpolating missing data in time from {times.min()} to {times.max()}")
+    if rename:
+        print(f"Renaming RAWS columns based on raws_metadata file")
     for st in raws_dict:
         nsteps = raws_dict[st]["RAWS"].shape[0]
         raws_dict[st]["RAWS"] = time_intp_df(raws_dict[st]["RAWS"], times)
@@ -248,55 +251,20 @@ def build_raws_dict(config, verbose = True):
             print(f"    Interpolated DataFrame time steps: {raws_dict[st]['RAWS'].shape[0]}")
             print(f"        interpolated {raws_dict[st]['RAWS'].shape[0] - nsteps} time steps")
 
+        if rename:
+            raws_dict[st]["units"] = rename_dict(raws_dict[st]["units"], raws_meta["rename_pairs"])
+            raws_dict[st]["RAWS"] = raws_dict[st]["RAWS"].rename(columns = raws_meta["rename_pairs"])
+            raws_dict[st]["loc"] = rename_dict(raws_dict[st]["loc"], raws_meta["rename_pairs"])
     return raws_dict
 
 
 
-## FOR LATER TESTING
+# if rename:
+# units = rename_dict(units, raws_meta["rename_pairs"])
+# mapping = {k: v for k, v in raws_meta["rename_pairs"].items() if k in dat.columns}
+# dat = dat.rename(mapping)
+# loc = rename_dict(loc, raws_meta["rename_pairs"])
 
-# Dataframe used to standardize naming from different data sources. 'fmda_name' are the variable names used within this project
-# name_df_raws = pl.DataFrame({
-#     "raws_name": [
-#         "air_temp", 
-#         "fuel_moisture", 
-#         "relative_humidity", 
-#         "solar_radiation", 
-#         "wind_speed", 
-#         "precip_accum", 
-#         "soil_moisture",
-#         "soil_temp"
-#     ],
-#     "fmda_name": [
-#         "temp", 
-#         "fm", 
-#         "rh", 
-#         "solar", 
-#         "wind", 
-#         "precip_accum", 
-#         "soilm",
-#         "soilt"
-#     ]
-# })
-
-
-
-# def rename_raws_columns(df: pl.DataFrame) -> pl.DataFrame:
-#     """
-#     Renames columns in a Polars DataFrame based on a globally available mapping DataFrame. Hard coded so raws names turned into names defined in fmda project
-
-#     Parameters:
-#         df (pl.DataFrame): Input Polars DataFrame.
-
-#     Returns:
-#         pl.DataFrame: DataFrame with renamed columns.
-#     """
-#     # Extract raws_name and fmda_name as a list of tuples
-#     rename_dict = {
-#         row[0]: row[1] for row in name_df_raws.rows() if row[0] in df.columns
-#     }
-    
-#     # Rename the columns
-#     return df.rename(rename_dict)
 
 
 

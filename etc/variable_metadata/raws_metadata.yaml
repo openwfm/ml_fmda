@@ -5,5 +5,22 @@ raws_weather_vars: ["air_temp", "relative_humidity", "precip_accum", "fuel_moist
 
 raws_static_vars: ["stid", "latitude", "longitude", "elevation", "name", "state", "id"]
 
-
+# Used to rename RAWS variables to names used within this ml_fmda project
+# Format is raws_name:fmda_name
+rename_pairs:
+  air_temp: temp
+  relative_humidity: rh
+  precip_accum: precip_accum
+  fuel_moisture: fm
+  wind_speed: wind
+  solar_radiation: solar
+  pressure: pressure
+  soil_moisture: soilm
+  soil_temp: soilt
+  snow_depth: snowd
+  snow_accum: snow_accum
+  wind_direction: wind_direction
+  latitude: lat
+  longitude: lon
+  elevation: elev
 
