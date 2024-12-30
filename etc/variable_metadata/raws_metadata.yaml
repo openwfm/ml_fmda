@@ -32,7 +32,7 @@ rename_synoptic:
 
 # Used to rename RAWS variables from stash names to names used within this ml_fmda project
 # Format is stash_name:fmda_name
-renamne_stash:
+rename_stash:
     "STID": "stid"
     "datetime": "date_time"
     "fm10": "fm"
