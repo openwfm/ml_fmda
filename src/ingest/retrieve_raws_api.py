@@ -162,7 +162,7 @@ def format_raws(df,
 #             raise KeyError(f"Column '{col}' not found in the dataframe.")
 #     return loc
 
-def get_static(df, st, static_vars=raws_meta["raws_static_vars"], name_mapping = raws_meta["rename_pairs"]):
+def get_static(df, st, static_vars=raws_meta["raws_static_vars"], name_mapping = raws_meta["rename_synoptic"]):
     loc = {col: values[0] for col, values in df.filter(df["stid"] == st).select(static_vars).to_dict(as_series=False).items()}
     loc = rename_dict(loc, name_mapping)
     loc["elev"] = loc["elev"] * 0.3048 # Convert ft to M
@@ -283,19 +283,19 @@ def build_raws_dict(config, rename=True, verbose = True):
             print(f"        interpolated {raws_dict[st]['RAWS'].shape[0] - nsteps} time steps")
 
         if rename:
-            raws_dict[st]["units"] = rename_dict(raws_dict[st]["units"], raws_meta["rename_pairs"])
-            raws_dict[st]["RAWS"] = raws_dict[st]["RAWS"].rename(columns = raws_meta["rename_pairs"])
-            raws_dict[st]["loc"] = rename_dict(raws_dict[st]["loc"], raws_meta["rename_pairs"])
+            raws_dict[st]["units"] = rename_dict(raws_dict[st]["units"], raws_meta["rename_synoptic"])
+            raws_dict[st]["RAWS"] = raws_dict[st]["RAWS"].rename(columns = raws_meta["rename_synoptic"])
+            raws_dict[st]["loc"] = rename_dict(raws_dict[st]["loc"], raws_meta["rename_synoptic"])
             
     return raws_dict
 
 
 
 # if rename:
-# units = rename_dict(units, raws_meta["rename_pairs"])
-# mapping = {k: v for k, v in raws_meta["rename_pairs"].items() if k in dat.columns}
+# units = rename_dict(units, raws_meta["rename_synoptic"])
+# mapping = {k: v for k, v in raws_meta["rename_synoptic"].items() if k in dat.columns}
 # dat = dat.rename(mapping)
-# loc = rename_dict(loc, raws_meta["rename_pairs"])
+# loc = rename_dict(loc, raws_meta["rename_synoptic"])
 
 
 

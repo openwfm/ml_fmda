@@ -1,13 +1,19 @@
 # Metadata read as dictionary to distinguish geographic features of RAWS stations versus time-dynamic sensor data
+# RAWS retrieved with SynopticPy or from local stash
 
 
+raws_stash_path: "data/MesoDB"
+
+
+# Time-dynamic weather sensor variables
 raws_weather_vars: ["air_temp", "relative_humidity", "precip_accum", "fuel_moisture", "wind_speed", "solar_radiation", "pressure", "soil_moisture", "soil_temp", "snow_depth", "snow_accum", "wind_direction"]
 
+# Static, unchanging geographic features vars
 raws_static_vars: ["stid", "latitude", "longitude", "elevation", "name", "state", "id"]
 
-# Used to rename RAWS variables to names used within this ml_fmda project
+# Used to rename RAWS variables from Synoptic names to names used within this ml_fmda project
 # Format is raws_name:fmda_name
-rename_pairs:
+rename_synoptic:
   air_temp: temp
   relative_humidity: rh
   precip_accum: precip_accum
@@ -23,4 +29,15 @@ rename_pairs:
   latitude: lat
   longitude: lon
   elevation: elev
+
+# Used to rename RAWS variables from stash names to names used within this ml_fmda project
+# Format is stash_name:fmda_name
+renamne_stash:
+    "STID": "stid"
+    "datetime": "date_time"
+    "fm10": "fm"
+    "latitude": "lat"
+    "longitude": "lon"
+    "elevation": "elev"
+
 
