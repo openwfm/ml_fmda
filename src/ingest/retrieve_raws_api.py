@@ -291,11 +291,6 @@ def build_raws_dict(config, rename=True, verbose = True):
 
 
 
-# if rename:
-# units = rename_dict(units, raws_meta["rename_synoptic"])
-# mapping = {k: v for k, v in raws_meta["rename_synoptic"].items() if k in dat.columns}
-# dat = dat.rename(mapping)
-# loc = rename_dict(loc, raws_meta["rename_synoptic"])
 
 
 

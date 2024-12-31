@@ -4,6 +4,5 @@
     "bbox": [40,-105,45,-100],
     "forecast_step": 3,
     "training_data_filename": "train.pkl",
-    "data_params_path": "params_data.yaml",
-    "raws_stash_path": "..."
+    "data_params_path": "etc/params_data.yaml"
 }
