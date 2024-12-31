@@ -29,6 +29,7 @@ temp:
     layer: "2m"
     hrrr_name: "TMP"
     herbie_str: "TMP:2 m"
+    xarray_name: "t2m"
 
 rh:
     long_name: "Relative humidity"
@@ -38,7 +39,7 @@ rh:
     layer: "2m"
     hrrr_name: "RH"
     herbie_str: "RH:2 m"
-
+    xarray_name: "r2"
 
 rain:
     long_name: "Hourly precipitation"
@@ -48,7 +49,7 @@ rain:
     layer: "surface"
     hrrr_name: "APCP"
     herbie_str: ":APCP:surface:2-3 hour acc"
-
+    xarray_name: "tp"
 
 
 wind: 
@@ -59,7 +60,7 @@ wind:
     layer: "10m"
     hrrr_name: "WIND"
     herbie_str: "WIND:10 m"
-
+    xarray_name: "si10"
 
 solar: 
     long_name: "Downward Short-Wave Radiation Flux"
@@ -69,6 +70,7 @@ solar:
     layer: "surface"
     hrrr_name: "DSWRF"
     herbie_str: "DSWRF:surface"
+    xarray_name: "dswrf"
 
 canopyw:
     long_name: "Plant Canopy Surface Water"
@@ -78,6 +80,7 @@ canopyw:
     layer: "surface"
     hrrr_name: "CNWAT"
     herbie_str: "CNWAT:surface"
+    xarray_name: "cnwat"
 
 gflux:
     long_name: "Ground Heat Flux"
@@ -87,6 +90,7 @@ gflux:
     layer: "surface"
     hrrr_name: "GFLUX"
     herbie_str: "GFLUX:surface"
+    xarray_name: "gflux"
 
 weasd:
     long_name: "Water Equivalent of Accumulated Snow Depth"
@@ -96,7 +100,7 @@ weasd:
     layer: "surface"
     hrrr_name: "WEASD"
     herbie_str: ":WEASD:surface:2-3 hour acc"
-
+    xarray_name: "sdwe"
 
 asnow:
     long_name: "Total accumulated Snowfall"
@@ -106,6 +110,7 @@ asnow:
     layer: "surface"
     hrrr_name: "ASNOW"
     herbie_str: "ASNOW:surface"
+    xarray_name: "unknown"
 
 snod:
     long_name: "Snow Depth"
@@ -115,6 +120,7 @@ snod:
     layer: "surface"
     hrrr_name: "SNOD"
     herbie_str: ":SNOD:surface:3 hour fcst"
+    xarray_name: "sde"
 
 pres:
     long_name: "Surface Air Pressure"
@@ -124,6 +130,7 @@ pres:
     layer: "surface"
     hrrr_name: "PRES"
     herbie_str: ":PRES:surface:3 hour fcst"
+    xarray_name: "sp"
 
 rough:
     long_name: "Surface Roughness"
@@ -133,6 +140,7 @@ rough:
     layer: "surface"
     hrrr_name: "SFCR"
     herbie_str: ":SFCR:surface:3 hour fcst"
+    xarray_name: "fsr"
 
 fricv:
     long_name: "Frictional Velocity"
@@ -142,8 +150,27 @@ fricv:
     layer: "surface"
     hrrr_name: "FRICV"
     herbie_str: ":FRICV:surface:3 hour fcst"
+    xarray_name: "fricv"
 
+soilw:
+    long_name: "Volumetric Soil Moisture Content"
+    units: "Fraction"
+    descr: "Fraction of water contained in the soil. Data available at 9 different depths, from 0-3m below ground."
+    feature_type: "hrrr_data"
+    layer: "multiple"
+    hrrr_name: "SOILW"
+    herbie_str: ":SOILW:"
+    xarray_name: "soilw"
 
+soilt:
+    long_name: "Soil Temperature"
+    units: "K"
+    descr: "Soil temperature at different depths. Data available at 9 different depths, from 0-3m below ground."
+    feature_type: "hrrr_data"
+    layer: "multiple"
+    hrrr_name: "TSOIL"
+    herbie_str: ":TSOIL:"
+    xarray_name: "tsoil"
 
 lat:
     long_name: "Latitude"

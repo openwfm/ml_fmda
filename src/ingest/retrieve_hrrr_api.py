@@ -8,20 +8,36 @@ import herbie
 from herbie import FastHerbie
 from datetime import datetime
 import numpy as np
-###################
-# FOR TESTING, In production, this is set in the shell file
+import os.path as osp
 import sys
-sys.path.append("src")
-###################
-from utils import Dict, str2time, read_yml
 
-# Read in metadata dictionary for features
-feat_dict = read_yml("../etc/variable_metadata/features_metadata.yaml")
+# Set up project paths
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## We do this so the module can be imported from different locations
+CURRENT_DIR = osp.abspath(__file__)
+while osp.basename(CURRENT_DIR) != "ml_fmda":
+    CURRENT_DIR = osp.dirname(CURRENT_DIR)
+PROJECT_ROOT = CURRENT_DIR
+CODE_DIR = osp.join(PROJECT_ROOT, "src")
+sys.path.append(CODE_DIR)
+CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
+
+# Read Project Module Code
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+from utils import read_yml, Dict, time_intp, str2time
+from data_funcs import rename_dict
+
+
+# Read HRRR Metadata
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hrrr_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "hrrr_metadata.yaml"))
+
 
 def features_to_searchstr(flist):
     """
     Given features list, return dictionary of search strings to be used in Herbie package
     """
+    
     # Initialize the output dictionary
     search_strings = {
         "surface": "",
@@ -30,7 +46,7 @@ def features_to_searchstr(flist):
     }
 
     for feat in flist:
-        feature_info = Dict(feat_dict[feat])
+        feature_info = Dict(hrrr_meta[feat])
         feature_type = feature_info.feature_type
         
         if feature_type == "hrrr_data":
@@ -40,10 +56,11 @@ def features_to_searchstr(flist):
         elif feature_type == "engineered_data":
             fnames = feature_info.required_fmda_names
             for fn in fnames:
-                feature_info2 = Dict(feat_dict[fn])
+                feature_info2 = Dict(hrrr_meta[fn])
                 layer = feature_info2.layer
                 ss = feature_info2.herbie_str
-                search_strings[layer] += f"|{ss}"
+                if not ss in search_strings[layer]:
+                    search_strings[layer] += f"|{ss}"
     # Remove the initial pipe if it exists
     for key in search_strings:
         search_strings[key] = search_strings[key][1:] if search_strings[key].startswith("|") else search_strings[key]    
@@ -146,10 +163,4 @@ def int2fstep(forecast_step):
 #              ],
 #     'notes': ["", "", "", "", "", "9 different depths, from 0-3m below ground", "9 different depths, from 0-3m below ground", "", "", "0-3 hr accumulated", "", 
 #               "0-3 hr accumulated, listed as `deprecated` in gribs", "", "", ""]
-# })
-
-# # Dataframe used to control which HRRR bands need to be retrieved given an input list of features
-# derived_feature_df = pd.DataFrame({
-#     'feature_name': ["Ed", "Ew", "rain", "hod", "doy"],
-#     'required_fmda_name': [("rh", "temp"), ("rh", "temp"), "precip_accum", "time", "time"]
 # })
