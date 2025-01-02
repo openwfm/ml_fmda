@@ -4,5 +4,6 @@
     "bbox": [40,-105,45,-100],
     "forecast_step": 3,
     "training_data_filename": "train.pkl",
-    "data_params_path": "etc/params_data.yaml"
+    "data_params_path": "etc/params_data.yaml",
+    "features_list": ["Ed", "Ew", "rain", "wind", "solar", "grid_x", "grid_y"]
 }

@@ -185,6 +185,18 @@ lon:
     feature_type: "hrrr_dim"
     hrrr_name: "longitude"
 
+grid_x:
+    long_name: "HRRR Grid X-Coordinate"
+    units: "unitless"
+    feature_type: "hrrr_dim"
+    hrrr_name: "longitude"
+
+grid_y:
+    long_name: "HRRR Grid Y-Coordinate"
+    units: "unitless"
+    feature_type: "hrrr_dim"
+    hrrr_name: "latitude"
+    
 elev:
     long_name: "Elevation above sea level"
     units: "m"

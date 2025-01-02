@@ -10,6 +10,7 @@ from datetime import datetime
 import numpy as np
 import os.path as osp
 import sys
+import xarray as xr
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -66,7 +67,40 @@ def features_to_searchstr(flist):
         search_strings[key] = search_strings[key][1:] if search_strings[key].startswith("|") else search_strings[key]    
     
     return search_strings
+
+def merge_datasets(ds_dict):
+    """Merge list of Datasets together. Modified from Brian Blaylocks Herbie docs
+
+    Since cfgrib doesn't merge data in different "hypercubes", we will
+    do the merge ourselves.
+
+    Parameters
+    ----------
+    ds_dict : dict
+        A dictionary of xarray.Datasets organized by layer.
+
+    Returns
+    ----------
+    ds : xarray DataSet
+        Merged dataset with height above ground dimension added
+    """
+
+
+    # Check that all datasets in the dictionary have the same sizes
+    sizes_list = [ds.sizes for ds in ds_dict.values()]
+    if not all(sizes == sizes_list[0] for sizes in sizes_list):
+        raise ValueError("All datasets must have the same .sizes attribute. Found mismatched dimensions")
     
+    # Drop surface and heightAboveGround coordinate if it exists
+    for key, ds in ds_dict.items():
+        if "heightAboveGround" in ds.coords:
+            ds_dict[key] = ds.drop_vars("heightAboveGround")
+        if "surface" in ds.coords:
+            ds_dict[key] = ds.drop_vars("surface")            
+
+    ds = xr.merge(ds_dict.values())
+    return ds
+
 
 def calc_eq(ds):
     """
@@ -92,11 +126,43 @@ def calc_eq(ds):
     ds["Ed"] = Ed
     ds["Ew"] = Ew
 
-    # Doing in-place modifying
-    # return ds
+    # Doing in-place modifying, no return
 
+def calc_times(ds):
+    """
+    Calculate hour of day (HOD) and day of year (DOY) for given xarray object based on the valid_time. The valid time accounts for the forecast hour
 
+    Parameters:
+        - ds: xarray dataset
+    
+    Returns: xarray dataset
+        Dataset with extended coordinates
+    """
 
+    ds = ds.assign_coords({
+        "hod": ds.valid_time.dt.hour,
+        "doy": ds.valid_time.dt.dayofyear
+    })
+
+    return ds
+
+def rename_ds(ds):
+    """
+    Renames variables in an xarray Dataset based on the hrrr_meta dictionary.
+    
+    Parameters:
+        ds (xr.Dataset): The input xarray Dataset.
+        hrrr_meta (dict): Metadata dictionary containing xarray variable names and their new keys.
+    
+    Returns:
+        xr.Dataset: Dataset with variables renamed.
+    """
+    rename_dict = {
+        v['xarray_name']: key
+        for key, v in hrrr_meta.items()
+        if 'xarray_name' in v and v['xarray_name'] in ds
+    }
+    return ds.rename(rename_dict)
 
 def int2fstep(forecast_step):
     """

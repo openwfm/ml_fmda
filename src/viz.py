@@ -18,26 +18,41 @@ map_dict = {
     'Ew': {'cmap': paint.NWSRelativeHumidity.cmap, 
            'legend_title': 'Wetting Equilibrium Moisture Content (%)'},
     'rh': {'cmap': paint.NWSRelativeHumidity.cmap, 
-           'legend_title': 'Relative Humidity (%)'},
+           'legend_title': 'Relative Humidity (%)',
+           'xarray_name': "r2"
+          },
     'temp': {'cmap': paint.NWSTemperature.cmap, 
-             'legend_title': 'Air Temperature (K)'},
+             'legend_title': 'Air Temperature (K)',
+             'xarray_name': "t2m"
+            },
     'rain': {'cmap': paint.NWSPrecipitation.cmap, 
-             'legend_title': 'Hourly Precipitation (mm/hr)'},
+             'legend_title': 'Hourly Precipitation (mm/hr)',
+             'xarray_name': "tp"
+            },
     'elev': {'cmap': paint.LandGreen.cmap, 
              'legend_title': 'Elevation (m)'},
     'wind': {'cmap': paint.NWSWindSpeed.cmap, 
-             'legend_title': 'Wind Speed (m/s)'}
+             'legend_title': 'Wind Speed (m/s)',
+             'xarray_name': "si10"
+            }
 }
 
 def map_var(ds, var_str, time_step=0, scale='110m', figsize=[15, 9], title=None):
     """
-    Wrapper to generate EasyMap given xarray and variable string. Uses map_dict conventions
+    Wrapper to generate EasyMap given xarray and variable string. Uses map_dict conventions. Should be robust to renaming certain vars
     """
 
     # Extract variable and time step
-    x = ds[var_str]
-    if 'time' in x.dims:
-        x = x.isel(time=time_step)
+    # If input var_str not in data variables, try to get name from metadata dict
+    if var_str not in ds:
+        if var_str not in map_dict.keys():
+            raise ValueError(f"var_str not recognized: {var_str}")
+        else:
+            x = ds[map_dict[var_str]["xarray_name"]]
+    else:
+        x = ds[var_str]
+    x = x.isel(time=time_step)
+    print(f"Mapping Variable {var_str} at time {ds.time[time_step].to_numpy()}")
     # Get mapping convention from map_dict
     if var_str in map_dict.keys():
         cmap = map_dict[var_str]["cmap"]
