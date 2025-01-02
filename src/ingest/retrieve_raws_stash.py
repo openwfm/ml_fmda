@@ -92,7 +92,7 @@ def build_raws_dict(config, rename=True, verbose = True):
             "RAWS": [],
             "units": {"fm": "%", "elev": "m"},
             "loc": rr.get_static(sts, st),
-            "misc": "Data collected from RAWS stash"
+            "misc": "Data collected from RAWS stash."
             } 
         for st in sts["stid"]}
     
@@ -104,12 +104,16 @@ def build_raws_dict(config, rename=True, verbose = True):
             # Filter the data for the current station and append
             filtered = dat[dat['STID'] == st]
             if not filtered.empty:
-                raws_dict[st]["RAWS"].append(filtered)    
+                raws_dict[st]["RAWS"].append(filtered)
 
     # Combine the lists of DataFrames for each station into a single DataFrame and rename
     for st in raws_dict:
         if raws_dict[st]["RAWS"]:  # Check if the list is not empty
             raws_dict[st]["RAWS"] = pd.concat(raws_dict[st]["RAWS"], ignore_index=True)
+            # Add a few static vars
+            raws_dict[st]["RAWS"]["lat"] = raws_dict[st]["loc"]["lat"]
+            raws_dict[st]["RAWS"]["lon"] = raws_dict[st]["loc"]["lon"]
+            raws_dict[st]["RAWS"]["elev"] = raws_dict[st]["loc"]["elev"]            
         else:
             raws_dict[st]["RAWS"] = pd.DataFrame()  # Set an empty DataFrame if no data was found
         if rename:
