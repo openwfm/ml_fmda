@@ -41,7 +41,7 @@ raws_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "raws_metadata.ya
 # Module Functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def get_stations(bounding_box, start, end):
+def get_stations(bounding_box):
     """
     Return a polars dataframe of RAWS sensor data and associated units. Shift the start time by 1 hour since most stations return data some minutes after requested time, we do this for time interpolation to have endpoints
     
@@ -50,10 +50,6 @@ def get_stations(bounding_box, start, end):
     bounding_box : list of numeric
         Format [min_lon, min_lat, max_lon, max_lat], NOTE different format than wrfxpy rtma_cycler
 
-    start : datetime
-        Start time of retrieval
-    end : datetime
-        End time of retrieval 
         
     Returns:
     --------
@@ -64,7 +60,6 @@ def get_stations(bounding_box, start, end):
     sts = synoptic.Metadata(
         bbox=bounding_box,
         vars=["fuel_moisture"], # We only want to include stations with FMC. Other "raws_vars" are bonus later
-        obrange=(start-relativedelta(hours=1), end),
     ).df()
 
     return sts
@@ -135,33 +130,6 @@ def format_raws(df,
     return dat, units
 
 
-# def get_static(df, static_vars=raws_meta["raws_static_vars"]):
-#     """
-#     Given dataframe of timeseries observations from RAWS station, get dictionary of static info, such as identifiers and physical attributes of station.
-    
-#     Parameters:
-#     -----------
-#         df: Input dataframe with timeseries observations.
-#         static_vars: List of column names to extract static information from.
-    
-#     Returns:
-#     -----------
-#         A dictionary called "loc" containing the unique value for each column in static_vars.
-    
-#     """
-    
-#     loc = {}
-#     for col in static_vars:
-#         if col in df.columns:
-#             unique_values = df[col].unique()
-#             if len(unique_values) == 1:
-#                 loc[col] = unique_values[0]
-#             else:
-#                 raise ValueError(f"Column '{col}' has more than one unique value: {unique_values}")
-#         else:
-#             raise KeyError(f"Column '{col}' not found in the dataframe.")
-#     return loc
-
 def get_static(df, st, static_vars=raws_meta["raws_static_vars"], name_mapping = raws_meta["rename_synoptic"]):
     loc = {col: values[0] for col, values in df.filter(df["stid"] == st).select(static_vars).to_dict(as_series=False).items()}
     loc = rename_dict(loc, name_mapping)
@@ -224,7 +192,7 @@ def build_raws_dict(config, rename=True, verbose = True):
     bbox_reordered = [bbox[1], bbox[0], bbox[3], bbox[2]] # Synoptic uses different bbox order
     start_dt = str2time(start)
     end_dt = str2time(end)
-    sts = get_stations(bbox_reordered, start_dt, end_dt)
+    sts = get_stations(bbox_reordered)
 
     # Collect RAWS data
     ## FMC is required, but collect all other available weather data

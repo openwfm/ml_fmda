@@ -54,6 +54,8 @@ def features_to_searchstr(flist):
             layer = feature_info.layer
             ss = feature_info.herbie_str
             search_strings[layer] += f"|{ss}"
+            if not ss in search_strings[layer]:
+                search_strings[layer] += f"|{ss}"            
         elif feature_type == "engineered_data":
             fnames = feature_info.required_fmda_names
             for fn in fnames:
@@ -164,39 +166,109 @@ def rename_ds(ds):
     }
     return ds.rename(rename_dict)
 
-def int2fstep(forecast_step):
+
+def retrieve_hrrr(config, forcast_step = 3):
     """
-    Converts an integer forecast step into a formatted string with a prefix 'f' 
-    and zero-padded to two digits. Format of HRRR data forecast hours
-
-    Parameters:
-    - forecast_step (int): The forecast step to convert. Must be an integer 
-      between 0 and max_hour (inclusive).
-
-    Returns:
-    - str: A formatted string representing the forecast step, prefixed with 'f' 
-      and zero-padded to two digits (e.g., 'f01', 'f02').
-
-    Raises:
-    - TypeError: If forecast_step is not an integer.
-    - ValueError: If forecast_step is not between 0 and max_hour (inclusive).
-
-    Example:
-    >>> int2fstep(3)
-    'f03'
+    Wrapper function to get HRRR data given config.
     """
-    if not isinstance(forecast_step, int):
-        raise TypeError(f"forecast_step must be an integer.")
-    if not (0 <= forecast_step):
-        raise ValueError(f"forecast_step must be positive.")
-        
-    fstep='f'+str(forecast_step).zfill(2)
-    return fstep
 
+    # Extract Config Info
+    bbox = config.bbox
+    start = str2time(config.start_time)
+    end = str2time(config.end_time)
+    features_list = config.features_list
+
+    # Create a range of dates
+    dates = pd.date_range(
+        start = start.replace(tzinfo=None),
+        end = end.replace(tzinfo=None),
+        freq="1h"
+    )
+
+    # Open Data Connection w Herbie
+    FH = FastHerbie(
+        dates, 
+        model="hrrr", 
+        product="prs",
+        fxx=range(forcast_step, forcast_step+1)
+    )
+
+    # Set up search strings
+    print(f"Target Features List: {features_list}")
+    search_strings = ih.features_to_searchstr(features_list)
+    print("HRRR Search Strings:")
+    print_dict_summary(search_strings)    
+
+    # Read data, grouped by layer
+    ds_dict = {}
+    for layer in search_strings:
+        print(f"Reading HRRR data for layer: {layer}")
+        print(f"    search strings: {search_strings[layer]}")
+        ds_dict[layer] = FH.xarray(search_strings[layer], remove_grib=False) # Keep grib for easier re-use, delete later
+    ds = merge_datasets(ds_dict)
+
+    # Store Regular i,j grid coordinates
+    ds = ds.assign_coords({
+        'grid_x' : ds.x,
+        'grid_y' : ds.y
+    })
+
+    # Construct Other Predictors
+    if any(s in features_list for s in ["hod", "doy"]):
+        calc_eq(ds)
+    if any(s in features_list for s in ["hod", "doy"]):
+        ds = calc_times(ds)
+
+    return ds
+
+
+def subset_hrrr_bbox(ds, bbox):
+    """
+    Subset HRRR spatial data with a spatial bounding box
+    """     
+    pass
+
+def subset_hrrr2raws(ds, raws):
+    """
+    Format training set of atmospheric HRRR data. subset HRRR spatial data by selecting data interpolated to a set of input points. In this project, it is the locations of the RAWS stations. Then rename and subset to a desired features list
+    Parameters
+    ----------
+    ds : xarray Dataset
+        A dictionary of xarray.Datasets organized by layer.
+    raws : dict
+        Formatted raws dict, typically the output of build_raws_dict
+
+    Returns
+    ----------
+    ds_pts : xarray DataSet
+        HRRR data with number of locations equal to input pts, all HRRR data interpolated to those locations
+    """    
+
+    # Build dataframe with longitude and latitude as cols from input data dict
+    longitude = []
+    latitude = []
+    for key in raws:
+        longitude.append(raws[key]["loc"]["lon"])
+        latitude.append(raws[key]["loc"]["lat"])
+    pts = pd.DataFrame({
+        "longitude" : longitude,
+        "latitude" : latitude
+    })
+
+    # Perform spatial interp 
+    ds_pts = ds.herbie.pick_points(pts, method = "nearest", k=1)   
+    ds_pts = ds_pts.assign_coords(stid = pts.stid)
+    
+    return ds_pts
+
+
+
+def format_hrrr_forecast():
+    pass
 
 
 # Old Commented Out Stuff
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~``
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # # Dataframe used to track names and metadata for various HRRR bands. The names used within the HRRR grib files differs from the xarray objects returned by Herbie, and we want to standardize those names to those used within this project from other data sources e.g. RAWS
 # hrrr_name_df = pd.DataFrame({

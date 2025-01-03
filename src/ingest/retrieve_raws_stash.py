@@ -26,7 +26,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import Dict, str2time, read_yml, read_pkl
+from utils import Dict, str2time, read_yml, read_pkl, time_range
 import ingest.retrieve_raws_api as rr
 
 # Read RAWS Metadata
@@ -37,18 +37,13 @@ raws_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "raws_metadata.ya
 raws_meta.update({'raws_stash_path': osp.join(PROJECT_ROOT, raws_meta['raws_stash_path'])})
 
 
-def get_file_paths(start, end):
+def get_file_paths(times):
     """
     Get file paths for RAWS stash from given start and end dates.
 
     Arguments
-        start: datetime
-        end: datetime
+        times: 1d numpy array of datetime
     """  
-    
-    # Get array of hourly times
-    times = pd.date_range(start-relativedelta(hours=1), end, freq="h")
-    times = times.to_pydatetime()
 
     # Create list of file paths based on needed hours
     paths = [
@@ -81,10 +76,12 @@ def build_raws_dict(config, rename=True, verbose = True):
     bbox_reordered = [bbox[1], bbox[0], bbox[3], bbox[2]] # Synoptic uses different bbox order
     start_dt = str2time(start)
     end_dt = str2time(end)
-    sts = rr.get_stations(bbox_reordered, start_dt, end_dt)
+    sts = rr.get_stations(bbox_reordered)
 
     # Based on time arguments, get list of needed file paths in stash
-    paths = get_file_paths(start_dt, end_dt)
+    # Offset by 1 hr for data retrieval, so interpolation has endpoints
+    times = time_range(start_dt, end_dt, start_offset=True)
+    paths = get_file_paths(times)
 
     # Create return dictionary with static info and other metadata
     raws_dict = {
@@ -106,19 +103,34 @@ def build_raws_dict(config, rename=True, verbose = True):
             if not filtered.empty:
                 raws_dict[st]["RAWS"].append(filtered)
 
-    # Combine the lists of DataFrames for each station into a single DataFrame and rename
+    # Combine the lists of DataFrames for each station into a single DataFrame, rename, and interpolate
     for st in raws_dict:
         if raws_dict[st]["RAWS"]:  # Check if the list is not empty
             raws_dict[st]["RAWS"] = pd.concat(raws_dict[st]["RAWS"], ignore_index=True)
             # Add a few static vars
             raws_dict[st]["RAWS"]["lat"] = raws_dict[st]["loc"]["lat"]
             raws_dict[st]["RAWS"]["lon"] = raws_dict[st]["loc"]["lon"]
-            raws_dict[st]["RAWS"]["elev"] = raws_dict[st]["loc"]["elev"]            
+            raws_dict[st]["RAWS"]["elev"] = raws_dict[st]["loc"]["elev"]      
         else:
             raws_dict[st]["RAWS"] = pd.DataFrame()  # Set an empty DataFrame if no data was found
         if rename:
             raws_dict[st]["RAWS"].rename(columns=raws_meta["rename_stash"], inplace=True)
 
+    # Remove Stations with missing data
+    for st in list(raws_dict.keys()):
+        if raws_dict[st]["RAWS"].shape[0] == 0:
+            print(f"No data found for station {st}, removing")
+            raws_dict.pop(st)
+    print(f"Retrieved data for {len(raws_dict.keys())} stations")
+    
+    # Interpolate
+    # No start time offset here 
+    # Hard coded static and time columns
+    times = time_range(start_dt, end_dt, start_offset=False)
+    for st in raws_dict:
+        d = rr.time_intp_df(raws_dict[st]["RAWS"], times, static_cols = ["stid", "lat", "lon", "elev"], time_cols = ["fm"])
+        d = pd.DataFrame(d, columns = d.columns)
+        raws_dict[st]["RAWS"] = d
 
     return raws_dict
 

@@ -152,25 +152,25 @@ fricv:
     herbie_str: ":FRICV:surface:3 hour fcst"
     xarray_name: "fricv"
 
-soilw:
-    long_name: "Volumetric Soil Moisture Content"
-    units: "Fraction"
-    descr: "Fraction of water contained in the soil. Data available at 9 different depths, from 0-3m below ground."
-    feature_type: "hrrr_data"
-    layer: "multiple"
-    hrrr_name: "SOILW"
-    herbie_str: ":SOILW:"
-    xarray_name: "soilw"
+# soilw:
+#     long_name: "Volumetric Soil Moisture Content"
+#     units: "Fraction"
+#     descr: "Fraction of water contained in the soil. Data available at 9 different depths, from 0-3m below ground."
+#     feature_type: "hrrr_data"
+#     layer: "multiple"
+#     hrrr_name: "SOILW"
+#     herbie_str: ":SOILW:"
+#     xarray_name: "soilw"
 
-soilt:
-    long_name: "Soil Temperature"
-    units: "K"
-    descr: "Soil temperature at different depths. Data available at 9 different depths, from 0-3m below ground."
-    feature_type: "hrrr_data"
-    layer: "multiple"
-    hrrr_name: "TSOIL"
-    herbie_str: ":TSOIL:"
-    xarray_name: "tsoil"
+# soilt:
+#     long_name: "Soil Temperature"
+#     units: "K"
+#     descr: "Soil temperature at different depths. Data available at 9 different depths, from 0-3m below ground."
+#     feature_type: "hrrr_data"
+#     layer: "multiple"
+#     hrrr_name: "TSOIL"
+#     herbie_str: ":TSOIL:"
+#     xarray_name: "tsoil"
 
 lat:
     long_name: "Latitude"
