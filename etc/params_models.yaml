@@ -68,8 +68,6 @@ rnn_repro:
     phys_initialize: false
 
 
-
-
 # Other ML Params
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -124,6 +122,18 @@ lm:
   features_list: ['Ed', 'Ew', 'solar', 'wind', 'rain']
   time_fracs: [0.8, 0.1, 0.1] # Percentage of data based on time span for train/val/test
   space_fracs: [0.8, 0.1, 0.1] # Percentage of data based on location for train/val/test  
+
+
+# Climatology Params
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+climatology:
+    nyears: 10 # Number of years to look for historical data
+    ndays: 15 # Number of days to bracket target time, t +/- ndays
+    min_years: 6 # Minimum number of years of observations, less set to NA
+
+    
+
 
 
 
