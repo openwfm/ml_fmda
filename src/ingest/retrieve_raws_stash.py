@@ -131,6 +131,7 @@ def build_raws_dict(config, rename=True, verbose = True):
         d = rr.time_intp_df(raws_dict[st]["RAWS"], times, static_cols = ["stid", "lat", "lon", "elev"], time_cols = ["fm"])
         d = pd.DataFrame(d, columns = d.columns)
         raws_dict[st]["RAWS"] = d
+        raws_dict[st]["times"] = times
 
     return raws_dict
 

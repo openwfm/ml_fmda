@@ -34,16 +34,20 @@ from ingest.retrieve_raws_stash import get_file_paths
 
 # Read RAWS Metadata
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+params_models = read_yml(osp.join(CONFIG_DIR, "params_models.yaml"))
 raws_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "raws_metadata.yaml"))
 
 # Update stash path. We do this here so it works if module called from different locations
 raws_meta.update({'raws_stash_path': osp.join(PROJECT_ROOT, raws_meta['raws_stash_path'])})
 
 
+
 # Climatology Method
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def time_to_climtimes(t, nyears = 6, ndays=15):
+clim_params = Dict(params_models["climatology"])
+
+def time_to_climtimes(t, nyears = clim_params.nyears, ndays=clim_params.ndays):
     """
     Given a time, get the corresponding times that will be used for the climatology method.
 
@@ -76,13 +80,13 @@ def time_to_climtimes(t, nyears = 6, ndays=15):
     
     return ts
 
-def build_climatology(start, end, bbox, nyears=6, ndays=15, required_years = 6):
+def build_climatology(start, end, bbox, nyears=clim_params.nyears, ndays=clim_params.ndays, min_years = clim_params.min_years):
     
     # Helper Functions
-    def climtimes_df(start, end):
-        times = time_range(start, end)
-        clim_df = pd.DataFrame([time_to_climtimes(t) for t in times]).transpose()
-        return clim_df
+    # def climtimes_df(start, end):
+    #     times = time_range(start, end)
+    #     clim_df = pd.DataFrame([time_to_climtimes(t) for t in times]).transpose()
+    #     return clim_df
         
     def read_st_fm(path, st):
         df = pd.read_pickle(path)  # Read the pickle file
@@ -120,33 +124,37 @@ def build_climatology(start, end, bbox, nyears=6, ndays=15, required_years = 6):
             for col in values_df.columns
         }
         counts = pd.Series(counts)
-        return counts
-
-
-    # Get stations in bbox
-    bbox_reordered = [bbox[1], bbox[0], bbox[3], bbox[2]] # Synoptic uses different bbox order
-    stids = get_stations(bbox_reordered)["stid"].to_numpy()
+        return counts        
 
     # Retrieve data
     ## Note, many station IDs will be empty, the list of stids was for the entire bbox region in history
-    print(f"Retrieving climatology data from {start} to {end}, for {len(stids)} possible RAWS")
+    print(f"Retrieving climatology data from {start} to {end}")
     print("Params for Climatology:")
     print(f"    Number of years to look back: {nyears}")
     print(f"    Number of days to bracked target hour: {ndays}")
-    print(f"    Required number of years of data: {ndays}")
+    print(f"    Required number of years of data: {min_years}")
 
+    # Get stations in bbox
+    bbox_reordered = [bbox[1], bbox[0], bbox[3], bbox[2]] # Synoptic uses different bbox order
+    stids = get_stations(bbox_reordered)["stid"].to_numpy()    
+    
     # Calculate times
-    times_df = climtimes_df(start, end)
-    climyears = times_df.map(lambda x: x.year)
+    times = time_range(start, end)
+    clim_df = pd.DataFrame([time_to_climtimes(t) for t in times]).transpose() 
+    clim_df.columns = times
+    climyears = clim_df.map(lambda x: x.year)
 
     # Get Stash File Paths 
-    file_paths = {col: get_file_paths(times_df[col]) for col in times_df.columns}
+    file_paths = {col: get_file_paths(clim_df[col]) for col in clim_df.columns}
     file_paths = pd.DataFrame.from_dict(file_paths, orient='index').transpose()    
     
     clim_dict = {}
     for st in stids:
+        df = get_fm_data(st, file_paths)
+        df.columns = times
         clim_dict[st]={
-            "climatology_data": get_fm_data(st, file_paths)
+            "climatology_data": df,
+            "queried_times": time_range(start, end)
         }
     
     for st in clim_dict:
@@ -159,7 +167,10 @@ def build_climatology(start, end, bbox, nyears=6, ndays=15, required_years = 6):
             np.nan
         )
         clim_dict[st]["fm_forecast"] = fm          
+    
+    return clim_dict
 
+def get_climatology_forecasts(clim_dict):
     # Get non-empty data and return df
     print("~"*75)
     sts = [*clim_dict.keys()]
@@ -174,10 +185,11 @@ def build_climatology(start, end, bbox, nyears=6, ndays=15, required_years = 6):
             valid_ids.append(st)
     
     df = pd.DataFrame(np.vstack(rows), index = valid_ids)
+    df.columns = clim_dict[sts[0]]["queried_times"] 
     
     print("~"*75)
     print(f"Climatology forecasts of FMC built for {df.shape[0]} unique RAWS stations")
-    
+
     return df
     
 # ODE + Augmented Kalman Filter Code

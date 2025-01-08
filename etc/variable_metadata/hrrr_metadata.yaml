@@ -177,13 +177,14 @@ lat:
     units: "degree"
     feature_type: "hrrr_dim"
     hrrr_name: "latitude"
-
+    xarray_name: "latitude"
 
 lon:
     long_name: "Longitude"
     units: "degree"
     feature_type: "hrrr_dim"
     hrrr_name: "longitude"
+    xarray_name: "longitude"
 
 grid_x:
     long_name: "HRRR Grid X-Coordinate"

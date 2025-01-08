@@ -11,6 +11,7 @@ import numpy as np
 import os.path as osp
 import sys
 import xarray as xr
+from dateutil.relativedelta import relativedelta
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -25,7 +26,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import read_yml, Dict, time_intp, str2time
+from utils import read_yml, Dict, time_intp, str2time, print_dict_summary
 from data_funcs import rename_dict
 
 
@@ -167,7 +168,7 @@ def rename_ds(ds):
     return ds.rename(rename_dict)
 
 
-def retrieve_hrrr(config, forcast_step = 3):
+def retrieve_hrrr(config):
     """
     Wrapper function to get HRRR data given config.
     """
@@ -177,7 +178,16 @@ def retrieve_hrrr(config, forcast_step = 3):
     start = str2time(config.start_time)
     end = str2time(config.end_time)
     features_list = config.features_list
+    forecast_step = config.forecast_step
+    print(f"Collecting HRRR data within {bbox} from {start} to {end}")
 
+    # Adjust times for forecast step
+    start = start - relativedelta(hours = forecast_step)
+    end = end - relativedelta(hours = forecast_step)
+    print(f"Shifting retrieval time to account for forecast step of {forecast_step}.")
+    print(f"Data retrieval start: {start}")
+    print(f"Data retrieval end: {end}")
+    
     # Create a range of dates
     dates = pd.date_range(
         start = start.replace(tzinfo=None),
@@ -190,12 +200,12 @@ def retrieve_hrrr(config, forcast_step = 3):
         dates, 
         model="hrrr", 
         product="prs",
-        fxx=range(forcast_step, forcast_step+1)
+        fxx=range(forecast_step, forecast_step+1)
     )
 
     # Set up search strings
     print(f"Target Features List: {features_list}")
-    search_strings = ih.features_to_searchstr(features_list)
+    search_strings = features_to_searchstr(features_list)
     print("HRRR Search Strings:")
     print_dict_summary(search_strings)    
 
@@ -247,17 +257,19 @@ def subset_hrrr2raws(ds, raws):
     # Build dataframe with longitude and latitude as cols from input data dict
     longitude = []
     latitude = []
+    stid = []
     for key in raws:
         longitude.append(raws[key]["loc"]["lon"])
         latitude.append(raws[key]["loc"]["lat"])
+        stid.append(raws[key]["loc"]["stid"])
     pts = pd.DataFrame({
         "longitude" : longitude,
-        "latitude" : latitude
+        "latitude" : latitude,
+        "stid": stid
     })
 
     # Perform spatial interp 
     ds_pts = ds.herbie.pick_points(pts, method = "nearest", k=1)   
-    ds_pts = ds_pts.assign_coords(stid = pts.stid)
     
     return ds_pts
 
