@@ -7,6 +7,10 @@ from herbie.toolbox import EasyMap, pc, ccrs
 import matplotlib.pyplot as plt
 
 
+
+
+
+
 # Dictionary to store mapping schemes, eg cmaps and titles
 ## Using NWS color maps from the herbie package
 ## Moisture vars, like equil and FMC, use NWS humidity scheme
@@ -37,7 +41,7 @@ map_dict = {
             }
 }
 
-def map_var(ds, var_str, time_step=0, scale='110m', figsize=[15, 9], title=None):
+def map_var(ds, var_str, time_step=0, scale='110m', figsize=[15, 9], legend_title=None, title=None, save_path=None):
     """
     Wrapper to generate EasyMap given xarray and variable string. Uses map_dict conventions. Should be robust to renaming certain vars
     """
@@ -56,13 +60,16 @@ def map_var(ds, var_str, time_step=0, scale='110m', figsize=[15, 9], title=None)
     # Get mapping convention from map_dict
     if var_str in map_dict.keys():
         cmap = map_dict[var_str]["cmap"]
-        legend_title = map_dict[var_str]["legend_title"]
+        if legend_title is None:
+            legend_title = map_dict[var_str]["legend_title"]
     else:
         print(f"No mapping convention detected for input var_str: {var_str}.")
         cmap="viridis"
-        legend_title=None
-
-    ax = EasyMap("110m", figsize=figsize, crs=ds.herbie.crs).STATES().ax
+        legend_title=legend_title
+        
+    # ax = EasyMap("110m", figsize=figsize, crs=ds.herbie.crs).STATES().ax
+    ax = EasyMap("110m", figsize=figsize,crs=ds.herbie.crs).STATES().OCEAN().COASTLINES().LAKES().ax
+    
     p = ax.pcolormesh(
         ds.longitude,
         ds.latitude,
@@ -81,6 +88,7 @@ def map_var(ds, var_str, time_step=0, scale='110m', figsize=[15, 9], title=None)
     cbar.set_label(fontsize=14, label=legend_title)
     plt.title(title, size=18)
 
-
-
+    if save_path is not None:
+        plt.savefig(save_path, bbox_inches='tight')
+    
 

@@ -132,11 +132,19 @@ climatology:
     ndays: 15 # Number of days to bracket target time, t +/- ndays
     min_years: 6 # Minimum number of years of observations, less set to NA
 
-    
+# Physics-based ODE plus Kalman Filter data assim Params
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
-
-
+ode:
+    # spinup_hours: 20          # number of timesteps to spinup model before validation metrics calculated
+    spinup_hours: 2
+    process_variance: 1e-3    # used to build diagonal Q matrix 
+    data_variance: 1e-3 
+    r0: 0.05                 # threshold rainfall [mm/h]
+    rs: 8.0                  # saturation rain intensity [mm/h]
+    Tr: 14.0                 # time constant for rain wetting model [h]
+    S: 250                   # saturation intensity [dimensionless]
+    T: 10.0                  # time constant for wetting/drying
 
 
 

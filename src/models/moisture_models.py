@@ -304,9 +304,7 @@ def model_moisture(m0,Eqd,Eqw,r,t=None,partials=0,T=10.0,tlen=1.0):
     m1 = E + (m0 - E)*exp_t  
     dm1_dm0 = exp_t
     dm1_dE = 1 - exp_t
-    #if t>=933 and t < 940:
-    #  print('t,Eqw,Eqd,r,T1,E,m0,m1,dm1_dm0,dm1_dE',
-    #        t,Eqw,Eqd,r,T1,E,m0,m1,dm1_dm0,dm1_dE)   
+ 
     if partials==0: 
         return m1
     if partials==1:
@@ -362,10 +360,6 @@ def run_augmented_kf(dat0,h2=None,hours=None, H=H, Q=Q, R=R):
     P = np.zeros((2,2,hours))
     P[:,:,0] = np.array([[1e-3, 0.],
                       [0.,  1e-3]]) # background state covariance
-    # Q = np.array([[1e-3, 0.],
-    #             [0,  1e-3]]) # process noise covariance
-    # H = np.array([[1., 0.]])  # first component observed
-    # R = np.array([1e-3]) # data variance
 
     for t in range(1,h2):
       # use lambda construction to pass additional arguments to the model 

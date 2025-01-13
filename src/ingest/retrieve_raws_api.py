@@ -29,8 +29,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import read_yml, Dict, time_intp, str2time
-from data_funcs import rename_dict
+from utils import read_yml, Dict, time_intp, str2time, rename_dict
 
 
 # Read RAWS Metadata

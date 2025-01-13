@@ -5,5 +5,7 @@
     "forecast_step": 3,
     "training_data_filename": "train.pkl",
     "data_params_path": "etc/params_data.yaml",
-    "features_list": ["Ed", "Ew", "rain", "wind", "solar", "grid_x", "grid_y", "hod"]
+    "features_list": ["Ed", "Ew", "rain", "wind", "solar", "grid_x", "grid_y", "hod"],
+    "space_cv": [0.8, 0.1, 0.1],  
+    "test_hours_cv": 2     
 }

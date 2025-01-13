@@ -26,8 +26,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import read_yml, Dict, time_intp, str2time, print_dict_summary
-from data_funcs import rename_dict
+from utils import read_yml, Dict, time_intp, str2time, print_dict_summary, rename_dict
 
 
 # Read HRRR Metadata
@@ -102,6 +101,7 @@ def merge_datasets(ds_dict):
             ds_dict[key] = ds.drop_vars("surface")            
 
     ds = xr.merge(ds_dict.values())
+    
     return ds
 
 
@@ -168,19 +168,38 @@ def rename_ds(ds):
     return ds.rename(rename_dict)
 
 
-def retrieve_hrrr(config):
+def retrieve_hrrr(config, all_features = True):
     """
     Wrapper function to get HRRR data given config.
+
+    Parameters
+    -------------
+    config : dict
+        Configuration file
+
+    all_features : bool
+        Logical argument whether to retrieve all possible features or not. If True, get all features in hrrr_metadata.yaml, if False use the config features list
+
+    Notes
+    --------------
+    The intended use of the all_features argument is to collect everything for training so different feature subsets can be tested. Then for forecasting a trained model, use the features from the config file which are probably a smaller set and quicker to work with
+    
     """
 
     # Extract Config Info
     bbox = config.bbox
     start = str2time(config.start_time)
     end = str2time(config.end_time)
-    features_list = config.features_list
     forecast_step = config.forecast_step
     print(f"Collecting HRRR data within {bbox} from {start} to {end}")
 
+    # Handle Features List
+    if all_features:
+        # All top level keys from hrrr_meta file into a list
+        features_list = [*hrrr_meta.keys()]
+    else:
+        features_list = config.features_list
+    
     # Adjust times for forecast step
     start = start - relativedelta(hours = forecast_step)
     end = end - relativedelta(hours = forecast_step)
@@ -228,7 +247,10 @@ def retrieve_hrrr(config):
         calc_eq(ds)
     if any(s in features_list for s in ["hod", "doy"]):
         ds = calc_times(ds)
+    # Add timezone
+    ds["valid_time"] = ("time", pd.to_datetime(ds["valid_time"].values).tz_localize("UTC").to_numpy())
 
+    
     return ds
 
 
