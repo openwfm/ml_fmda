@@ -265,12 +265,13 @@ def ext_kf(u,P,F,Q=0,d=None,H=None,R=None):
 
 ### Define model function with drying, wetting, and rain equilibria
 
-# # Parameters
-# r0 = 0.05                                   # threshold rainfall [mm/h]
-# rs = 8.0                                    # saturation rain intensity [mm/h]
-# Tr = 14.0                                   # time constant for rain wetting model [h]
-# S = 250                                     # saturation intensity [dimensionless]
-# T = 10.0                                    # time constant for wetting/drying
+# Parameters
+ode_params = Dict(params_models["ode"])
+r0 = ode_params["r0"] # threshold rainfall [mm/h]
+rs = ode_params["rs"] # saturation rain intensity [mm/h]
+Tr = ode_params["Tr"] # time constant for rain wetting model [h]
+S = ode_params["S"]   # saturation intensity [dimensionless]
+T = ode_params["T"]   # time constant for wetting/drying
 
 def model_moisture(m0,Eqd,Eqw,r,t=None,partials=0,T=10.0,tlen=1.0):
     # arguments:
@@ -284,6 +285,7 @@ def model_moisture(m0,Eqd,Eqw,r,t=None,partials=0,T=10.0,tlen=1.0):
     #   if partials==0: m1 = fuel moisture contents after time 1 hour
     #              ==1: m1, dm1/dm0 
     #              ==2: m1, dm1/dm0, dm1/dE  
+    
     
     if r > r0:
         # print('raining')
@@ -374,9 +376,6 @@ def model_augmented(u0,Ed,Ew,r,t):
 #       # print('time',t,'data',d[t],'forecast',u[0,t],'Ec',u[1,t])
 #     return u
 
-
-
-ode_params = Dict(params_models["ode"])
 
 class ODE_FMC:
     def __init__(self, params=ode_params):
@@ -480,6 +479,7 @@ class ODE_FMC:
         """
         Return RMSE of forecast u versus observed FMC
         """
+        
         assert u.shape == fm.shape, "Arrays must have the same shape."
         # Reshape to 2D: (N * timesteps, features)
         fm2 = fm.reshape(-1, fm.shape[-1])
@@ -497,7 +497,7 @@ class ODE_FMC:
         print_dict_summary(self.params)
         
         # Get array of response
-        fm_arrays = [dict0[loc]["RAWS"]["fm"].values[h2:, np.newaxis] for loc in dict0]
+        fm_arrays = [dict0[loc]["RAWS"]["fm"].values[h2:hours, np.newaxis] for loc in dict0]
         fm = np.stack(fm_arrays, axis=0)
 
         # Get forecasts
