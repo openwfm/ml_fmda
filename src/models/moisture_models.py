@@ -28,7 +28,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import Dict, time_range, read_yml
+from utils import Dict, time_range, read_yml, print_dict_summary
 from ingest.retrieve_raws_api import get_stations
 from ingest.retrieve_raws_stash import get_file_paths
 
@@ -265,12 +265,12 @@ def ext_kf(u,P,F,Q=0,d=None,H=None,R=None):
 
 ### Define model function with drying, wetting, and rain equilibria
 
-# Parameters
-r0 = 0.05                                   # threshold rainfall [mm/h]
-rs = 8.0                                    # saturation rain intensity [mm/h]
-Tr = 14.0                                   # time constant for rain wetting model [h]
-S = 250                                     # saturation intensity [dimensionless]
-T = 10.0                                    # time constant for wetting/drying
+# # Parameters
+# r0 = 0.05                                   # threshold rainfall [mm/h]
+# rs = 8.0                                    # saturation rain intensity [mm/h]
+# Tr = 14.0                                   # time constant for rain wetting model [h]
+# S = 250                                     # saturation intensity [dimensionless]
+# T = 10.0                                    # time constant for wetting/drying
 
 def model_moisture(m0,Eqd,Eqw,r,t=None,partials=0,T=10.0,tlen=1.0):
     # arguments:
@@ -335,50 +335,178 @@ def model_augmented(u0,Ed,Ew,r,t):
     return u1, J
 
 
-### Default Uncertainty Matrices
-Q = np.array([[1e-3, 0.],
-            [0,  1e-3]]) # process noise covariance
-H = np.array([[1., 0.]])  # first component observed
-R = np.array([1e-3]) # data variance
+# ### Default Uncertainty Matrices
+# Q = np.array([[1e-3, 0.],
+#             [0,  1e-3]]) # process noise covariance
+# H = np.array([[1., 0.]])  # first component observed
+# R = np.array([1e-3]) # data variance
 
-def run_augmented_kf(dat0,h2=None,hours=None, H=H, Q=Q, R=R):
-    dat = copy.deepcopy(dat0)
+# def run_augmented_kf(dat0,h2=None,hours=None, H=H, Q=Q, R=R):
+#     dat = copy.deepcopy(dat0)
     
-    if h2 is None:
-        h2 = int(dat['h2'])
-    if hours is None:
-        hours = int(dat['hours'])
+#     if h2 is None:
+#         h2 = int(dat['h2'])
+#     if hours is None:
+#         hours = int(dat['hours'])
     
-    d = dat['y']
-    feats = dat['features_list']
-    Ed = dat['X'][:,feats.index('Ed')]
-    Ew = dat['X'][:,feats.index('Ew')]
-    rain = dat['X'][:,feats.index('rain')]
+#     d = dat['y']
+#     feats = dat['features_list']
+#     Ed = dat['X'][:,feats.index('Ed')]
+#     Ew = dat['X'][:,feats.index('Ew')]
+#     rain = dat['X'][:,feats.index('rain')]
     
-    u = np.zeros((2,hours))
-    u[:,0]=[0.1,0.0]       # initialize,background state  
-    P = np.zeros((2,2,hours))
-    P[:,:,0] = np.array([[1e-3, 0.],
-                      [0.,  1e-3]]) # background state covariance
+#     u = np.zeros((2,hours))
+#     u[:,0]=[0.1,0.0]       # initialize,background state  
+#     P = np.zeros((2,2,hours))
+#     P[:,:,0] = np.array([[1e-3, 0.],
+#                       [0.,  1e-3]]) # background state covariance
 
-    for t in range(1,h2):
-      # use lambda construction to pass additional arguments to the model 
-        u[:,t],P[:,:,t] = ext_kf(u[:,t-1],P[:,:,t-1],
-                                  lambda uu: model_augmented(uu,Ed[t],Ew[t],rain[t],t),
-                                  Q,d[t],H=H,R=R)
-      # print('time',t,'data',d[t],'filtered',u[0,t],'Ec',u[1,t])
-    for t in range(h2,hours):
-        u[:,t],P[:,:,t] = ext_kf(u[:,t-1],P[:,:,t-1],
-                                  lambda uu: model_augmented(uu,Ed[t],Ew[t],rain[t],t),
-                                  Q*0.0)
-      # print('time',t,'data',d[t],'forecast',u[0,t],'Ec',u[1,t])
-    return u
-
-
+#     for t in range(1,h2):
+#       # use lambda construction to pass additional arguments to the model 
+#         u[:,t],P[:,:,t] = ext_kf(u[:,t-1],P[:,:,t-1],
+#                                   lambda uu: model_augmented(uu,Ed[t],Ew[t],rain[t],t),
+#                                   Q,d[t],H=H,R=R)
+#       # print('time',t,'data',d[t],'filtered',u[0,t],'Ec',u[1,t])
+#     for t in range(h2,hours):
+#         u[:,t],P[:,:,t] = ext_kf(u[:,t-1],P[:,:,t-1],
+#                                   lambda uu: model_augmented(uu,Ed[t],Ew[t],rain[t],t),
+#                                   Q*0.0)
+#       # print('time',t,'data',d[t],'forecast',u[0,t],'Ec',u[1,t])
+#     return u
 
 
 
+ode_params = Dict(params_models["ode"])
 
+class ODE_FMC:
+    def __init__(self, params=ode_params):
+            
+        # List of required keys
+        required_keys = ['spinup_hours',
+                         'process_variance',
+                         'data_variance',
+                         'r0',
+                         'rs',
+                         'Tr',
+                         'S',
+                         'T']
+
+        # Validate that all required keys are in params
+        missing_keys = [key for key in required_keys if key not in params]
+        if missing_keys:
+            raise ValueError(f"Missing required keys in params: {missing_keys}")
+
+        # Define params
+        self.params = params
+        process_variance = np.float_(params['process_variance'])
+        self.Q = np.array([[process_variance, 0.],
+                           [0., process_variance]])
+        self.H = np.array([[1., 0.]]) # observation matrix
+        self.R = np.array([np.float_(params['data_variance'])]) # data variance
+        self.r0 = params["r0"]
+        self.rs = params["rs"]
+        self.Tr = params["Tr"]
+        self.S = params["S"]
+        self.T = params["T"]
+    def run_model_single(self, dat, hours, h2, atm_source = "HRRR"):
+        """
+        Run ODE fuel moisture model on a single location. 
+        
+        hours : int
+            Total hours to run model
+
+        h2 : int
+            Hour to turn off data assimilation and run in forecast mode
+        
+        atm_source: str
+            Typically HRRR. Should be able to do RAWS as QC
+        """
+        Q = self.Q
+        R = self.R
+        H = self.H
+        
+        fm = dat["RAWS"]["fm"].to_numpy().astype(np.float64)
+        Ed = dat[atm_source]["Ed"].to_numpy().astype(np.float64)
+        Ew = dat[atm_source]["Ew"].to_numpy().astype(np.float64)
+        rain = dat[atm_source]["rain"].to_numpy().astype(np.float64)
+
+        u = np.zeros((2,hours))
+        u[:,0]=[0.1,0.0]       # initialize,background state  
+        P = np.zeros((2,2,hours))
+        P[:,:,0] = np.array([[self.params['process_variance'], 0.],
+                      [0.,  self.params['process_variance']]]) # background state covariance        
+        
+        # Run in spinup mode
+        for t in range(1,h2):
+          # use lambda construction to pass additional arguments to the model 
+            u[:,t],P[:,:,t] = ext_kf(u[:,t-1],P[:,:,t-1],
+                                    lambda uu: model_augmented(uu,Ed[t],Ew[t],rain[t],t),
+                                    Q,d=fm[t],H=H,R=R)
+
+        # Run in forecast mode
+        for t in range(h2,hours):
+            u[:,t],P[:,:,t] = ext_kf(u[:,t-1],P[:,:,t-1],
+                                      lambda uu: model_augmented(uu,Ed[t],Ew[t],rain[t],t),
+                                      Q*0.0)
+          
+        return u
+
+    def run_dict(self, dict0, hours, h2, atm_source="HRRR"):
+        """
+        Run model defined in run_model_single on a dictionary and return 3d array
+
+        Returns
+        --------
+        u : ndarray
+            state vector 3d array of dims (n_locations, timesteps, 2), where 2 dim response is FMC, Ec
+        """
+        u = []
+        for st in dict0:
+            ui = self.run_model_single(dict0[st], hours=hours, h2=h2, atm_source=atm_source)
+            u.append(ui.T) # transpose to get dimesion (timesteps, response_dim)
+
+        u = np.stack(u, axis=0)
+        
+        return u
+
+    def slice_fm_forecasts(self, u, h2):
+        """
+        Given output of run_model, slice array to get only FMC at forecast hours
+        """
+
+        return u[:, h2:, 0:1] # Using 0:1 keeps the dimensions, if just 0 it will drop
+    
+    def eval(self, u, fm, h2):
+        """
+        Return RMSE of forecast u versus observed FMC
+        """
+        assert u.shape == fm.shape, "Arrays must have the same shape."
+        # Reshape to 2D: (N * timesteps, features)
+        fm2 = fm.reshape(-1, fm.shape[-1])
+        u2 = u.reshape(-1, u.shape[-1])
+        rmse = np.sqrt(mean_squared_error(u2, fm2))
+    
+        return rmse
+
+    def run_model(self, dict0, hours, h2, atm_source="HRRR"):
+        """
+        Put it all together
+        """
+    
+        print(f"Running ODE + Kalman Filter with params:")
+        print_dict_summary(self.params)
+        
+        # Get array of response
+        fm_arrays = [dict0[loc]["RAWS"]["fm"].values[h2:, np.newaxis] for loc in dict0]
+        fm = np.stack(fm_arrays, axis=0)
+
+        # Get forecasts
+        preds = self.run_dict(dict0, hours=hours, h2=h2, atm_source=atm_source)
+        m = self.slice_fm_forecasts(preds, h2 = h2)
+
+        rmse = self.eval(m, fm, h2)
+
+        return m, rmse
 
 
 
