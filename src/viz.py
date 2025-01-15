@@ -43,13 +43,10 @@ map_dict = {
             }
 }
 
-def map_var(ds, var_str, time_step=0, scale='110m', figsize=[15, 9], legend_title=None, title=None, save_path=None):
+def map_var(ds, var_str, time_step=0, scale='110m', figsize=[15, 9], legend_title=None, title=None, save_path=None, vmin=None, vmax=None):
     """
-    Wrapper to generate EasyMap given xarray and variable string. Uses map_dict conventions. Should be robust to renaming certain vars
+    Wrapper to generate EasyMap given xarray and variable string. Uses map_dict conventions. Should be robust to renaming certain vars.
     """
-
-    # Extract variable and time step
-    # If input var_str not in data variables, try to get name from metadata dict
     if var_str not in ds:
         if var_str not in map_dict.keys():
             raise ValueError(f"var_str not recognized: {var_str}")
@@ -58,26 +55,26 @@ def map_var(ds, var_str, time_step=0, scale='110m', figsize=[15, 9], legend_titl
     else:
         x = ds[var_str]
     x = x.isel(time=time_step)
-    # print(f"Mapping Variable {var_str} at time {ds.valid_time[time_step].to_numpy()}")
-    # Get mapping convention from map_dict
+
     if var_str in map_dict.keys():
         cmap = map_dict[var_str]["cmap"]
         if legend_title is None:
             legend_title = map_dict[var_str]["legend_title"]
     else:
-        # print(f"No mapping convention detected for input var_str: {var_str}.")
-        cmap="viridis"
-        legend_title=legend_title
-        
-    # ax = EasyMap("110m", figsize=figsize, crs=ds.herbie.crs).STATES().ax
-    ax = EasyMap("110m", figsize=figsize,crs=ds.herbie.crs).STATES().OCEAN().COASTLINES().LAKES().ax
+        cmap = "viridis"
+        legend_title = legend_title
+
+    ax = EasyMap("110m", figsize=figsize, crs=ds.herbie.crs).STATES().OCEAN().COASTLINES().LAKES().ax
     
+    # Add vmin and vmax to fix the colorbar range
     p = ax.pcolormesh(
         ds.longitude,
         ds.latitude,
         x,
         transform=pc,
         cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
     )
     
     cbar = plt.colorbar(
@@ -92,46 +89,30 @@ def map_var(ds, var_str, time_step=0, scale='110m', figsize=[15, 9], legend_titl
 
     if save_path is not None:
         plt.savefig(save_path, bbox_inches='tight')
+
     
 
-def create_gif(ds, var_str, tsteps, gif_path='../outputs/test_map.gif', duration=0.5):
-    """
-    Create an animated GIF from the `map_var` function.
-
-    Parameters:
-    - ds: xarray dataset
-    - var_str: variable to plot
-    - tsteps: range of time steps to animate
-    - gif_path: file path to save the gif
-    - duration: time in seconds between frames
-    """
+def create_gif(ds, var_str, tsteps, gif_path='output.gif', duration=0.5):
     temp_dir = "./temp_frames"
     os.makedirs(temp_dir, exist_ok=True)
     
+    # Calculate global vmin and vmax across all frames
+    vmin = ds[var_str].min().item()
+    vmax = ds[var_str].max().item()
+    
     frames = []
-
     for tstep in tsteps:
-        # Generate timestamp string
         t = ds.valid_time[tstep]
         formatted_time = f"{t.dt.year.item():04d}-{t.dt.month.item():02d}-{t.dt.day.item():02d} {t.dt.hour.item():02d}:{t.dt.minute.item():02d}:{t.dt.second.item():02d}"
 
-        # Save individual frame
         frame_path = os.path.join(temp_dir, f"frame_{tstep:03d}.png")
-        map_var(
-            ds, var_str,
-            time_step=tstep,
-            legend_title="Fuel Moisture Content (%)",
-            title=f"FMC Forecast at {formatted_time} UTC",
-            save_path=frame_path
-        )
-        plt.close()  # Close plot to free memory
+        map_var(ds, var_str, time_step=tstep, legend_title="Fuel Moisture Content (%)",
+                title=f"FMC Forecast at {formatted_time}", save_path=frame_path, vmin=vmin, vmax=vmax)
+        plt.close()
+        plt.clf()
         frames.append(imageio.imread(frame_path))
 
-    # Create GIF
     imageio.mimsave(gif_path, frames, duration=duration)
     print(f"GIF saved to {gif_path}")
 
-    # Clean up temporary files
-    for frame in os.listdir(temp_dir):
-        os.remove(os.path.join(temp_dir, frame))
-    os.rmdir(temp_dir)
+
