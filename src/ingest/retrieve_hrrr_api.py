@@ -247,8 +247,8 @@ def retrieve_hrrr(config, all_features = True):
         calc_eq(ds)
     if any(s in features_list for s in ["hod", "doy"]):
         ds = calc_times(ds)
-    # Add timezone
-    ds["valid_time"] = ("time", pd.to_datetime(ds["valid_time"].values).tz_localize("UTC").to_numpy())
+    # Add date_time col based on valid_time with UTC timezone
+    ds["date_time"] = ("time", pd.to_datetime(ds["valid_time"].values).tz_localize("UTC").to_numpy())
 
     
     return ds
