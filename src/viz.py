@@ -5,7 +5,9 @@
 from herbie import paint
 from herbie.toolbox import EasyMap, pc, ccrs
 import matplotlib.pyplot as plt
-
+import os
+import imageio.v2 as imageio
+from matplotlib import pyplot as plt
 
 
 
@@ -56,14 +58,14 @@ def map_var(ds, var_str, time_step=0, scale='110m', figsize=[15, 9], legend_titl
     else:
         x = ds[var_str]
     x = x.isel(time=time_step)
-    print(f"Mapping Variable {var_str} at time {ds.time[time_step].to_numpy()}")
+    # print(f"Mapping Variable {var_str} at time {ds.valid_time[time_step].to_numpy()}")
     # Get mapping convention from map_dict
     if var_str in map_dict.keys():
         cmap = map_dict[var_str]["cmap"]
         if legend_title is None:
             legend_title = map_dict[var_str]["legend_title"]
     else:
-        print(f"No mapping convention detected for input var_str: {var_str}.")
+        # print(f"No mapping convention detected for input var_str: {var_str}.")
         cmap="viridis"
         legend_title=legend_title
         
@@ -92,3 +94,44 @@ def map_var(ds, var_str, time_step=0, scale='110m', figsize=[15, 9], legend_titl
         plt.savefig(save_path, bbox_inches='tight')
     
 
+def create_gif(ds, var_str, tsteps, gif_path='../outputs/test_map.gif', duration=0.5):
+    """
+    Create an animated GIF from the `map_var` function.
+
+    Parameters:
+    - ds: xarray dataset
+    - var_str: variable to plot
+    - tsteps: range of time steps to animate
+    - gif_path: file path to save the gif
+    - duration: time in seconds between frames
+    """
+    temp_dir = "./temp_frames"
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    frames = []
+
+    for tstep in tsteps:
+        # Generate timestamp string
+        t = ds.valid_time[tstep]
+        formatted_time = f"{t.dt.year.item():04d}-{t.dt.month.item():02d}-{t.dt.day.item():02d} {t.dt.hour.item():02d}:{t.dt.minute.item():02d}:{t.dt.second.item():02d}"
+
+        # Save individual frame
+        frame_path = os.path.join(temp_dir, f"frame_{tstep:03d}.png")
+        map_var(
+            ds, var_str,
+            time_step=tstep,
+            legend_title="Fuel Moisture Content (%)",
+            title=f"FMC Forecast at {formatted_time} UTC",
+            save_path=frame_path
+        )
+        plt.close()  # Close plot to free memory
+        frames.append(imageio.imread(frame_path))
+
+    # Create GIF
+    imageio.mimsave(gif_path, frames, duration=duration)
+    print(f"GIF saved to {gif_path}")
+
+    # Clean up temporary files
+    for frame in os.listdir(temp_dir):
+        os.remove(os.path.join(temp_dir, frame))
+    os.rmdir(temp_dir)
