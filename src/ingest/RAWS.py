@@ -198,7 +198,7 @@ def time_intp_df(df, target_times,
     return result_df
 
 
-def build_raws_dict_api(start, end, bbox, rename=True, verbose = True):
+def build_raws_dict_api(start, end, bbox, rename=True, verbose = True, save_path = None):
     """
     Wrapper function that applies the module functions. Given config dictionary, it returns a formatted dictionary of RAWS data
     """
@@ -268,7 +268,12 @@ def build_raws_dict_api(start, end, bbox, rename=True, verbose = True):
             raws_dict[st]["units"] = rename_dict(raws_dict[st]["units"], raws_meta["rename_synoptic"])
             raws_dict[st]["RAWS"] = raws_dict[st]["RAWS"].rename(columns = raws_meta["rename_synoptic"])
             raws_dict[st]["loc"] = rename_dict(raws_dict[st]["loc"], raws_meta["rename_synoptic"])
-            
+
+    # Save if path provided
+    if save_path is not None:
+        with open(save_path, 'wb') as handle:
+            pickle.dump(raws_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    
     return raws_dict
 
 
@@ -299,7 +304,7 @@ def get_file_paths(times):
     return paths
 
 
-def build_raws_dict_stash(start, end, bbox, rename=True, verbose = True):
+def build_raws_dict_stash(start, end, bbox, rename=True, verbose = True, save_path=None):
     """
     Wrapper function that applies the module functions. Given config dictionary, it returns a formatted dictionary of RAWS data
     """
@@ -378,6 +383,11 @@ def build_raws_dict_stash(start, end, bbox, rename=True, verbose = True):
         raws_dict[st]["times"] = times
         raws_dict[st]["misc"] += " Interpolated data with numpy linear interpolation."
 
+    # Save if path provided
+    if save_path is not None:
+        with open(save_path, 'wb') as handle:
+            pickle.dump(raws_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    
     return raws_dict
 
     
