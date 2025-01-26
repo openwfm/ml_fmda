@@ -10,6 +10,15 @@ import imageio.v2 as imageio
 from matplotlib import pyplot as plt
 
 
+# Dictionary used to store timeseries plot schemes, ts for single location
+
+plot_styles = {
+    'Ed': {'color': '#EF847C', 'linestyle': '--', 'alpha':.8, 'label': 'drying EQ'},
+    'Ew': {'color': '#7CCCEF', 'linestyle': '--', 'alpha':.8, 'label': 'wetting EQ'},
+    'rain': {'color': 'b', 'linestyle': '-', 'alpha':.9, 'label': 'Rain'}
+}
+
+
 
 
 
@@ -64,6 +73,11 @@ def map_var(ds, var_str, time_step=0, scale='110m', figsize=[15, 9], legend_titl
         cmap = "viridis"
         legend_title = legend_title
 
+    # Rename coords if so
+    if not "latitude" in ds:
+        ds = ds.rename({"lat": "latitude"})
+        ds = ds.rename({"lon": "longitude"})
+    
     ax = EasyMap("110m", figsize=figsize, crs=ds.herbie.crs).STATES().OCEAN().COASTLINES().LAKES().ax
     
     # Add vmin and vmax to fix the colorbar range
@@ -92,13 +106,20 @@ def map_var(ds, var_str, time_step=0, scale='110m', figsize=[15, 9], legend_titl
 
     
 
-def create_gif(ds, var_str, tsteps, gif_path='output.gif', duration=0.5):
+def create_gif(ds, var_str, tsteps, gif_path='output.gif', duration=0.5, legend_title = None, title=None):
     temp_dir = "./temp_frames"
     os.makedirs(temp_dir, exist_ok=True)
-    
+
+    if var_str not in ds:
+        if var_str not in map_dict.keys():
+            raise ValueError(f"var_str not recognized: {var_str}")
+        else:
+            x = ds[map_dict[var_str]["xarray_name"]]
+    else:
+        x = ds[var_str]    
     # Calculate global vmin and vmax across all frames
-    vmin = ds[var_str].min().item()
-    vmax = ds[var_str].max().item()
+    vmin = x.min().item()
+    vmax = x.max().item()
     
     frames = []
     for tstep in tsteps:
@@ -106,8 +127,8 @@ def create_gif(ds, var_str, tsteps, gif_path='output.gif', duration=0.5):
         formatted_time = f"{t.dt.year.item():04d}-{t.dt.month.item():02d}-{t.dt.day.item():02d} {t.dt.hour.item():02d}:{t.dt.minute.item():02d}:{t.dt.second.item():02d}"
 
         frame_path = os.path.join(temp_dir, f"frame_{tstep:03d}.png")
-        map_var(ds, var_str, time_step=tstep, legend_title="Fuel Moisture Content (%)",
-                title=f"FMC Forecast at {formatted_time}", save_path=frame_path, vmin=vmin, vmax=vmax)
+        map_var(ds, var_str, time_step=tstep, legend_title=legend_title,
+                title=f"Forecast at {formatted_time}", save_path=frame_path, vmin=vmin, vmax=vmax)
         plt.close()
         plt.clf()
         frames.append(imageio.imread(frame_path))
