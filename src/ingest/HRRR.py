@@ -1,7 +1,6 @@
 # Set of functions and executable to retrieve and manipulate HRRR data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# RAWS Data is retrieved using SynopticPy python package, which engages the Synoptic Data API
-# Credit to Brian Blaylock for Herbie package
+# HRRR Data is retrieved using Brian Blaylock for Herbie package
 
 import pandas as pd
 import herbie
@@ -36,7 +35,7 @@ hrrr_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "hrrr_metadata.ya
 
 def features_to_searchstr(flist):
     """
-    Given features list, return dictionary of search strings to be used in Herbie package
+    Given features list, return dictionary of regex search strings to be used in Herbie package
     """
     
     # Initialize the output dictionary
@@ -167,6 +166,27 @@ def rename_ds(ds):
     }
     return ds.rename(rename_dict)
 
+def get_units_xr(ds):
+    """
+    Get units from xarray object. 
+    Looks for GRIB_parameterUnits and returns in a dictionary format for each data variable
+    Prints warning if no units found, which should be the case for engineered variables like Ew, Ed
+    Intended to be run after renaming, so it will be compatible with units from RAWS process
+    """
+    
+    units = {}
+    
+    # Iterate through all data variables in the dataset
+    for var in ds.data_vars:
+        # Check if 'GRIB_parameterUnits' exists in the variable's attributes
+        if 'GRIB_parameterUnits' in ds[var].attrs:
+            # Add it to the dictionary
+            units[var] = ds[var].attrs['GRIB_parameterUnits']
+        else:
+            # Print a warning message
+            print(f"Warning: 'GRIB_parameterUnits' not found for variable '{var}'.")
+    
+    return units
 
 def retrieve_hrrr(config, all_features = True):
     """
@@ -301,38 +321,3 @@ def format_hrrr_forecast():
     pass
 
 
-# Old Commented Out Stuff
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-# # Dataframe used to track names and metadata for various HRRR bands. The names used within the HRRR grib files differs from the xarray objects returned by Herbie, and we want to standardize those names to those used within this project from other data sources e.g. RAWS
-# hrrr_name_df = pd.DataFrame({
-#     'band_prs': [616, 620, 624, 629, 661, (561, 563, 565, 567, 569, 571, 573, 575, 577), (560, 562, 564, 566, 568, 570, 572, 574, 576), 612, 643, 610, 615, 613, 607, 639, 640],
-#     'hrrr_name': ['TMP', 'RH', "WIND", 'APCP',
-#                   'DSWRF', 'SOILW', "TSOIL", 'CNWAT', 'GFLUX', "ASNOW", "SNOD", "WEASD", "PRES", "SFCR", "FRICV"],
-#     'hrrr_level': ["2m", "2m", "10m", "surface", "surface", "multiple", "multiple",
-#                   "surface", "surface", "surface", "surface", "surface", "surface", "surface", "surface"],
-#     'herbie_str': ["TMP:2 m", "RH:2 m", "WIND:10 m", ":APCP:surface:2-3 hour acc", "DSWRF:surface", ":SOILW:", 
-#                    ":TSOIL:", "CNWAT:surface", "GFLUX:surface", "ASNOW:surface", ":SNOD:surface:3 hour fcst", ":WEASD:surface:2-3 hour acc", 
-#                    ":PRES:surface:3 hour fcst", ":SFCR:surface:3 hour fcst", ":FRICV:surface:3 hour fcst	"],
-#     'xarray_name': ["t2m", "r2", "si10", "tp", "dswrf", "soilw", "tsoil", "cnwat", "gflux", "unknown", "sde", "sdwe", "sp", "fsr", "fricv"],
-#     'fmda_name': ["temp", "rh", "wind", "precip_accum",
-#                  "solar", "soilm", "soilt", "canopyw", "groundflux", "asnow", "snod", "weasd", "pres", "rough", "fricv"],
-#     'descr': ['2m Temperature [K]', 
-#               '2m Relative Humidity [%]', 
-#               '10m Wind Speed [m/s]',
-#               'surface Total Precipitation [kg/m^2]',
-#               'surface Downward Short-Wave Radiation Flux [W/m^2]',
-#               'Volumetric Soil Moisture Content [Fraction]',
-#               'Soil Temperature [K]',
-#               'Plant Canopy Surface Water [kg/m^2]',
-#               'surface Ground Heat Flux [W/m^2]',
-#               'Total Snowfall [m]',
-#               'Snow Depth [m]',
-#               'Water Equivalent of Accumulated Snow Depth [kg/m^2]',
-#               'Surface air pressure [Pa]',
-#               'Surface Roughness [m]',
-#               'Frictional Velocity [m/s]'
-#              ],
-#     'notes': ["", "", "", "", "", "9 different depths, from 0-3m below ground", "9 different depths, from 0-3m below ground", "", "", "0-3 hr accumulated", "", 
-#               "0-3 hr accumulated, listed as `deprecated` in gribs", "", "", ""]
-# })
