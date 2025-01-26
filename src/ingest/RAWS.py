@@ -1,6 +1,7 @@
 # Set of functions and executable to retrieve and manipulate RAWS data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## RAWS Data is retrieved using SynopticPy python package, which engages the Synoptic Data API
+## Realtime RAWS Data is retrieved using SynopticPy python package, which engages the Synoptic Data API
+## Stashed RAWS data retrieved from MesoDB, maintained by Angel Farguell, ask him for access
 ## Credit to Brian Blaylock for SynopticPy package
 ## NOTE: Polars dataframes are used in SynopticPy instead of pandas. We use polars for the code here but convert to pandas to allow for pickle save which is listed as not implemented in polars as of Dec 17 2024
 
@@ -29,25 +30,31 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import read_yml, Dict, time_intp, str2time, rename_dict
+from utils import read_yml, read_pkl, Dict, time_intp, str2time, rename_dict, time_range
 
 
-# Read RAWS Metadata
+# Read RAWS Metadata and Data Params for high/low bounds
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 raws_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "raws_metadata.yaml"))
+# Update stash path. We do this here so it works if module called from different locations
+raws_meta.update({'raws_stash_path': osp.join(PROJECT_ROOT, raws_meta['raws_stash_path'])})
+
+params_data = Dict(read_yml(osp.join(CONFIG_DIR, "params_data.yaml")))
 
 
-# Module Functions
+
+# API Module Functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def get_stations(bounding_box):
+def get_stations(bbox):
     """
-    Return a polars dataframe of RAWS sensor data and associated units. Shift the start time by 1 hour since most stations return data some minutes after requested time, we do this for time interpolation to have endpoints
+    Get list of RAWS station ID strings given input spatial domain bbox. Return a polars dataframe of RAWS sensor data and associated units. Shift the start time by 1 hour since most stations return data some minutes after requested time, we do this for time interpolation to have endpoints
     
     Parameters:
     -----------
     bounding_box : list of numeric
-        Format [min_lon, min_lat, max_lon, max_lat], NOTE different format than wrfxpy rtma_cycler
+        Format [min_lat, min_lon, max_lat, max_lon] to match wrfxpy
+        NOTE different format used by Synoptic, this function will convert internally
 
         
     Returns:
@@ -56,12 +63,30 @@ def get_stations(bounding_box):
         List of RAWS STIDs
 
     """ 
+    bbox_reordered = [bbox[1], bbox[0], bbox[3], bbox[2]]
     sts = synoptic.Metadata(
-        bbox=bounding_box,
+        bbox=bbox_reordered,
         vars=["fuel_moisture"], # We only want to include stations with FMC. Other "raws_vars" are bonus later
     ).df()
 
     return sts
+
+
+
+    
+def vals_to_na(df, col, verbose=True):
+    """
+    Set values of a column in a dataframe to NA if outside physically reasonable range of values. 
+    """
+    low = params_data['min_'+col]
+    high = params_data['max_'+col]
+    if verbose:
+        print(f"Setting {col} observations to NA if outside range: {low} - {high}")
+
+    # Modify In place
+    df[col] = df[col].where((df[col] >= low) & (df[col] <= high), np.nan)
+
+
 
 def format_raws(df, 
                 static_vars=raws_meta["raws_static_vars"], 
@@ -125,7 +150,6 @@ def format_raws(df,
             )
         units['elevation'] = "m"    
         
-        
     return dat, units
 
 
@@ -174,29 +198,27 @@ def time_intp_df(df, target_times,
     return result_df
 
 
-def build_raws_dict(config, rename=True, verbose = True):
+def build_raws_dict_api(start, end, bbox, rename=True, verbose = True):
     """
     Wrapper function that applies the module functions. Given config dictionary, it returns a formatted dictionary of RAWS data
     """
 
-    # Extract config info
-    bbox = config.bbox
-    start = config.start_time
-    end = config.end_time
-    print(f"Start Date of RAWS retrieval: {start}")
-    print(f"End Date of retrieval: {end}")
-    print(f"Spatial Domain: {bbox}")    
+    if verbose:
+        print(f"Start Date of RAWS retrieval: {start}")
+        print(f"End Date of retrieval: {end}")
+        print(f"Spatial Domain: {bbox}")    
 
     # Get station metadata within bbox and time period
-    bbox_reordered = [bbox[1], bbox[0], bbox[3], bbox[2]] # Synoptic uses different bbox order
-    start_dt = str2time(start)
-    end_dt = str2time(end)
-    sts = get_stations(bbox_reordered)
+    if type(start) is str:
+        start = str2time(start)
+    if type(end) is str:
+        end = str2time(end)
+    sts = get_stations(bbox)
 
     # Collect RAWS data
     ## FMC is required, but collect all other available weather data
     ## Shifting the start time by 1 hour since most stations return data some minutes after requested time, we do this for time interpolation to have endpoints
-    raws_weather_vars = config.get("raws_weather_vars", raws_meta["raws_weather_vars"])
+    raws_weather_vars = raws_meta["raws_weather_vars"]
     raws_dict = {}
     
     for st in sts["stid"]:
@@ -205,8 +227,8 @@ def build_raws_dict(config, rename=True, verbose = True):
         try:
             df = synoptic.TimeSeries(
                 stid=st,
-                start=start_dt-relativedelta(hours=1),
-                end=end_dt,
+                start=start-relativedelta(hours=1),
+                end=end+relativedelta(hours=1),
                 vars=raws_weather_vars,
                 units = "metric"
             ).df()
@@ -224,14 +246,7 @@ def build_raws_dict(config, rename=True, verbose = True):
 
     # Fix Time, Interpolate, and Rename 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    times = pl.datetime_range(
-        start=start_dt,
-        end=end_dt,
-        interval="1h",
-        time_zone = "UTC",
-        eager=True
-    ).alias("time")
-    times = np.array(times.to_list())
+    times = time_range(start, end, freq="1h")
 
     print(f"Interpolating missing data in time from {times.min()} to {times.max()}")
     if rename:
@@ -257,55 +272,112 @@ def build_raws_dict(config, rename=True, verbose = True):
     return raws_dict
 
 
-
-
-
-
-
-# Executed Code 
+# Stash Module Functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if __name__ == '__main__':
 
-    # Handle arguments
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ## expects a config file with times and bbox, option argument saves output
-    ## Config bbox format should match format in wrfxpy rtma_cycler: [latmin, lonmin, latmax, lonmax]
-    if len(sys.argv) not in {2, 3}: 
-        print(f"Invalid arguments. {len(sys.argv)} was given but 2 or 3 expected")
-        print(('Usage: %s <config_file> <optional_output_file>' % sys.argv[0]))
-        print("Example: python src/ingest/retrieve_raws_api.py etc/training_data_config.json data/raws.pkl")
-        sys.exit(-1)
+def get_file_paths(times):
+    """
+    Get file paths for RAWS stash from given start and end dates.
 
+    Arguments
+        times: 1d numpy array of datetime
+    """  
+
+    assert osp.exists(raws_meta["raws_stash_path"]), f"Stash path given in RAWS metadata file does not exist"
+
+    # Create list of file paths based on needed hours
+    paths = [
+        osp.join(
+            raws_meta["raws_stash_path"],        
+            str(time.year),     
+            time.strftime('%j'),    #  Julian day of year, 001-366
+            f"{str(time.year)}{time.strftime('%j')}{time.strftime('%H')}.pkl" )# Join with hour of day, 00-23
+        for time in times
+    ]
     
-    # Handle config
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    conf_file = sys.argv[1]
-    with open(conf_file, "r") as json_file:
-        config = json.load(json_file)   
-        config = Dict(config)
-    print(json.dumps(config, indent=4))
-
-    bbox = config.bbox
-    start = config.start_time
-    end = config.end_time
-    print(f"Start Date of RAWS retrieval: {start}")
-    print(f"End Date of retrieval: {end}")
-    print(f"Spatial Domain: {bbox}")
+    return paths
 
 
-    # Build Data Dictionary
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    raws_dict = build_raws_dict(config)
-      
+def build_raws_dict_stash(start, end, bbox, rename=True, verbose = True):
+    """
+    Wrapper function that applies the module functions. Given config dictionary, it returns a formatted dictionary of RAWS data
+    """
 
-    # Write output if path provided
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+    if verbose:
+        print(f"Start Date of RAWS retrieval: {start}")
+        print(f"End Date of retrieval: {end}")
+        print(f"Spatial Domain: {bbox}")  
 
-    if len(sys.argv) == 3:
-        output_path = sys.argv[2]
-        print(f"Writing output to {output_path}")
-        with open(output_path, 'wb') as file:
-            pickle.dump(raws_dict, file)
+
+    # Get station metadata within bbox and time period
+
+    if type(start) is str:
+        start = str2time(start)
+    if type(end) is str:
+        end = str2time(end)
+    sts = get_stations(bbox)
+
+    # Based on time arguments, get list of needed file paths in stash
+    # Offset by 1 hr for data retrieval, so interpolation has endpoints
+    times = time_range(start-relativedelta(hours=1), end+relativedelta(hours=1))
+    paths = get_file_paths(times)
+
+    # Create return dictionary with static info and other metadata
+    raws_dict = {
+        st: {
+            "RAWS": [],
+            "units": {"fm": "%", "elev": "m"},
+            "loc": get_static(sts, st),
+            "misc": "FMC data collected from RAWS stash."
+            } 
+        for st in sts["stid"]}
+    
+    
+    # Loop through file paths and extract info from need STID
+    for path in paths:
+        try:
+            dat = read_pkl(path)           
+            for st in sts["stid"]:
+                # Filter the data for the current station and append
+                filtered = dat[dat['STID'] == st]
+                if not filtered.empty:
+                    raws_dict[st]["RAWS"].append(filtered)
+        except Exception as e:
+            print(f"An error occured: {e}") 
+            
+    # Combine the lists of DataFrames for each station into a single DataFrame, rename, and interpolate
+    for st in raws_dict:
+        if raws_dict[st]["RAWS"]:  # Check if the list is not empty
+            raws_dict[st]["RAWS"] = pd.concat(raws_dict[st]["RAWS"], ignore_index=True)
+            # Add a few static vars
+            raws_dict[st]["RAWS"]["lat"] = raws_dict[st]["loc"]["lat"]
+            raws_dict[st]["RAWS"]["lon"] = raws_dict[st]["loc"]["lon"]
+            raws_dict[st]["RAWS"]["elev"] = raws_dict[st]["loc"]["elev"]      
+        else:
+            raws_dict[st]["RAWS"] = pd.DataFrame()  # Set an empty DataFrame if no data was found
+        if rename:
+            raws_dict[st]["RAWS"].rename(columns=raws_meta["rename_stash"], inplace=True)
+
+    # Remove Stations with missing data
+    for st in list(raws_dict.keys()):
+        if raws_dict[st]["RAWS"].shape[0] == 0:
+            print(f"No data found for station {st}, removing")
+            raws_dict.pop(st)
+    print(f"Retrieved data for {len(raws_dict.keys())} stations")
+    
+    # Interpolate
+    # No start time offset here
+    # Hard coded static and time columns
+    times = time_range(start, end)
+    for st in raws_dict:
+        vals_to_na(raws_dict[st]["RAWS"], "fm", verbose=False) # Filter extreme values based on data params
+        d = time_intp_df(raws_dict[st]["RAWS"], times, static_cols = ["stid", "lat", "lon", "elev"], time_cols = ["fm"])
+        d = pd.DataFrame(d, columns = d.columns)
+        raws_dict[st]["RAWS"] = d
+        raws_dict[st]["times"] = times
+        raws_dict[st]["misc"] += " Interpolated data with numpy linear interpolation."
+
+    return raws_dict
 
     

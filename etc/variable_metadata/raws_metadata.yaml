@@ -2,7 +2,7 @@
 # RAWS retrieved with SynopticPy or from local stash
 
 
-raws_stash_path: "data/MesoDB"
+raws_stash_path: "data/MesoDB" # Path relative to Project Root
 
 
 # Time-dynamic weather sensor variables
