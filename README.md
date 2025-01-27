@@ -21,6 +21,18 @@ vi tokens.json
 
 ## Code Directory
 
+### Data Processing
+
+Retrieved data is organized by RAWS station. This is not necessarily the most computationally efficient approach, but it makes it easier to organize spatiotemporal cross validation and pointwise deployment of baseline models.
+
+Retrieved data is boken into 72 hour periods. This is stored as a hyperparameter in the data_params.yaml file. This is done for the following reasons:
+
+- We want to filter stretches of RAWS with too much missing data, due to either suspect observations or long stretches of interpolated data. Breaking into 72 hour periods allows for removal of bad stretches of RAWS data without filtering out the entire sensor.
+- For the ODE+KF to test forecasting 48 hour periods, a 24 hour spinup period for bias correction parameters to stabilize is conservative but appropriate
+- 72 hours is divisible by 12 and 24, which are candidates for the timesteps hyperparameter length for defining samples to the RNNs
+
+Changing this from 72 might lead to errors, particularly if changed to something not divisible by 12
+
 ## Acknowledgements
 
 This research was partially supported by NASA grants 80NSSC23K1118 and 80NSSC23K1344.

@@ -188,14 +188,13 @@ def get_units_xr(ds):
     
     return units
 
-def retrieve_hrrr(config, all_features = True):
+def retrieve_hrrr_train(start, end, bbox, all_features = True, forecast_step = 3):
     """
     Wrapper function to get HRRR data given config.
 
     Parameters
     -------------
-    config : dict
-        Configuration file
+
 
     all_features : bool
         Logical argument whether to retrieve all possible features or not. If True, get all features in hrrr_metadata.yaml, if False use the config features list
@@ -207,10 +206,8 @@ def retrieve_hrrr(config, all_features = True):
     """
 
     # Extract Config Info
-    bbox = config.bbox
-    start = str2time(config.start_time)
-    end = str2time(config.end_time)
-    forecast_step = config.forecast_step
+    start = str2time(start)
+    end = str2time(cend)
     print(f"Collecting HRRR data within {bbox} from {start} to {end}")
 
     # Handle Features List

@@ -28,7 +28,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import Dict, time_range, read_yml, print_dict_summary
+from utils import Dict, time_range, read_yml, print_dict_summary, is_consecutive_hours
 from ingest.retrieve_raws_api import get_stations
 from ingest.retrieve_raws_stash import get_file_paths
 
@@ -381,8 +381,7 @@ class ODE_FMC:
     def __init__(self, params=ode_params):
             
         # List of required keys
-        required_keys = ['spinup_hours',
-                         'process_variance',
+        required_keys = ['process_variance',
                          'data_variance',
                          'r0',
                          'rs',
@@ -461,6 +460,7 @@ class ODE_FMC:
         """
         u = []
         for st in dict0:
+            assert is_consecutive_hours(dict0[st]["times"]), f"Input dictionary for station {st} has non-consecutive times"
             ui = self.run_model_single(dict0[st], hours=hours, h2=h2, atm_source=atm_source)
             u.append(ui.T) # transpose to get dimesion (timesteps, response_dim)
 

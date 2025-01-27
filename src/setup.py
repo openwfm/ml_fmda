@@ -84,7 +84,8 @@ if __name__ == '__main__':
     with open(osp.join(CONFIG_DIR, "tokens.json"), "r") as json_file:
         config = json.load(json_file)   
     meso_token = config["mesowest"]
-    synoptic.configure(token=meso_token)
+    command = f"export SYNOPTIC_TOKEN={meso_token}"
+    subprocess.run(command, shell=True)
 
     # Get a HRRR File for Spatial Projection Into
     # hpath = herbie.Herbie("2025-01-01", product="prs").download(save_dir = data_path)

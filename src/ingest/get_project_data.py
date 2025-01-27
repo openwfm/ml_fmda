@@ -24,6 +24,7 @@ import os.path as osp
 import sys
 from dateutil.relativedelta import relativedelta
 import pickle
+import ast
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -75,7 +76,7 @@ def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None
 
     # Retrieve Data
     raws_dict = build_raws_dict(start, end, bbox)
-    hrrr_ds = ih.retrieve_hrrr(start, end, bbox)
+    hrrr_ds = ih.retrieve_hrrr_train(start, end, bbox)
 
     # Handle HRRR data
     hrrr_pts = ih.subset_hrrr2raws(hrrr_ds, raws_dict)
@@ -101,6 +102,20 @@ def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None
     
     return raws_dict
 
+def parse_bbox(box_str):
+    try:
+        # Use ast.literal_eval to safely parse the string representation
+        # This will only evaluate literals and avoids security risks associated with eval
+        box = ast.literal_eval(box_str)
+        # Check if the parsed box is a list and has four elements
+        if isinstance(box, list) and len(box) == 4:
+            return box
+        else:
+            raise ValueError("Invalid bounding box format")
+    except (SyntaxError, ValueError) as e:
+        print("Error parsing bounding box:", e)
+        sys.exit(-1)
+        return None
 
 if __name__ == '__main__':
     if len(sys.argv) != 5:
@@ -118,7 +133,7 @@ if __name__ == '__main__':
     
     start = sys.argv[1]
     end = sys.argv[2]
-    bbox = sys.argv[3]
+    bbox = parse_bbox(sys.argv[3])
     output_dir = sys.argv[4]
 
     if not osp.exists(output_dir):
@@ -162,7 +177,7 @@ if __name__ == '__main__':
         filepath = osp.join(output_dir, f"fmda_{ym}.pkl")
         if not osp.exists(filepath):
             print(f"Retrieving FMDA data from {start_ym} to {end_ym}")
-            # retrieve_fmda_data(start_ym, end_ym, save_filename = osp.join(fmda_rocky_ym))
+            retrieve_fmda_data(start_ym, end_ym, bbox, save_path = filepath)
         else:
             print(f"Data {ym} already exists in {output_dir}, skipping to next period")
 
