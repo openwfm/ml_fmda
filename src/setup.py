@@ -11,6 +11,7 @@ import zipfile
 import rioxarray as rxr
 from herbie import Herbie
 import synoptic
+import subprocess
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
