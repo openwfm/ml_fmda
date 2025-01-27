@@ -9,6 +9,8 @@ import json
 import os.path as osp
 import zipfile
 import rioxarray as rxr
+from herbie import Herbie
+import synoptic
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -75,4 +77,20 @@ if __name__ == '__main__':
             zip_ref.extractall(DATA_DIR)      
     else:
         print(f"Unzipped Data Exists at: {elev_path}")
+
+    # Configure Synoptic Token with tokens.json
+    print()
+    print("Setting Mesowest token with synopticpy")
+    with open(osp.join(CONFIG_DIR, "tokens.json"), "r") as json_file:
+        config = json.load(json_file)   
+    meso_token = config["mesowest"]
+    synoptic.configure(token=meso_token)
+
+    # Get a HRRR File for Spatial Projection Into
+    # hpath = herbie.Herbie("2025-01-01", product="prs").download(save_dir = data_path)
+    # print(f"Saving Local copy of HRRR grib2 file at: {hpath}")
+
+    
+
+
 
