@@ -33,6 +33,10 @@ Retrieved data is boken into 72 hour periods. This is stored as a hyperparameter
 
 Changing this from 72 might lead to errors, particularly if changed to something not divisible by 12
 
+## Troubleshooting 
+
+If you repeatedly get the message to setup a Synoptic token despite following the directions from SynopticPy, check your config file: `~/.config/SynopticPy/config.toml`. If the file starts with the line `[default]`, the config file is being read wrong so delete this line and the token will be read properly.
+
 ## Acknowledgements
 
 This research was partially supported by NASA grants 80NSSC23K1118 and 80NSSC23K1344.
