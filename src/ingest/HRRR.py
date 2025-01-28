@@ -206,8 +206,10 @@ def retrieve_hrrr_train(start, end, bbox, all_features = True, forecast_step = 3
     """
 
     # Extract Config Info
-    start = str2time(start)
-    end = str2time(cend)
+    if type(start) is str:
+        start = str2time(start)
+    if type(end) is str:
+        end = str2time(end)
     print(f"Collecting HRRR data within {bbox} from {start} to {end}")
 
     # Handle Features List
