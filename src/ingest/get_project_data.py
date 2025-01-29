@@ -175,7 +175,8 @@ if __name__ == '__main__':
         end_t = t.replace(hour=23, minute=0, second=0, microsecond=0) # Add 24 hours to start time
         ym_dir = osp.join(output_dir, ym)
         os.makedirs(ym_dir, exist_ok=True)
-        filepath = osp.join(ym, f"fmda_{ym}.pkl")
+        filepath = osp.join(ym_dir, f"fmda_{ym}{d}.pkl")
+        print(filepath)
         if not osp.exists(filepath):
             print(f"Retrieving FMDA data from {start_t} to {end_t}")
             retrieve_fmda_data(start_t, end_t, bbox, save_path = filepath)
