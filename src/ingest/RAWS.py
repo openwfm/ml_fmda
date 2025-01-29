@@ -365,24 +365,35 @@ def build_raws_dict_stash(start, end, bbox, rename=True, verbose = True, save_pa
             raws_dict[st]["RAWS"].rename(columns=raws_meta["rename_stash"], inplace=True)
 
     # Remove Stations with missing data
+    no_data = []
     for st in list(raws_dict.keys()):
         if raws_dict[st]["RAWS"].shape[0] == 0:
-            print(f"No data found for station {st}, removing")
+            no_data.append(st)
             raws_dict.pop(st)
+    print(f"No data found for stations {no_data}, removing")
     print(f"Retrieved data for {len(raws_dict.keys())} stations")
     
     # Interpolate
     # No start time offset here
     # Hard coded static and time columns
     times = time_range(start, end)
+    
     for st in raws_dict:
         vals_to_na(raws_dict[st]["RAWS"], "fm", verbose=False) # Filter extreme values based on data params
+        nsteps = raws_dict[st]["RAWS"].shape[0]
         d = time_intp_df(raws_dict[st]["RAWS"], times, static_cols = ["stid", "lat", "lon", "elev"], time_cols = ["fm"])
         d = pd.DataFrame(d, columns = d.columns)
         raws_dict[st]["RAWS"] = d
         raws_dict[st]["times"] = times
-        raws_dict[st]["misc"] += " Interpolated data with numpy linear interpolation."
-
+        if raws_dict[st]["RAWS"].shape[0] != nsteps:
+            raws_dict[st]["misc"] += " Interpolated data with numpy linear interpolation."
+            if verbose:
+                print("~"*75)
+                print(st)
+                print(f"    Original Dataframe time steps: {nsteps}")
+                print(f"    Interpolated DataFrame time steps: {raws_dict[st]['RAWS'].shape[0]}")
+                print(f"        interpolated {raws_dict[st]['RAWS'].shape[0] - nsteps} time steps")
+    
     # Save if path provided
     if save_path is not None:
         with open(save_path, 'wb') as handle:
