@@ -121,7 +121,7 @@ if __name__ == '__main__':
     if len(sys.argv) != 5:
         print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
         print(('Usage: %s <esmf_from_utc> <esmf_to_utc> <bbox> <output_dir>' % sys.argv[0]))
-        print("Example: python src/ingest/get_project_data.py '2024-01-01T00:00:00Z' '2025-01-01T00:00:00Z' '[37,-105,39,-103]' data/rocky")
+        print("Example: python src/ingest/get_project_data.py '2024-01-01T00:00:00Z' '2025-01-01T00:00:00Z' '[37,-111,46,-95]' data/rocky_fmda")
         print("bbox format should match rtma_cycler: [latmin, lonmin, latmax, lonmax]")
         print("Times should match format: 2023-06-01T00:00:00Z")
         sys.exit(-1)
@@ -157,29 +157,30 @@ if __name__ == '__main__':
     print("Defining CV time periods based on earliest and latest forecast times")
     t0 = forecast_periods.min() - relativedelta(hours=8760)
     t1 = forecast_periods.max() + relativedelta(hours=48)
-    times = time_range(t0, t1, freq="1MS")
-    print(len(times))
-    print(t0)
-    print(t1)
+    days = time_range(t0, t1, freq="1d")
     
     # Retrieve Data
-    # For earliest and latest times in previous, retrieve one month of data at a time for computational limits
+    # For earliest and latest days in previous, retrieve one day of data at a time for computational limits
+    # Organize files in Month directories and whole days for pkl files
     # Check if data exists and continue if not. Should allow for rerunning on crash or easily adding time periods
-    # Note, default behavior of getting complete month of final period, even if not needed for analysis. Just makes code cleaner but will run a little longer
+    # Note, default behavior of getting complete day of final period, even if not needed for analysis. Just makes code cleaner but will run a little longer
     print()
     print("~"*75)
-    for t in times:
+    for t in days:
+        print("~"*50)
+        print(f"Processing data in day {t}")
         ym = t.strftime("%Y%m")
-        print(f"Processing data in year-month {ym}")
-        start_ym = t
-        end_ym = t + pd.offsets.MonthEnd(0)
-        end_ym = end_ym.replace(hour=23, minute=0, second=0, microsecond=0)
-        filepath = osp.join(output_dir, f"fmda_{ym}.pkl")
+        d = t.strftime("%d")
+        start_t = t
+        end_t = t.replace(hour=23, minute=0, second=0, microsecond=0) # Add 24 hours to start time
+        ym_dir = osp.join(output_dir, ym)
+        os.makedirs(ym_dir, exist_ok=True)
+        filepath = osp.join(ym, f"fmda_{ym}.pkl")
         if not osp.exists(filepath):
-            print(f"Retrieving FMDA data from {start_ym} to {end_ym}")
-            retrieve_fmda_data(start_ym, end_ym, bbox, save_path = filepath)
+            print(f"Retrieving FMDA data from {start_t} to {end_t}")
+            retrieve_fmda_data(start_t, end_t, bbox, save_path = filepath)
         else:
-            print(f"Data {ym} already exists in {output_dir}, skipping to next period")
+            print(f"Data for day {t} already exists in {output_dir}/{ym_dir}, skipping to next period")
 
     
     
