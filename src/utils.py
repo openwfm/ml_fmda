@@ -5,6 +5,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import logging
 import sys
+import ast
 import inspect
 import yaml
 import hashlib
@@ -398,4 +399,17 @@ def is_consecutive_hours(times):
     return np.all(time_diffs == np.timedelta64(1, 'h'))
 
 
-
+def parse_bbox(box_str):
+    try:
+        # Use ast.literal_eval to safely parse the string representation
+        # This will only evaluate literals and avoids security risks associated with eval
+        box = ast.literal_eval(box_str)
+        # Check if the parsed box is a list and has four elements
+        if isinstance(box, list) and len(box) == 4:
+            return box
+        else:
+            raise ValueError("Invalid bounding box format")
+    except (SyntaxError, ValueError) as e:
+        print("Error parsing bounding box:", e)
+        sys.exit(-1)
+        return None

@@ -29,8 +29,8 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import Dict, time_range, read_yml, print_dict_summary, is_consecutive_hours
-from ingest.retrieve_raws_api import get_stations
-from ingest.retrieve_raws_stash import get_file_paths
+from ingest.RAWS import get_stations, get_file_paths
+
 
 # Read RAWS Metadata
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -135,8 +135,7 @@ def build_climatology(start, end, bbox, nyears=clim_params.nyears, ndays=clim_pa
     print(f"    Required number of years of data: {min_years}")
 
     # Get stations in bbox
-    bbox_reordered = [bbox[1], bbox[0], bbox[3], bbox[2]] # Synoptic uses different bbox order
-    stids = get_stations(bbox_reordered)["stid"].to_numpy()    
+    stids = get_stations(bbox)["stid"].to_numpy()    
     
     # Calculate times
     times = time_range(start, end)
