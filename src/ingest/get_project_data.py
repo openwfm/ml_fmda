@@ -39,7 +39,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import time_range
+from utils import time_range, merge_dicts
 import ingest.RAWS as rr
 import ingest.HRRR as ih
 
@@ -82,7 +82,9 @@ def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None
     hrrr_pts = ih.subset_hrrr2raws(hrrr_ds, raws_dict)
     hrrr_pts = ih.rename_ds(hrrr_pts)
     assert np.all(hrrr_pts.point_stid.to_numpy() == np.array([*raws_dict.keys()])), "Not all RAWS STID in raws_dict found in hrrr data"
-
+    hrrr_units = ih.get_units_xr(hrrr_pts)
+    
+    
     # Merge Dictionaries
     for st in raws_dict:
         # Comfirm times match. For HRRR data it should be the date_time which accounts for forecast hour
@@ -94,6 +96,9 @@ def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None
         df.reset_index('point', drop=True, inplace=True)
         raws_dict[st]["HRRR"] = df
 
+        # Add HRRR units
+        raws_dict[st]["units"] = merge_dicts(raws_dict[st]["units"], hrrr_units)
+
     # Save if a filename specified to data directory relative to PROJECT_ROOT
     if save_path is not None:
         print(f"Saving data to {save_path}")
@@ -101,7 +106,7 @@ def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None
             pickle.dump(raws_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
     
     return raws_dict
-
+    
 def parse_bbox(box_str):
     try:
         # Use ast.literal_eval to safely parse the string representation

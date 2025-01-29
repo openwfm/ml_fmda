@@ -76,6 +76,14 @@ def rename_dict(input_dict, rename_mapping):
     """
     return {rename_mapping.get(key, key): value for key, value in input_dict.items()}
 
+def merge_dicts(u, u0):
+    merged = u0.copy()  # Start with u0
+    for key, value in u.items():
+        if key in merged and merged[key] != value:
+            print(f"Warning: Key '{key}' has conflicting values ('{merged[key]}' vs '{value}').")
+        merged[key] = value  # Overwrite or keep the existing value
+    return merged
+
 def remove_key_list(d, ls, verbose=False):
     for key in ls:
         if key in d:
