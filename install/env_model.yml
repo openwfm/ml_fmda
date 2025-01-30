@@ -1,0 +1,35 @@
+name: ml_fmda_models
+channels:
+  - conda-forge
+dependencies:
+  - python>=3.11
+  - pip
+  - matplotlib
+  - numpy
+  - pandas
+  - scikit-learn
+  - tensorflow
+  - jupyter
+  - jupyterlab
+  - xgboost
+    #  - pip:
+    #      # Borrow some tools from my garage
+    #      - git+https://github.com/blaylockbk/Carpenter_Workshop.git
+    #      - synoptic
+
+# =============================================================================
+#                              Conda Tips
+# =============================================================================
+# To create this environment
+#
+#     curl -O https://raw.githubusercontent.com/blaylockbk/Herbie/main/environment.yml
+#     conda env create -f env_model.yml
+#
+# To update this environment
+#
+#     conda env update -f env_model.yml --prune
+#
+# To do a conda clean
+#
+#     conda clean -tp
+# =============================================================================
