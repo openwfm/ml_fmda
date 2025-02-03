@@ -405,7 +405,8 @@ class ODE_FMC:
         self.Tr = params["Tr"]
         self.S = params["S"]
         self.T = params["T"]
-    def run_model_single(self, dat, hours, h2, atm_source = "HRRR"):
+        
+    def run_model_single(self, dat, hours=72, h2=24):
         """
         Run ODE fuel moisture model on a single location. 
         
@@ -415,17 +416,15 @@ class ODE_FMC:
         h2 : int
             Hour to turn off data assimilation and run in forecast mode
         
-        atm_source: str
-            Typically HRRR. Should be able to do RAWS as QC
         """
         Q = self.Q
         R = self.R
         H = self.H
         
-        fm = dat["RAWS"]["fm"].to_numpy().astype(np.float64)
-        Ed = dat[atm_source]["Ed"].to_numpy().astype(np.float64)
-        Ew = dat[atm_source]["Ew"].to_numpy().astype(np.float64)
-        rain = dat[atm_source]["rain"].to_numpy().astype(np.float64)
+        fm = dat["data"]["fm"].to_numpy().astype(np.float64)
+        Ed = dat["data"]["Ed"].to_numpy().astype(np.float64)
+        Ew = dat["data"]["Ew"].to_numpy().astype(np.float64)
+        rain = dat["data"]["rain"].to_numpy().astype(np.float64)
 
         u = np.zeros((2,hours))
         u[:,0]=[0.1,0.0]       # initialize,background state  
@@ -448,7 +447,7 @@ class ODE_FMC:
           
         return u
 
-    def run_dict(self, dict0, hours, h2, atm_source="HRRR"):
+    def run_dict(self, dict0, hours=72, h2=24):
         """
         Run model defined in run_model_single on a dictionary and return 3d array
 
@@ -460,21 +459,21 @@ class ODE_FMC:
         u = []
         for st in dict0:
             assert is_consecutive_hours(dict0[st]["times"]), f"Input dictionary for station {st} has non-consecutive times"
-            ui = self.run_model_single(dict0[st], hours=hours, h2=h2, atm_source=atm_source)
+            ui = self.run_model_single(dict0[st], hours=hours, h2=h2)
             u.append(ui.T) # transpose to get dimesion (timesteps, response_dim)
 
         u = np.stack(u, axis=0)
         
         return u
 
-    def slice_fm_forecasts(self, u, h2):
+    def slice_fm_forecasts(self, u, h2=24):
         """
         Given output of run_model, slice array to get only FMC at forecast hours
         """
 
         return u[:, h2:, 0:1] # Using 0:1 keeps the dimensions, if just 0 it will drop
     
-    def eval(self, u, fm, h2):
+    def eval(self, u, fm):
         """
         Return RMSE of forecast u versus observed FMC
         """
@@ -487,7 +486,7 @@ class ODE_FMC:
     
         return rmse
 
-    def run_model(self, dict0, hours, h2, atm_source="HRRR"):
+    def run_model(self, dict0, hours=72, h2=24):
         """
         Put it all together
         """
@@ -496,14 +495,14 @@ class ODE_FMC:
         print_dict_summary(self.params)
         
         # Get array of response
-        fm_arrays = [dict0[loc]["RAWS"]["fm"].values[h2:hours, np.newaxis] for loc in dict0]
+        fm_arrays = [dict0[loc]["data"]["fm"].values[h2:hours, np.newaxis] for loc in dict0]
         fm = np.stack(fm_arrays, axis=0)
 
         # Get forecasts
-        preds = self.run_dict(dict0, hours=hours, h2=h2, atm_source=atm_source)
+        preds = self.run_dict(dict0, hours=hours, h2=h2)
         m = self.slice_fm_forecasts(preds, h2 = h2)
 
-        rmse = self.eval(m, fm, h2)
+        rmse = self.eval(m, fm)
 
         return m, rmse
 

@@ -4,11 +4,13 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 import numpy as np
 import os.path as osp
 import sys
 import pickle
 import pandas as pd
+import reproducibility
 import random
 import copy
 
@@ -25,7 +27,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import read_pkl, time_range
+from utils import read_pkl, time_range, str2time
 import reproducibility
 import ingest.RAWS as rr
 import ingest.HRRR as ih
@@ -78,17 +80,217 @@ def combine_fmda_files(input_file_paths, verbose=True):
     return combined_dict
 
 
+def flag_lag_stretches(x, threshold, lag = 1):
+    """
+    Used to itentify stretches of data that have been 
+    interpolated a length greater than or equal to given threshold. 
+    Used to identify stretches of data that are not trustworthy due to 
+    extensive interpolation and thus should be removed from a ML training set.
+    """
+    lags = np.diff(x, n=lag)
+    zero_lag_indices = np.where(lags == 0)[0]
+    current_run_length = 1
+    for i in range(1, len(zero_lag_indices)):
+        if zero_lag_indices[i] == zero_lag_indices[i-1] + 1:
+            current_run_length += 1
+            if current_run_length > threshold:
+                return True
+        else:
+            current_run_length = 1
+    else:
+        return False  
+
+
+def build_ml_data(dict0, 
+                  hours = 72, 
+                  max_linear_time = 10,
+                  atm_source="HRRR"):
+    """
+    Given input of retrieved fmda data, i.e. the output of combine_fmda_files, merge RAWS and HRRR, and apply filters that flag long stretches of interpolated or constant data
+    
+    Args:
+        - hours: number of hours to chop input data into in order to apply the filters that flag lag stretches of data.
+        - max_linear_time: if the set of data defined by hours has any stretches of data that are longer than this time, set to NAN as considered untrustworthy. (either broken sensor or unreasonably long time to interpolate)
+        - atm_source: Only HRRR now, but should work with RAWS in the future and maybe something else
+
+    Returns: 
+        - ml_dict: dict
+    """
+    
+    # Setup
+    d = copy.deepcopy(dict0)
+    print(f"Building ML Data with params: ")
+    print(f"    {hours=}")
+    print(f"    {max_linear_time=}")
+    ml_dict = {}
+    
+    print(f"Merging atmospheric data from {atm_source}")
+    # Merge RAWS and HRRR
+    for st in d:
+        print("~"*50)
+        print(f"Processing station {st}")
+        if atm_source == "HRRR":
+            raws = d[st]["RAWS"][["stid", "date_time", "fm", "lat", "lon", "elev"]]
+            atm = d[st]["HRRR"]
+            # Check times match
+            assert np.all(raws.date_time.to_numpy() == atm.date_time.to_numpy()), f"date_time column doesn't match from RAWS and HRRR for station {st}"
+        
+            # Merge, if repeated names add 
+            df = pd.merge(
+                raws,
+                atm,
+                left_on=['date_time', 'stid', 'lat', 'lon'],
+                right_on=['date_time', 'point_stid', 'point_latitude', 'point_longitude'],
+                suffixes=('', '_hrrr')  # Keep the original name for raws, add '_hrrr' for hrrr
+            )
+        elif atm_source == "RAWS":
+            print("RAWS atmospheric data not tested yet")
+            sys.exit(-1)
+            # df = d[st]["RAWS"]
+    
+        # Split into periods
+        print(f"Splitting into {hours} hour increments")
+        df['st_period'] = np.arange(len(df)) // hours
+    
+        # Apply FMC filters and remove suspect data periods. 
+        # If no data remaining, add STID to list to remove 
+        flagged = df.groupby('st_period')['fm'].apply(
+        lambda period: flag_lag_stretches(period, max_linear_time, lag=2)
+    ).pipe(lambda flags: flags[flags].index)
+        if flagged.size > 0:
+            print(f"Removing period {flagged} due to linear period of data longer than {max_linear_time}")
+        
+        # Filter Periods shorter than hours param (72 hours)
+        # small_periods = df.groupby('st_period').filter(
+        #     lambda group: len(group) < params_data['hours']
+        # )['st_period'].unique()
+        
+        # if small_periods.size > 0:
+        #     print(f"Removing period(s) {list(small_periods)} due to insufficient rows (< {params_data['hours']})")
+        # flagged = set(flagged).union(small_periods)
+        
+        df_filtered = df[~df['st_period'].isin(flagged)]
+        if df_filtered.shape[0] > 0:
+            ml_dict[st] = {
+                'data': df_filtered,
+                'units': d[st]["units"],
+                'loc': d[st]["loc"],
+                'misc': d[st]["misc"],
+                'times': df_filtered["date_time"].to_numpy()
+            }
+    
+    print()
+    print(f"Data remaining for {len(ml_dict.keys())} unique stations")
+    return ml_dict
+
+
 # Cross Validation Functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+def cv_time_setup(forecast_start_time, train_hours = 8760, forecast_hours = 48, verbose=True):
+    """
+    Given forecast start time, calculate train/validation/test periods based on parameters.
+    """
+    
+    # Time that forecast period starts
+    if type(forecast_start_time) is str:
+        t = str2time(forecast_start_time)
+    else:
+        t = forecast_start_time
+    # Start time, number of desired train hours previous to forecast start time, default 1 year (8760) hours
+    tstart = t-relativedelta(hours = train_hours)
+    # End time, number of forecast hours into future of forecast start time, default 48 hours
+    tend = t+relativedelta(hours = forecast_hours-1)
+
+    train_times = time_range(tstart, t-relativedelta(hours = forecast_hours+1))
+    val_times = time_range(t-relativedelta(hours = forecast_hours), t-relativedelta(hours = 1))
+    test_times = time_range(t, tend)
+
+    if verbose:
+        print(f"Start of forecast period: {t}")
+        print(f"Number of Training Hours: {len(train_times)}")
+        print(f"Train Period: {train_times.min()} to {train_times.max()}")
+        print(f"Number of Validation Hours: {len(val_times)}")
+        print(f"Val Period: {val_times.min()} to {val_times.max()}")        
+        print(f"Number of Forecast Hours: {len(test_times)}")
+        print(f"Forecast Period Period: {test_times.min()} to {test_times.max()}")
+    
+    return train_times, val_times, test_times
+
+def cv_space_setup(sts_list, fracs = [0.8, 0.1, 0.1], random_state=None, verbose=True):
+    """
+    Given input stations list, split cv based on [train, val, test]
+    
+    Returns: list train, test, val
+    """
+
+    if random_state is not None:
+        reproducibility.set_seed(random_state)
+
+    train_frac_sp = fracs[0]
+    val_frac_sp = fracs[1]
+    locs = np.arange(len(sts_list)) # indices of locations
+    train_size = int(len(locs) * train_frac_sp)
+    val_size = int(len(locs) * val_frac_sp)
+    random.shuffle(locs)
+    tr_ind = locs[:train_size]
+    val_ind = locs[train_size:train_size + val_size]
+    te_ind = locs[train_size + val_size:]
+
+    train_locs = [sts_list[i] for i in tr_ind]
+    val_locs = [sts_list[i] for i in val_ind]
+    test_locs = [sts_list[i] for i in te_ind]
+
+    if verbose:
+        print(f"Total Number of Stations: {len(sts_list)}")
+        print(f"Number of stations in Train: {len(train_locs)}")
+        print(f"Number of stations in Val: {len(val_locs)}")
+        print(f"Number of stations in Test: {len(test_locs)}")
+    
+    return train_locs, val_locs, test_locs
+
+
 
 # Helper function to filter dataframe on time
 def filter_df(df, filter_col, ts):
     return df[df[filter_col].isin(ts)]
 
+def get_sts_and_times(dict0, sts_list, times):
+    """
+    Given input retrieved fmda data, return sudictionary based on given stations list and observed data times
+    """
+
+    d = copy.deepcopy(dict0)
+
+    # Get stations
+    new_dict =  {k: d[k] for k in sts_list}
+
+    # Get times
+    for st in new_dict:
+        new_dict[st]["times"] = times
+        new_dict[st]["data"] = filter_df(new_dict[st]["data"], "date_time", times)
+ 
+    return new_dict
 
 
+def get_ode_data(dict0, sts, test_times, spinup=24):
+    """
+    Wraps previous to include a spinup time in the data pulled for test period. Intended to use with ODE+KF model
+    """
+    d = copy.deepcopy(dict0)
+
+    # Define Spinup Period
+    spinup_times = time_range(
+        test_times.min()-relativedelta(hours=spinup),
+        test_times.min()-relativedelta(hours=1)
+    )
+
+    # Get data for spinup period plus test times
+    all_times = time_range(spinup_times.min(), test_times.max())
+    ode_data = get_sts_and_times(d, sts, all_times)
+
+    return ode_data
 
 
-
-
-
+    
