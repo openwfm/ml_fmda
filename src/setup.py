@@ -6,6 +6,7 @@
 import sys
 import pickle
 import json
+import os
 import os.path as osp
 import zipfile
 import rioxarray as rxr
@@ -33,6 +34,11 @@ from utils import retrieve_url
 
 if __name__ == '__main__':
 
+    print()
+    print("~"*75)
+    print(f"Setting up tests")
+    os.makedirs(osp.join(DATA_DIR, "test_data"), exist_ok=True)
+    
     print()
     print("~"*75)
     print(f"Retrieving LandFire data to target directory: {DATA_DIR}")

@@ -61,7 +61,7 @@ def extend_fmda_dicts(d1, d2, subdict_keys=["RAWS", "HRRR", "times"]):
 
     return merged_dict
 
-def combine_fmda_files(input_file_paths, verbose=True):
+def combine_fmda_files(input_file_paths, save_path = None, verbose=True):
     """
     Read a list of files retrieved with retrieve_fmda_data and combine data at common stations based on time
     """
@@ -77,6 +77,10 @@ def combine_fmda_files(input_file_paths, verbose=True):
             else:
                 combined_dict[st] = extend_fmda_dicts(combined_dict[st], di[st])
 
+    if save_path is not None:
+        with open(save_path, 'wb') as f:
+            pickle.dump(combined_dict, f)
+    
     return combined_dict
 
 
@@ -104,7 +108,7 @@ def flag_lag_stretches(x, threshold, lag = 1):
 def build_ml_data(dict0, 
                   hours = 72, 
                   max_linear_time = 10,
-                  atm_source="HRRR"):
+                  atm_source="HRRR", save_path = None):
     """
     Given input of retrieved fmda data, i.e. the output of combine_fmda_files, merge RAWS and HRRR, and apply filters that flag long stretches of interpolated or constant data
     
@@ -181,6 +185,11 @@ def build_ml_data(dict0,
     
     print()
     print(f"Data remaining for {len(ml_dict.keys())} unique stations")
+    
+    if save_path is not None:
+        with open(save_path, 'wb') as f:
+            pickle.dump(ml_dict, f)    
+    
     return ml_dict
 
 
