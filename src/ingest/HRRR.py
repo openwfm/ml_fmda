@@ -188,7 +188,7 @@ def get_units_xr(ds):
     
     return units
 
-def retrieve_hrrr_train(start, end, bbox, all_features = True, forecast_step = 3):
+def retrieve_hrrr_api(start, end, bbox, all_features = True, forecast_step = 3):
     """
     Wrapper function to get HRRR data given config.
 
@@ -268,7 +268,6 @@ def retrieve_hrrr_train(start, end, bbox, all_features = True, forecast_step = 3
         ds = calc_times(ds)
     # Add date_time col based on valid_time with UTC timezone
     ds["date_time"] = ("time", pd.to_datetime(ds["valid_time"].values).tz_localize("UTC").to_numpy())
-
     
     return ds
 

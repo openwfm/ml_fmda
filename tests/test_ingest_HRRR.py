@@ -42,7 +42,7 @@ rain_hash = "f671162f83b9232ee9f94ce0d8b8d3c2"
 if __name__ == '__main__':
     print("Testing Ingest HRRR data")
 
-    hrrr_ds = ih.retrieve_hrrr_train(start, end, bbox)
+    hrrr_ds = ih.retrieve_hrrr_api(start, end, bbox)
     hrrr_pts = ih.subset_hrrr2raws(hrrr_ds, raws_dict)
     hrrr_pts = ih.rename_ds(hrrr_pts)
 
