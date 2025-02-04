@@ -507,8 +507,74 @@ class ODE_FMC:
         return m, rmse
 
 
+# Static Models Code
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 
+class MLModel(ABC):
+    def __init__(self, params: dict):
+        self.params = Dict(params)
+        if type(self) is MLModel:
+            raise TypeError("MLModel is an abstract class and cannot be instantiated directly")
+        super().__init__()
 
+    def _filter_params(self, model_cls):
+        """Filters out parameters that are not part of the model constructor."""
+        model_params = self.params.copy()
+        valid_keys = model_cls.__init__.__code__.co_varnames
+        filtered_params = {k: v for k, v in model_params.items() if k in valid_keys}
+        return filtered_params
+        
+    
+    def fit(self, X_train, y_train, weights=None):
+        print(f"Fitting {self.params.mod_type} with params {self.params}")
+        self.model.fit(X_train, y_train, sample_weight=weights)  
 
+    def predict(self, X):
+        print(f"Predicting with {self.params.mod_type}")
+        preds = self.model.predict(X)
+        return preds
+        
+    # def eval(self, X_test, y_test):
+    #     preds = self.predict(X_test)
+    #     rmse = np.sqrt(mean_squared_error(y_test, preds))
+    #     # rmse_ros = np.sqrt(mean_squared_error(ros_3wind(y_test), ros_3wind(preds)))
+    #     print(f"Test RMSE: {rmse}")
+    #     # print(f"Test RMSE (ROS): {rmse_ros}")
+    #     return rmse
+
+    def run_model(self, data_dict):
+        """
+        Wrapper to take custom data class and train & predict test data
+        """
+
+        self.fit(data_dict.X_train, data_dict.y_train)
+        m = self.predict(data_dict.X_test)
+        rmse = np.sqrt(mean_squared_error(m, data_dict.y_test))
+
+        return m, rmse
+        
+
+xgb_params = Dict(params_models["xgb"])
+
+class XGB(MLModel):
+    def __init__(self, params: dict):
+        super().__init__(params)
+        model_params = self._filter_params(XGBRegressor) 
+        self.model = XGBRegressor(**model_params)
+        self.params['mod_type'] = "XGBoost"
+
+    def predict(self, X):
+        print("Predicting with XGB")
+        preds = self.model.predict(X)
+        return preds
+
+lm_params = Dict(params_models["lm"])
+
+class LM(MLModel):
+    def __init__(self, params: dict):
+        super().__init__(params)
+        model_params = self._filter_params(LinearRegression)
+        self.model = LinearRegression(**model_params)
+        self.params['mod_type'] = "LinearRegression"

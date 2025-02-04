@@ -7,5 +7,9 @@
     "data_params_path": "etc/params_data.yaml",
     "features_list": ["Ed", "Ew", "rain", "wind", "solar", "grid_x", "grid_y", "hod"],
     "space_cv": [0.8, 0.1, 0.1],  
-    "test_hours_cv": 2     
+    "test_hours_cv": 48,
+    "raws_stash_path": "data/MesoDB",
+    "hrrr_stash_path": "data/hrrr_stash"
 }
+
+
