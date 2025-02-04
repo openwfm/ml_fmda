@@ -283,6 +283,7 @@ def get_sts_and_times(dict0, sts_list, times):
     for st in new_dict:
         new_dict[st]["times"] = times
         new_dict[st]["data"] = filter_df(new_dict[st]["data"], "date_time", times)
+        new_dict[st]["times"] = new_dict[st]["data"].date_time.to_numpy()
  
     return new_dict
 
@@ -325,7 +326,7 @@ class MLData(ABC):
         self._setup_data(train, val, test)
         # Assuming that units are all the same as it was checked in a previous step
         self.units = next(iter(train.values()))["units"]
-    
+    f
     def _run_checks(self, train, val, test, scaler):
         """Validates input types for train, val, test, and scaler."""
         if not isinstance(train, dict):

@@ -1,3 +1,5 @@
+# Functions to fit other moisture models, including ODE+KF and static
+
 import numpy as np
 import math
 import matplotlib.pyplot as plt
