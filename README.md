@@ -69,7 +69,13 @@ To apply filters related to broken sensors or too long stretches of missing data
 
 Changing this from 72 might lead to errors, particularly if changed to something not divisible by 12
 
+## Building Models
 
+### Climatology
+
+```
+python models/run_climatology.py '2024-01-01T00:00:00Z' '2024-12-31T23:00:00Z' '[37,-111,46,-95]' climatology_rocky2024.pkl
+```
 
 
 ## Troubleshooting 
