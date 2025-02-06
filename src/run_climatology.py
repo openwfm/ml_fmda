@@ -25,7 +25,7 @@ if __name__ == '__main__':
     if len(sys.argv) != 5:
         print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
         print(('Usage: %s <esmf_from_utc> <esmf_to_utc> <bbox> <output_file>' % sys.argv[0]))
-        print("Example: python src/ingest/build_fmda_dicts.py '2023-06-01T00:00:00Z' '2023-06-01T05:00:00Z' '[37,-105,39,-103]' test_climatology.pkl")
+        print("Example: python src/run_climatology '2023-06-01T00:00:00Z' '2023-06-01T05:00:00Z' '[37,-105,39,-103]' data/test_climatology.pkl")
         print("bbox format should match rtma_cycler: [latmin, lonmin, latmax, lonmax]")
         sys.exit(-1)
 
