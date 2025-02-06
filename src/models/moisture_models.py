@@ -2,7 +2,6 @@
 
 import numpy as np
 import math
-import matplotlib.pyplot as plt
 import copy
 from abc import ABC, abstractmethod
 import xgboost as xg

@@ -19,6 +19,12 @@ vi tokens.json
 …
 ```
 
+This project utilizes a cache of RAWS data, since Synoptic charges for data older than 1 year. The stash is maintained by Angel Farguell. The typical workflow is to receive a packaged tar.gz file and extract to the "data" directory with the following command from the Root project directory:
+
+```
+tar -xvzf MesoDB.tar.gz data
+```
+
 Finally, if you wish to replicate results from the research associated with this project, run the `setup.py` script which will retrieve certain data and set up certain tests
 
 ```
@@ -69,6 +75,8 @@ Changing this from 72 might lead to errors, particularly if changed to something
 ## Troubleshooting 
 
 If you repeatedly get the message to setup a Synoptic token despite following the directions from SynopticPy, check your config file: `~/.config/SynopticPy/config.toml`. If the file starts with the line `[default]`, the config file is being read wrong so delete this line and the token will be read properly.
+
+Data retrieval of HRRR can sometimes be killed by automatic processes. If this happens, it is possible that mal-formed subsets of HRRR files get saved in the default directory that HRRR saves temporary files. The mal-formed files need to be deleted, otherwise the Herbie package will detect the file existence by name and not pull in the correct data. If you get errors like "___". Check for directory /Users/USERNAME/data/hrrr/ and delete corresponding files
 
 ## Acknowledgements
 
