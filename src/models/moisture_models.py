@@ -14,6 +14,7 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import random
 import os.path as osp
 import sys
+import warnings
 from dateutil.relativedelta import relativedelta
 
 # Set up project paths
@@ -90,7 +91,13 @@ def build_climatology(start, end, bbox, nyears=clim_params.nyears, ndays=clim_pa
     #     return clim_df
         
     def read_st_fm(path, st):
-        df = pd.read_pickle(path)  # Read the pickle file
+        try:
+            df = pd.read_pickle(path)  # Read the pickle file
+        except FileNotFoundError:
+            # warnings.warn(f"File not found: {path}", category=UserWarning) # TODO fix multiple calls to same read
+            return pd.DataFrame({"STID": [st], "datetime": [pd.NaT], "fm10": [float("nan")]})
+
+        
         result = df[df['STID'] == st]  # Filter rows for the specific stid
         
         # If `stid` is missing, add a row with NaNs for other columns
