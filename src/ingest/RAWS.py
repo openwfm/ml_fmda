@@ -16,6 +16,7 @@ import os.path as osp
 from datetime import datetime, timezone
 from dateutil.relativedelta import relativedelta
 from pathlib import Path
+import ast
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -413,5 +414,40 @@ def build_raws_dict_stash(start, end, bbox, rename=True, verbose = True, save_pa
             pickle.dump(raws_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
     
     return raws_dict
+
+
+def parse_bbox(box_str):
+    try:
+        # Use ast.literal_eval to safely parse the string representation
+        # This will only evaluate literals and avoids security risks associated with eval
+        box = ast.literal_eval(box_str)
+        # Check if the parsed box is a list and has four elements
+        if isinstance(box, list) and len(box) == 4:
+            return box
+        else:
+            raise ValueError("Invalid bounding box format")
+    except (SyntaxError, ValueError) as e:
+        print("Error parsing bounding box:", e)
+        sys.exit(-1)
+        return None
+
+if __name__ == '__main__':
+    if len(sys.argv) != 5:
+        print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
+        print(('Usage: %s <esmf_from_utc> <esmf_to_utc> <bbox> <output_dir>' % sys.argv[0]))
+        print("Example: python src/ingest/RAWS.py '2024-01-01T00:00:00Z' '2024-03-01T00:00:00Z' '[40,-111,45,-110]' data/raws_test.pkl")
+        print("bbox format should match rtma_cycler: [latmin, lonmin, latmax, lonmax]")
+        print("Times should match format: 2023-06-01T00:00:00Z")
+        sys.exit(-1)
+
+    start = sys.argv[1]
+    end = sys.argv[2]
+    bbox = parse_bbox(sys.argv[3])
+    output_file = sys.argv[4]
+
+    print(f"Retrieving data from RAWS stash")
+    raws_dict = build_raws_dict_stash(start, end, bbox, save_path = output_file)
+
+
 
     
