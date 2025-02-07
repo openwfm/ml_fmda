@@ -92,6 +92,7 @@ def build_climatology(start, end, bbox, nyears=clim_params.nyears, ndays=clim_pa
         
     def read_st_fm(path, st):
         try:
+            print(f"Reading: {path}")
             df = pd.read_pickle(path)  # Read the pickle file
         except FileNotFoundError:
             # warnings.warn(f"File not found: {path}", category=UserWarning) # TODO fix multiple calls to same read
@@ -151,8 +152,13 @@ def build_climatology(start, end, bbox, nyears=clim_params.nyears, ndays=clim_pa
     clim_df.columns = times
     climyears = clim_df.map(lambda x: x.year)
 
+
+    print("******DEBUG*******")
+    print(clim_df)
+
+
     # Get Stash File Paths 
-    file_paths = {col: get_file_paths(clim_df[col]) for col in clim_df.columns}
+    file_paths = {col: get_file_paths(clim_df[col].dropna()) for col in clim_df.columns}
     file_paths = pd.DataFrame.from_dict(file_paths, orient='index').transpose()    
     
     clim_dict = {}
