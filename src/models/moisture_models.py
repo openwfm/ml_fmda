@@ -30,7 +30,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import Dict, time_range, read_yml, print_dict_summary, is_consecutive_hours
+from utils import Dict, time_range, read_yml, print_dict_summary, is_consecutive_hours, read_pkl
 from ingest.RAWS import get_stations, get_file_paths
 
 
@@ -92,9 +92,9 @@ def build_climatology(start, end, bbox, nyears=clim_params.nyears, ndays=clim_pa
         
     def read_st_fm(path, st):
         try:
-            print(f"Reading: {path}")
+            #print(f"Reading: {path}")
             df = pd.read_pickle(path)  # Read the pickle file
-        except FileNotFoundError:
+        except (FileNotFoundError, ValueError):
             # warnings.warn(f"File not found: {path}", category=UserWarning) # TODO fix multiple calls to same read
             return pd.DataFrame({"STID": [st], "datetime": [pd.NaT], "fm10": [float("nan")]})
 
@@ -152,13 +152,8 @@ def build_climatology(start, end, bbox, nyears=clim_params.nyears, ndays=clim_pa
     clim_df.columns = times
     climyears = clim_df.map(lambda x: x.year)
 
-
-    print("******DEBUG*******")
-    print(clim_df)
-
-
     # Get Stash File Paths 
-    file_paths = {col: get_file_paths(clim_df[col].dropna()) for col in clim_df.columns}
+    file_paths = {col: get_file_paths(clim_df[col].dropna()) for col in clim_df.columns} # NOTE: NA's generated when mixing leap year times
     file_paths = pd.DataFrame.from_dict(file_paths, orient='index').transpose()    
     
     clim_dict = {}
