@@ -158,6 +158,8 @@ def build_climatology(start, end, bbox, nyears=clim_params.nyears, ndays=clim_pa
     
     clim_dict = {}
     for st in stids:
+	print("~"*50)
+	print(f"Processing station {st}")
         df = get_fm_data(st, file_paths)
         df.columns = times
         clim_dict[st]={
