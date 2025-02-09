@@ -157,7 +157,7 @@ def build_ml_data(dict0,
             # df = d[st]["RAWS"]
     
         # Split into periods
-        print(f"Splitting into {hours} hour increments")
+        print(f"Checking {hours} hour increments for constant/linear")
         df['st_period'] = np.arange(len(df)) // hours
     
         # Apply FMC filters and remove suspect data periods. 
@@ -248,8 +248,8 @@ def cv_space_setup(sts_list, fracs = [0.8, 0.1, 0.1], random_state=None, verbose
     val_size = int(len(locs) * val_frac_sp)
     random.shuffle(locs)
     tr_ind = locs[:train_size]
-    val_ind = locs[train_size:train_size + val_size]
-    te_ind = locs[train_size + val_size:]
+    val_ind = locs[train_size:(train_size + val_size)]
+    te_ind = locs[(train_size + val_size):]
 
     train_locs = [sts_list[i] for i in tr_ind]
     val_locs = [sts_list[i] for i in val_ind]
