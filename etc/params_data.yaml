@@ -8,7 +8,7 @@
 
 max_linear_time: 10 # maximum number of hours that can be perfectly linear, controls interpolation length
 max_const_time: 10 # number of hours where flagged if zero change in a variable
-hours: 720 # total hours to build timeseries, break up longer into this length. Used to help with filters related to over-interpolation
+hours: 72 # total hours to build timeseries, break up longer into this length. Used to help with filters related to over-interpolation
 min_fm: 1 # minimum FMC value allowed (assumes scaled 0-100)
 max_fm: 90 # maximum FMC value allowed (assumes scaled 0-100), see VanderKamp 2016 Table 1
 min_rain: 0 # minimum rain value allowed
@@ -17,8 +17,8 @@ min_wind: 0 # minimum wind threshold value
 max_wind: 35 # maximum wind threshold value, this corresponds to a hurricane
 min_solar: 0 # minimum wind threshold value
 max_solar: 1400 # maximum solar threshold value
-min_tmp: 230 # Minimum air temp (K), corresponds to -43 C
-max_tmp: 330 # Maximum air temp (K), corresponds to 56 C (hottest recorded temp in Death Valley)
+min_temp: 230 # Minimum air temp (K), corresponds to -43 C
+max_temp: 330 # Maximum air temp (K), corresponds to 56 C (hottest recorded temp in Death Valley)
 # min_soilm: 0 # minimum soil moisture threshold value
 # max_soilm: 0 # minimum soil moisture threshold value, TODO
 # features_all: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'soilm', 'canopyw', 'groundflux', 'rain'] # list of all features to try to process
