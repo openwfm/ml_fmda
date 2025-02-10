@@ -74,7 +74,7 @@ Changing this from 72 might lead to errors, particularly if changed to something
 ### Climatology
 
 ```
-python models/run_climatology.py '2024-01-01T00:00:00Z' '2024-12-31T23:00:00Z' '[37,-111,46,-95]' climatology_rocky2024.pkl
+python src/run_climatology.py '2024-01-01T00:00:00Z' '2024-12-31T23:00:00Z' '[37,-111,46,-95]' data/climatology_rocky2024.pkl
 ```
 
 
