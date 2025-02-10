@@ -31,7 +31,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import read_pkl, time_range, str2time
+from utils import read_pkl, time_range, str2time, is_consecutive_hours
 import reproducibility
 import ingest.RAWS as rr
 import ingest.HRRR as ih
@@ -231,39 +231,92 @@ def cv_time_setup(forecast_start_time, train_hours = 8760, forecast_hours = 48, 
     
     return train_times, val_times, test_times
 
-def cv_space_setup(sts_list, fracs = [0.8, 0.1, 0.1], random_state=None, verbose=True):
+
+def get_stids_in_timeperiod(dict0, times, all_times=True):
     """
-    Given input stations list, split cv based on [train, val, test]
-    
-    Returns: list train, test, val
+    Based on input times, get list of stids from input dictionary 
+    that has data availability for that time period.
+
+    Intended use: for static ML models where any samples can be used without
+    maintaining sequences, all_times=False. for recurrent ML models where
+    sequences need to be maintained, all_times=True.
+
+    Args
+        - dict0: (dict) input FMDA dictionary
+        - times: (np.array) array of target date times
+        - all_times: (bool) if True, only select stids that have 
+        full data coverage for input time. If False, any time present 
+        will do
     """
 
+    if all_times:
+        # Return STIDs where input times are fully included in data times
+        stids_output = [stid for stid, data in dict0.items() if set(times).issubset(set(data["times"]))]
+    else:
+        # Return STIDS where intersection of input times and data times is nonempty
+        stids_output = [stid for stid, data in dict0.items() if set(times) & set(data["times"])]
+
+    # Sort return alphabetically, bc set operations non-reproducible
+    return sorted(stids_output)
+
+def cv_space_setup(dict0, val_times, test_times, test_frac = 0.1, verbose=True, random_state=None):
+    """
+    Split cv based on [train, val, test]. Checks for data availability in test and val sets before
+    taking sample of size test_frac from total observations. Remaining stations used for train.
+    This allows size of train set to vary, but forces consistency of test and val sets
+    
+    Returns: tuple of lists, train, test, val
+    """
+    
     if random_state is not None:
         reproducibility.set_seed(random_state)
 
-    train_frac_sp = fracs[0]
-    val_frac_sp = fracs[1]
-    locs = np.arange(len(sts_list)) # indices of locations
-    train_size = int(len(locs) * train_frac_sp)
-    val_size = int(len(locs) * val_frac_sp)
-    random.shuffle(locs)
-    tr_ind = locs[:train_size]
-    val_ind = locs[train_size:(train_size + val_size)]
-    te_ind = locs[(train_size + val_size):]
+    # Define size of test/val
+    N_t = int(np.round(len(dict0)*test_frac))
 
-    train_locs = [sts_list[i] for i in tr_ind]
-    val_locs = [sts_list[i] for i in val_ind]
-    test_locs = [sts_list[i] for i in te_ind]
+    # Select stations from set with data availability
+    # in the test time period
+    test_ids = get_stids_in_timeperiod(dict0, test_times, all_times=True)
+    random.shuffle(test_ids)
+    test_locs = test_ids[:N_t]
+
+    # Excluding test locs, select set with data availability
+    # in the val time period
+    val_ids = get_stids_in_timeperiod(dict0, val_times, all_times=True)
+    val_ids = list(set(val_ids) - set(test_locs))
+    val_ids.sort() # Sort alphabetically since set operations don't guarantee reproducibility
+    random.shuffle(val_ids)
+    val_locs = val_ids[:N_t]
+
+    # Get remaining stations for Train set
+    stids = [*dict0.keys()]
+    train_locs = list(set(stids) - set(val_locs) - set(test_locs))
 
     if verbose:
-        print(f"Total Number of Stations: {len(sts_list)}")
-        print(f"Number of stations in Train: {len(train_locs)}")
-        print(f"Number of stations in Val: {len(val_locs)}")
-        print(f"Number of stations in Test: {len(test_locs)}")
+        print(f"Total stations: {len(stids)}")
+        print(f"Number of train stations: {len(train_locs)}")
+        print(f"Number of val stations: {len(val_locs)}")
+        print(f"Number of test stations: {len(test_locs)}")
     
     return train_locs, val_locs, test_locs
 
 
+
+def extract_sequences(df, sequence_length=12):
+    """
+    Given dataframe with date_time column, return samples of consecutive data
+    of length sequence_length in 3d array of shape (n_samples, sequence_length, n_features)
+    """
+    times = df["date_time"].values
+    data = df.drop(columns=["date_time"]).values
+    sequences = []
+
+    for i in range(len(df) - sequence_length + 1):
+        time_window = times[i : i + sequence_length]
+        if is_consecutive_hours(time_window):
+            sequences.append(data[i : i + sequence_length])
+
+    return np.array(sequences)
 
 # Helper function to filter dataframe on time
 def filter_df(df, filter_col, ts):
