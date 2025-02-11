@@ -300,12 +300,12 @@ def cv_space_setup(dict0, val_times, test_times, test_frac = 0.1, verbose=True, 
     
     return train_locs, val_locs, test_locs
 
-
-
 def extract_sequences(df, sequence_length=12):
     """
     Given dataframe with date_time column, return samples of consecutive data
     of length sequence_length in 3d array of shape (n_samples, sequence_length, n_features)
+
+    Runs in sliding window fashion, so if sequential 1hr data of length N it should return N-sequence_length+1 sequences
     """
     times = df["date_time"].values
     data = df.drop(columns=["date_time"]).values
