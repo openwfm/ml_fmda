@@ -22,6 +22,7 @@ DATA_DIR = osp.join(PROJECT_ROOT, "data")
 from utils import read_yml, Dict, str2time, time_range
 import data_funcs
 import reproducibility
+import models.moisture_models as mm
 
 # Read Metadata and Data Params 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -116,6 +117,27 @@ if __name__ == '__main__':
                                                     val_times=val_times, 
                                                     test_times=test_times, 
                                                     random_state=None)
-        print(te_sts)
+        train = data_funcs.get_sts_and_times(ml_dict, tr_sts, train_times)
+        val = data_funcs.get_sts_and_times(ml_dict, val_sts, val_times)
+        test = data_funcs.get_sts_and_times(ml_dict, te_sts, test_times)
+
+        # Run Models
+        ## ODE
+        print()
+        ode_data = data_funcs.get_ode_data(ml_dict, te_sts, test_times)
+        ode = mm.ODE_FMC()
+        m, errs = ode.run_model(ode_data, hours=72, h2=24)
+        print(f"ODE RMSE Over Test Period: {errs}")
+
+        ## Static XGBoost
+        print()
+        dat = data_funcs.StaticMLData(train, val, test)
+        dat.scale_data()
+        xgb_model = mm.XGB(mm.xgb_params)
+        m, err = xgb_model.run_model(dat)
+        print(f"XGBoost RMSE over Test Period: {err}")
+
+
+
 
     
