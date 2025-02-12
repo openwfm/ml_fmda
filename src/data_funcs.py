@@ -6,6 +6,7 @@
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import numpy as np
+import os
 import os.path as osp
 import sys
 import pickle
@@ -31,10 +32,15 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import read_pkl, time_range, str2time, is_consecutive_hours
+from utils import read_pkl, read_yml, time_range, str2time, is_consecutive_hours
 import reproducibility
 import ingest.RAWS as rr
 import ingest.HRRR as ih
+
+# Read Variable Metadata
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hrrr_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "hrrr_metadata.yaml"))
+
 
 
 # Data Retrieval Wrappers
@@ -109,10 +115,20 @@ def flag_lag_stretches(x, threshold, lag = 1):
         return False  
 
 
+def sort_files_by_date(path, full_paths =True):
+    files = os.listdir(path)
+    sorted_files = sorted(files, key=lambda f: f.split('_')[1].split('.')[0])
+    if full_paths:
+        sorted_files = [osp.join(path, f) for f in sorted_files]
+    return sorted_files
+    
+
 def build_ml_data(dict0, 
                   hours = 72, 
                   max_linear_time = 10,
-                  atm_source="HRRR", save_path = None):
+                  atm_source="HRRR", 
+                  dtype_mapping = {"float": np.float64, "int": np.int64},
+                  save_path = None):
     """
     Given input of retrieved fmda data, i.e. the output of combine_fmda_files, merge RAWS and HRRR, and apply filters that flag long stretches of interpolated or constant data
     
@@ -120,6 +136,7 @@ def build_ml_data(dict0,
         - hours: number of hours to chop input data into in order to apply the filters that flag lag stretches of data.
         - max_linear_time: if the set of data defined by hours has any stretches of data that are longer than this time, set to NAN as considered untrustworthy. (either broken sensor or unreasonably long time to interpolate)
         - atm_source: Only HRRR now, but should work with RAWS in the future and maybe something else
+        - dtype_mapping: (dict) based on metadata dtype string, what to set the column as
 
     Returns: 
         - ml_dict: dict
@@ -167,17 +184,17 @@ def build_ml_data(dict0,
     ).pipe(lambda flags: flags[flags].index)
         if flagged.size > 0:
             print(f"Removing period {flagged} due to linear period of data longer than {max_linear_time}")
-        
-        # Filter Periods shorter than hours param (72 hours)
-        # small_periods = df.groupby('st_period').filter(
-        #     lambda group: len(group) < params_data['hours']
-        # )['st_period'].unique()
-        
-        # if small_periods.size > 0:
-        #     print(f"Removing period(s) {list(small_periods)} due to insufficient rows (< {params_data['hours']})")
-        # flagged = set(flagged).union(small_periods)
-        
+
+        # Filter flagged periods
         df_filtered = df[~df['st_period'].isin(flagged)]
+        # Set Column types with metadata
+        # Apply dtype conversion to each column
+        for col, meta in hrrr_meta.items():
+            if col in df_filtered.columns:
+                target_dtype = dtype_mapping.get(meta.get("dtype"), None)
+                if target_dtype:
+                    df_filtered[col] = df_filtered[col].astype(target_dtype)   
+                    
         if df_filtered.shape[0] > 0:
             ml_dict[st] = {
                 'data': df_filtered,

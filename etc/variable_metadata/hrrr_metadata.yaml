@@ -13,6 +13,7 @@ Ed:
     descr: "Calculated from rh and air temp"
     feature_type: "engineered_data"
     required_fmda_names: ["rh", "temp"]
+    dtype: "float"
 
 Ew: 
     long_name: "Wetting equilibrium"
@@ -20,7 +21,8 @@ Ew:
     descr: "Calculated from rh and air temp"
     feature_type: "engineered_data"
     required_fmda_names: ["rh", "temp"]
-
+    dtype: "float"
+    
 temp:
     long_name: "Air temperature"
     units: "K"
@@ -40,7 +42,8 @@ rh:
     hrrr_name: "RH"
     herbie_str: "RH:2 m"
     xarray_name: "r2"
-
+    dtype: "float"
+    
 rain:
     long_name: "Hourly precipitation"
     units: "mm/hr"
@@ -50,7 +53,8 @@ rain:
     hrrr_name: "APCP"
     herbie_str: ":APCP:surface:2-3 hour acc"
     xarray_name: "tp"
-
+    dtype: "float"
+    
 
 wind: 
     long_name: "10m wind speed"
@@ -61,7 +65,8 @@ wind:
     hrrr_name: "WIND"
     herbie_str: "WIND:10 m"
     xarray_name: "si10"
-
+    dtype: "float"
+    
 solar: 
     long_name: "Downward Short-Wave Radiation Flux"
     units: "W/m^2"
@@ -71,7 +76,8 @@ solar:
     hrrr_name: "DSWRF"
     herbie_str: "DSWRF:surface"
     xarray_name: "dswrf"
-
+    dtype: "float"
+    
 canopyw:
     long_name: "Plant Canopy Surface Water"
     units: "kg/m^2"
@@ -81,7 +87,8 @@ canopyw:
     hrrr_name: "CNWAT"
     herbie_str: "CNWAT:surface"
     xarray_name: "cnwat"
-
+    dtype: "float"
+    
 gflux:
     long_name: "Ground Heat Flux"
     units: "W/m^2"
@@ -91,7 +98,8 @@ gflux:
     hrrr_name: "GFLUX"
     herbie_str: "GFLUX:surface"
     xarray_name: "gflux"
-
+    dtype: "float"
+    
 weasd:
     long_name: "Water Equivalent of Accumulated Snow Depth"
     units: "kg/m^2"
@@ -101,7 +109,8 @@ weasd:
     hrrr_name: "WEASD"
     herbie_str: ":WEASD:surface:2-3 hour acc"
     xarray_name: "sdwe"
-
+    dtype: "float"
+    
 asnow:
     long_name: "Total accumulated Snowfall"
     units: "m"
@@ -111,7 +120,8 @@ asnow:
     hrrr_name: "ASNOW"
     herbie_str: "ASNOW:surface"
     xarray_name: "unknown"
-
+    dtype: "float"
+    
 snod:
     long_name: "Snow Depth"
     units: "m"
@@ -121,7 +131,8 @@ snod:
     hrrr_name: "SNOD"
     herbie_str: ":SNOD:surface:3 hour fcst"
     xarray_name: "sde"
-
+    dtype: "float"
+    
 pres:
     long_name: "Surface Air Pressure"
     units: "Pa"
@@ -131,7 +142,8 @@ pres:
     hrrr_name: "PRES"
     herbie_str: ":PRES:surface:3 hour fcst"
     xarray_name: "sp"
-
+    dtype: "float"
+    
 rough:
     long_name: "Surface Roughness"
     units: "m"
@@ -141,7 +153,8 @@ rough:
     hrrr_name: "SFCR"
     herbie_str: ":SFCR:surface:3 hour fcst"
     xarray_name: "fsr"
-
+    dtype: "float"
+    
 fricv:
     long_name: "Frictional Velocity"
     units: "m/s"
@@ -151,7 +164,8 @@ fricv:
     hrrr_name: "FRICV"
     herbie_str: ":FRICV:surface:3 hour fcst"
     xarray_name: "fricv"
-
+    dtype: "float"
+    
 # soilw:
 #     long_name: "Volumetric Soil Moisture Content"
 #     units: "Fraction"
@@ -178,40 +192,47 @@ lat:
     feature_type: "hrrr_dim"
     hrrr_name: "latitude"
     xarray_name: "latitude"
-
+    dtype: "float"
+    
 lon:
     long_name: "Longitude"
     units: "degree"
     feature_type: "hrrr_dim"
     hrrr_name: "longitude"
     xarray_name: "longitude"
-
+    dtype: "float"
+    
 grid_x:
     long_name: "HRRR Grid X-Coordinate"
     units: "unitless"
     feature_type: "hrrr_dim"
     hrrr_name: "longitude"
-
+    dtype: "float"
+    
 grid_y:
     long_name: "HRRR Grid Y-Coordinate"
     units: "unitless"
     feature_type: "hrrr_dim"
     hrrr_name: "latitude"
-    
+    dtype: "float"
+        
 elev:
     long_name: "Elevation above sea level"
     units: "m"
     feature_type: "TODO"
-    
+    dtype: "float"
+        
 hod:
     long_name: "Hour of day"
     units: "hours"
     feature_type: "engineered_dim"
     required_hrrr_name: "time"
-
+    dtype: "int"
+    
 doy:
     long_name: "Day of year"
     units: "days"
     feature_type: "engineered_dim"
     required_hrrr_name: "time"
-
+    dtype: "int"
+    
