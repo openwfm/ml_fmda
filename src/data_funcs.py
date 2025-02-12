@@ -392,7 +392,7 @@ def staircase(df, sequence_length=12, features_list=None, y_col="fm"):
 def staircase_dict(dict0, sequence_length = 12, features_list=["Ed", "Ew", "rain"], y_col="fm", verbose=True):
     """
     Wraps extract_sequences to apply to a dictionary and run for each case.
-    Intended to be run on train and val dictionaries
+    Intended to be run on train dict only
     """
     if verbose:
         print(f"Extracting all consecutive sequences of length {sequence_length}")
