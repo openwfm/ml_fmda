@@ -32,7 +32,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import read_pkl, read_yml, time_range, str2time, is_consecutive_hours
+from utils import read_yml, read_pkl, time_range, str2time, is_consecutive_hours
 import reproducibility
 import ingest.RAWS as rr
 import ingest.HRRR as ih
@@ -317,24 +317,6 @@ def cv_space_setup(dict0, val_times, test_times, test_frac = 0.1, verbose=True, 
     
     return train_locs, val_locs, test_locs
 
-def extract_sequences(df, sequence_length=12):
-    """
-    Given dataframe with date_time column, return samples of consecutive data
-    of length sequence_length in 3d array of shape (n_samples, sequence_length, n_features)
-
-    Runs in sliding window fashion, so if sequential 1hr data of length N it should return N-sequence_length+1 sequences
-    """
-    times = df["date_time"].values
-    data = df.drop(columns=["date_time"]).values
-    sequences = []
-
-    for i in range(len(df) - sequence_length + 1):
-        time_window = times[i : i + sequence_length]
-        if is_consecutive_hours(time_window):
-            sequences.append(data[i : i + sequence_length])
-
-    return np.array(sequences)
-
 # Helper function to filter dataframe on time
 def filter_df(df, filter_col, ts):
     return df[df[filter_col].isin(ts)]
@@ -356,6 +338,82 @@ def get_sts_and_times(dict0, sts_list, times):
         new_dict[st]["times"] = new_dict[st]["data"].date_time.to_numpy()
  
     return new_dict
+
+
+# RNN Data Batching Functions
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+def staircase(df, sequence_length=12, features_list=None, y_col="fm"):
+    """
+    Get sliding-window style sequences from input data frame. 
+    Checks date_time column for consecutive hours and only
+    returns sequences with consecutive hours.
+
+    NOTE: this replaces the staircase function from earlier versions of this project.
+
+    Args:
+        - df: (pandas dataframe) input data frame
+        - sequence_length: (int) number of hours to set samples, equivalent to timesteps param in RNNs
+        - features_list: (list) list of strings used to subset data
+        - y_col: (str) target column name
+        - verbose: (bool) whether to print debug info
+
+    Returns:
+        - X: (numpy array) array of shape (n_samples, sequence_length, n_features)
+        - y: (numpy array) array of shape (n_samples, sequence_length, 1)
+        - y_times: (numpy array) array of shape (n_samples, sequence_length, 1) containing datetime objects
+    """
+    
+    times = df["date_time"].values
+
+    if features_list is not None:
+        data = df[features_list].values  # Extract feature columns
+    
+    target = df[y_col].values        # Extract target column
+    X = []
+    y = []
+    t = []
+
+    for i in range(len(df) - sequence_length + 1):
+        time_window = times[i : i + sequence_length]
+        if is_consecutive_hours(time_window):
+            X.append(data[i : i + sequence_length])
+            y.append(target[i : i + sequence_length])
+            t.append(time_window)
+
+    X = np.array(X)
+    y = np.array(y)[..., np.newaxis]  # Ensure y has extra singleton dimension
+    t = np.array(t)[..., np.newaxis]  # Ensure y_times has extra singleton dimension
+
+    return X, y, t
+
+
+def staircase_dict(dict0, sequence_length = 12, features_list=["Ed", "Ew", "rain"], y_col="fm", verbose=True):
+    """
+    Wraps extract_sequences to apply to a dictionary and run for each case.
+    Intended to be run on train and val dictionaries
+    """
+    if verbose:
+        print(f"Extracting all consecutive sequences of length {sequence_length}")
+        print(f"Subsetting to features: {features_list}, target: {y_col}")    
+    
+    X_list, y_list, t_list = [], [], []
+    
+    for st, station_data in dict0.items():
+        dfi = station_data["data"]  # Extract DataFrame
+        Xi, yi, ti = staircase(dfi, sequence_length=sequence_length, features_list=features_list, y_col=y_col)
+
+        if verbose:
+            print(f"Station: {st}")
+            print(f"All Sequences Shape: {Xi.shape}")
+        
+        X_list.append(Xi)
+        y_list.append(yi)
+        t_list.append(ti)
+        
+    return X_list, y_list, t_list
+
 
 
 # Final data creation code
