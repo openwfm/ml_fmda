@@ -32,6 +32,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import Dict, time_range, read_yml, print_dict_summary, is_consecutive_hours, read_pkl
 from ingest.RAWS import get_stations, get_file_paths
+import reproducibility
 
 
 # Read RAWS Metadata
@@ -569,9 +570,13 @@ class MLModel(ABC):
 xgb_params = Dict(params_models["xgb"])
 
 class XGB(MLModel):
-    def __init__(self, params: dict):
+    def __init__(self, params: dict, random_state=None):
         super().__init__(params)
         model_params = self._filter_params(XGBRegressor) 
+        if random_state is not None:
+            reproducibility.set_seed(random_state)
+            model_params.update({"random_state": random_state})
+
         self.model = XGBRegressor(**model_params)
         self.params['mod_type'] = "XGBoost"
 
@@ -588,3 +593,5 @@ class LM(MLModel):
         model_params = self._filter_params(LinearRegression)
         self.model = LinearRegression(**model_params)
         self.params['mod_type'] = "LinearRegression"
+
+

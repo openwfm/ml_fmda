@@ -11,6 +11,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import random
+import reproducibility
 import os.path as osp
 import sys
 from dateutil.relativedelta import relativedelta
@@ -28,351 +29,309 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import Dict
+from utils import Dict, is_consecutive_hours
 from data_funcs import MLData
 
 # RNN Data Functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def staircase(x,y,timesteps,datapoints,return_sequences=False, verbose = False):
-    # x [datapoints,features]    all inputs
-    # y [datapoints,outputs]
-    # timesteps: split x and y into samples length timesteps, shifted by 1
-    # datapoints: number of timesteps to use for training, no more than y.shape[0]
-    if verbose:
-        print('staircase: shape x = ',x.shape)
-        print('staircase: shape y = ',y.shape)
-        print('staircase: timesteps=',timesteps)
-        print('staircase: datapoints=',datapoints)
-        print('staircase: return_sequences=',return_sequences)
-    outputs = y.shape[1]
-    features = x.shape[1]
-    samples = datapoints-timesteps+1
-    if verbose:
-        print('staircase: samples=',samples,'timesteps=',timesteps,'features=',features)
-    x_train = np.empty([samples, timesteps, features])
-    if return_sequences:
-        if verbose:
-            print('returning all timesteps in a sample')
-        y_train = np.empty([samples, timesteps, outputs])  # all
-        for i in range(samples):
-            for k in range(timesteps):
-                x_train[i,k,:] = x[i+k,:]
-                y_train[i,k,:] = y[i+k,:]
-    else:
-        if verbose:
-            print('returning only the last timestep in a sample')
-        y_train = np.empty([samples, outputs])
-        for i in range(samples):
-            for k in range(timesteps):
-                x_train[i,k,:] = x[i+k,:]
-            y_train[i,:] = y[i+timesteps-1,:]
-
-    return x_train, y_train
-
-def staircase_2(x,y,timesteps,batch_size=None,trainsteps=np.inf,return_sequences=False, verbose = False):
-    # create RNN training data in multiple batches
-    # input:
-    #     x (,features)  
-    #     y (,outputs)
-    #     timesteps: split x and y into sequences length timesteps
-    #                a.k.a. lookback or sequence_length    
-    
-    # print params if verbose
-   
-    if batch_size is None:
-        raise ValueError('staircase_2 requires batch_size')
-    if verbose:
-        print('staircase_2: shape x = ',x.shape)
-        print('staircase_2: shape y = ',y.shape)
-        print('staircase_2: timesteps=',timesteps)
-        print('staircase_2: batch_size=',batch_size)
-        print('staircase_2: return_sequences=',return_sequences)
-    
-    nx,features= x.shape
-    ny,outputs = y.shape
-    datapoints = min(nx,ny,trainsteps)   
-    if verbose:
-        print('staircase_2: datapoints=',datapoints)
-    
-    # sequence j in a given batch is assumed to be the continuation of sequence j in the previous batch
-    # https://www.tensorflow.org/guide/keras/working_with_rnns Cross-batch statefulness
-    
-    # example with timesteps=3 batch_size=3 datapoints=15
-    #     batch 0: [0 1 2]      [1 2 3]      [2 3 4]  
-    #     batch 1: [3 4 5]      [4 5 6]      [5 6 7] 
-    #     batch 2: [6 7 8]      [7 8 9]      [8 9 10] 
-    #     batch 3: [9 10 11]    [10 11 12]   [11 12 13] 
-    #     batch 4: [12 13 14]   [13 14 15]    when runs out this is the last batch, can be shorter
-    #
-    # TODO: implement for multiple locations, same starting time for each batch
-    #              Loc 1         Loc 2       Loc 3
-    #     batch 0: [0 1 2]      [0 1 2]      [0 1 2]  
-    #     batch 1: [3 4 5]      [3 4 5]      [3 4 5] 
-    #     batch 2: [6 7 8]      [6 7 8]      [6 7 8] 
-    # TODO: second epoch shift starting time at batch 0 in time
-    
-    # TODO: implement for multiple locations, different starting times for each batch
-    #              Loc 1       Loc 2       Loc 3
-    #     batch 0: [0 1 2]   [1 2 3]      [2 3 4]  
-    #     batch 1: [3 4 5]   [4 5 6]      [5 6 57 
-    #     batch 2: [6 7 8]   [7 8 9]      [8 9 10] 
-    
-    #
-    #     the first sample in batch j starts from timesteps*j and ends with timesteps*(j+1)-1
-    #     e.g. the final hidden state of the rnn after the sequence of steps [0 1 2] in batch 0
-    #     becomes the starting hidden state of the rnn in the sequence of steps [3 4 5] in batch 1, etc.
-    #     
-    #     sample [0 1 2] means the rnn is used twice to map state 0 -> 1 -> 2
-    #     the state at time 0 is fixed but the state is considered a variable at times 1 and 2 
-    #     the loss is computed from the output at time 2 and the gradient of the loss function by chain rule which ends at time 0 because the state there is a constant -> derivative is zero
-    #     sample [3 4 5] means the rnn is used twice to map state 3 -> 4 -> 5    #     the state at time 3 is fixed to the output of the first sequence [0 1 2]
-    #     the loss is computed from the output at time 5 and the gradient of the loss function by chain rule which ends at time 3 because the state there is considered constant -> derivative is zero
-    #     how is the gradient computed? I suppose keras adds gradient wrt the weights at 2 5 8 ... 3 6 9... 4 7 ... and uses that to update the weights
-    #     there is only one set of weights   h(2) = f(h(1),w)  h(1) = f(h(0),w)   but w is always the same 
-    #     each column is a one successive evaluation of h(n+1) = f(h(n),w)  for n = n_startn n_start+1,... 
-    #     the cannot be evaluated efficiently on gpu because gpu is a parallel processor
-    #     this of it as each column served by one thread, and the threads are independent because they execute in parallel, there needs to be large number of threads (32 is a good number)\
-    #     each batch consists of independent calculations
-    #     but it can depend on the result of the previous batch (that's the recurrent parr)
-    
-    
-    
-    max_batches = datapoints // timesteps
-    max_sequences = max_batches * batch_size
-
-    if verbose:
-        print('staircase_2: max_batches=',max_batches)
-        print('staircase_2: max_sequences=',max_sequences)
-                                      
-    x_train = np.zeros((max_sequences, timesteps, features)) 
-    if return_sequences:
-        y_train = np.empty((max_sequences, timesteps, outputs))
-    else:
-        y_train = np.empty((max_sequences, outputs ))
-        
-    # build the sequences    
-    k=0
-    for i in range(max_batches):
-        for j in range(batch_size):
-            begin = i*timesteps + j
-            next  = begin + timesteps
-            if next > datapoints:
-                break
-            if verbose:
-                print('sequence',k,'batch',i,'sample',j,'data',begin,'to',next-1)
-            x_train[k,:,:] = x[begin:next,:]
-            if return_sequences:
-                 y_train[k,:,:] = y[begin:next,:]
-            else:
-                 y_train[k,:] = y[next-1,:]
-            k += 1   
-    if verbose:
-        print('staircase_2: shape x_train = ',x_train.shape)
-        print('staircase_2: shape y_train = ',y_train.shape)
-        print('staircase_2: sequences generated',k)
-        print('staircase_2: batch_size=',batch_size)
-    k = (k // batch_size) * batch_size
-    if verbose:
-        print('staircase_2: removing partial and empty batches at the end, keeping',k)
-    x_train = x_train[:k,:,:]
-    if return_sequences:
-         y_train = y_train[:k,:,:]
-    else:
-         y_train = y_train[:k,:]
-
-    if verbose:
-        print('staircase_2: shape x_train = ',x_train.shape)
-        print('staircase_2: shape y_train = ',y_train.shape)
-
-    return x_train, y_train
+# RNN Data Batching Functions
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-# Dictionary of scalers, used to avoid multiple object creation and to avoid multiple if statements
-scalers = {
-    'minmax': MinMaxScaler(),
-    'standard': StandardScaler() 
-}
-
-
-def batch_setup(ids, batch_size):
+def staircase(df, sequence_length=12, features_list=None, y_col="fm"):
     """
-    Sets up stateful batched training data scheme for RNN training.
+    Get sliding-window style sequences from input data frame. 
+    Checks date_time column for consecutive hours and only
+    returns sequences with consecutive hours.
 
-    This function takes a list or array of identifiers (`ids`) and divides them into batches of a specified size (`batch_size`). If the last batch does not have enough elements to meet the `batch_size`, the function will loop back to the start of the identifiers and continue filling the batch until it reaches the required size.
+    NOTE: this replaces the staircase function from earlier versions of this project.
 
-    Parameters:
-    -----------
-    ids : list or numpy array
-        A list or numpy array containing the ids to be batched.
-
-    batch_size : int
-        The desired size of each batch. 
+    Args:
+        - df: (pandas dataframe) input data frame
+        - sequence_length: (int) number of hours to set samples, equivalent to timesteps param in RNNs
+        - features_list: (list) list of strings used to subset data
+        - y_col: (str) target column name
+        - verbose: (bool) whether to print debug info
 
     Returns:
-    --------
-    batches : list of lists
-        A list where each element is a batch (itself a list) of identifiers. Each batch will contain exactly `batch_size` elements.
-
-    Example:
-    --------
-    >>> ids = [1, 2, 3, 4, 5]
-    >>> batch_size = 3
-    >>> batch_setup(ids, batch_size)
-    [[1, 2, 3], [4, 5, 1]]
-
-    Notes:
-    ------
-    - If `ids` is shorter than `batch_size`, the returned list will contain a single batch where identifiers are repeated from the start of `ids` until the batch is filled.
-    """   
-    # Ensure ids is a numpy array
-    x = np.array(ids)
-    
-    # Initialize the list to hold the batches
-    batches = []
-    
-    # Use a loop to slice the list/array into batches
-    for i in range(0, len(x), batch_size):
-        batch = list(x[i:i + batch_size])
-        
-        # If the batch is not full, continue from the start
-        while len(batch) < batch_size:
-            # Calculate the remaining number of items needed
-            remaining = batch_size - len(batch)
-            # Append the needed number of items from the start of the array
-            batch.extend(x[:remaining])
-        
-        batches.append(batch)
-    
-    return batches
-
-def staircase_spatial(X, y, batch_size, timesteps, hours=None, start_times = None, verbose = True):
-    """
-    Prepares spatially formatted time series data for RNN training by creating batches of sequences across different locations, stacked to be compatible with stateful models.
-
-    This function processes multi-location time series data by slicing it into batches and formatting it to fit into a recurrent neural network (RNN) model. It utilizes a staircase-like approach to prepare sequences for each location and then interlaces them to align with stateful RNN structures.
-
-    Parameters:
-    -----------
-    X : list of numpy arrays
-        A list where each element is a numpy array containing features for a specific location. The shape of each array is `(total_time_steps, features)`.
-
-    y : list of numpy arrays
-        A list where each element is a numpy array containing the target values for a specific location. The shape of each array is `(total_time_steps,)`.
-
-    batch_size : int
-        The number of sequences to include in each batch.
-
-    timesteps : int
-        The number of time steps to include in each sequence for the RNN.
-
-    hours : int, optional
-        The length of each time series to consider for each location. If `None`, it defaults to the minimum length of `y` across all locations.
-
-    start_times : numpy array, optional
-        The initial time step for each location. If `None`, it defaults to an array starting from 0 and incrementing by 1 for each location.
-
-    verbose : bool, optional
-        If `True`, prints additional information during processing. Default is `True`.
-
-    Returns:
-    --------
-    XX : numpy array
-        A 3D numpy array with shape `(total_sequences, timesteps, features)` containing the prepared feature sequences for all locations.
-
-    yy : numpy array
-        A 2D numpy array with shape `(total_sequences, 1)` containing the corresponding target values for all locations.
-
-    n_seqs : int
-        Number of sequences per location. Used to reset states when location changes. Hidden state of RNN will be reset after n_seqs number of batches
-
-    Notes:
-    ------
-    - The function handles spatially distributed time series data by batching and formatting it for stateful RNNs.
-    - `hours` determines how much of the time series is used for each location. If not provided, it defaults to the shortest series in `y`.
-    - If `start_times` is not provided, it assumes each location starts its series at progressively later time steps.
-    - The `batch_setup` function is used internally to manage the creation of location and time step batches.
-    - The returned feature sequences `XX` and target sequences `yy` are interlaced to align with the expected input format of stateful RNNs.
+        - X: (numpy array) array of shape (n_samples, sequence_length, n_features)
+        - y: (numpy array) array of shape (n_samples, sequence_length, 1)
+        - y_times: (numpy array) array of shape (n_samples, sequence_length, 1) containing datetime objects
     """
     
-    # Generate ids based on number of distinct timeseries provided
-    n_loc = len(y) # assuming each list entry for y is a separate location
-    loc_ids = np.arange(n_loc)
-    
-    # Generate hours and start_times if None
-    if hours is None:
-        print("Setting total hours to minimum length of y in provided dictionary")
-        hours = min(len(yi) for yi in y)
-    if start_times is None:
-        print(f"Setting Start times to offset by 1 hour by location, from 0 through {batch_size} (batch_size)")
-        start_times = np.tile(np.arange(batch_size), n_loc // batch_size + 1)[:n_loc]
-    elif start_times == "zeros":
-        start_times = np.zeros(n_loc)
+    times = df["date_time"].values
 
+    if features_list is not None:
+        data = df[features_list].values  # Extract feature columns
     
-    # Set up batches
-    loc_batch, t_batch =  batch_setup(loc_ids, batch_size), batch_setup(start_times, batch_size)
+    target = df[y_col].values        # Extract target column
+    X = []
+    y = []
+    t = []
+
+    for i in range(len(df) - sequence_length + 1):
+        time_window = times[i : i + sequence_length]
+        if is_consecutive_hours(time_window):
+            X.append(data[i : i + sequence_length])
+            y.append(target[i : i + sequence_length])
+            t.append(time_window)
+
+    X = np.array(X)
+    y = np.array(y)[..., np.newaxis]  # Ensure y has extra singleton dimension
+    t = np.array(t)[..., np.newaxis]  # Ensure y_times has extra singleton dimension
+
+    return X, y, t
+
+
+def staircase_dict(dict0, sequence_length = 12, features_list=["Ed", "Ew", "rain"], y_col="fm", verbose=True):
+    """
+    Wraps extract_sequences to apply to a dictionary and run for each case.
+    Intended to be run on train dict only
+    """
     if verbose:
-        print(f"Location ID Batches: {loc_batch}")
-        print(f"Start Times for Batches: {t_batch}")
+        print(f"Extracting all consecutive sequences of length {sequence_length}")
+        print(f"Subsetting to features: {features_list}, target: {y_col}")    
+    
+    X_list, y_list, t_list = [], [], []
+    
+    for st, station_data in dict0.items():
+        dfi = station_data["data"]  # Extract DataFrame
+        Xi, yi, ti = staircase(dfi, sequence_length=sequence_length, features_list=features_list, y_col=y_col)
 
-    # Loop over batches and construct with staircase_2
-    Xs = []
-    ys = []
-    for i in range(0, len(loc_batch)):
-        locs_i = loc_batch[i]
-        ts = t_batch[i]
-        for j in range(0, len(locs_i)):
-            t0 = int(ts[j])
-            tend = t0 + hours
-            # Create RNNData Dict
-            # Subset data to given location and time from t0 to t0+hours
-            k = locs_i[j] # Used to account for fewer locations than batch size
-            X_temp = X[k][t0:tend,:]
-            y_temp = y[k][t0:tend].reshape(-1,1)
-
-            # Format sequences
-            Xi, yi = staircase_2(
-                X_temp, 
-                y_temp, 
-                timesteps = timesteps, 
-                batch_size = 1,  # note: using 1 here to format sequences for a single location, not same as target batch size for training data
-                verbose=False)
+        if verbose:
+            print(f"Station: {st}")
+            print(f"All Sequences Shape: {Xi.shape}")
         
-            Xs.append(Xi)
-            ys.append(yi)    
+        X_list.append(Xi)
+        y_list.append(yi)
+        t_list.append(ti)
+        
+    return X_list, y_list, t_list
 
-    # Drop incomplete batches
-    lens = [yi.shape[0] for yi in ys]
-    n_seqs = min(lens)
-    if verbose:
-        print(f"Minimum number of sequences by location: {n_seqs}")
-        print(f"Applying minimum length to other arrays.")
-    Xs = [Xi[:n_seqs] for Xi in Xs]
-    ys = [yi[:n_seqs] for yi in ys]
+def _batch_random(X_list, y_list, random_state = None):
+    """
+    Randomly shuffle samples
+    """
+    if random_state is not None:
+        reproducibility.set_seed(random_state)  
 
-    # Interlace arrays to match stateful structure
-    n_features = Xi.shape[2]
-    XXs = []
-    yys = []
-    for i in range(0, len(loc_batch)):
-        locs_i = loc_batch[i]
-        XXi = np.empty((Xs[0].shape[0]*batch_size, timesteps, n_features))
-        yyi = np.empty((Xs[0].shape[0]*batch_size, 1))
-        for j in range(0, len(locs_i)):
-            XXi[j::(batch_size)] =  Xs[locs_i[j]]
-            yyi[j::(batch_size)] =  ys[locs_i[j]]
-        XXs.append(XXi)
-        yys.append(yyi)
-    yy = np.concatenate(yys, axis=0)
-    XX = np.concatenate(XXs, axis=0)
-
-    if verbose:
-        print(f"Spatially Formatted X Shape: {XX.shape}")
-        print(f"Spatially Formatted y Shape: {yy.shape}")
+    X_all = np.concatenate(X_list, axis=0)
+    y_all = np.concatenate(y_list, axis=0)
+    indices = np.concatenate([np.full(len(x), i) for i, x in enumerate(X_list)])
     
+    # Random shuffle location indicices
+    locs = np.random.permutation(len(X_all))
+    X_rand = X_all[locs]
+    y_rand = y_all[locs]
+    indices = indices[locs] 
+
+    return X_rand, y_rand, indices
+
+
+
+def build_training_batches(X_list, y_list, 
+                           batch_size = 32, timesteps=12,
+                           return_sequences=False, method="random", 
+                           verbose=True, random_state=None
+                          ):
+    """
+
+    Args:
+        - method: (str) One of "random" or "stateful". NOTE: as of Feb 14 2025 stateful not implemented
+    """
+
+
+    if method == "random":
+        X, y, loc_indices = _batch_random(X_list, y_list, random_state=random_state)
+    elif method == "stateful":
+        raise ValueError("Stateful not implemented yet for spatial data")
+    else:
+        raise ValueError(f"Unrecognized batching method: {method}")
     
-    return XX, yy, n_seqs
+    if verbose:
+        print(f"{batch_size=}")
+        print(f"{timesteps=}")
+        print(f"X train shape: {X.shape}")
+        print(f"y train shape: {y.shape}")
+        print(f"Unique locations: {len(np.unique(locs))}")
+        print(f"Total Batches: {X.shape[0] // batch_size}")
+    
+    return X, y, loc_indices
+
+class RNNData(MLData):
+    """
+    Custom class to handle RNN data. Performs data scaling and stateful batch structuring.
+    In this context, a single "sample" from RNNData is a timeseries with dimensionality (timesteps, n_features)
+    """
+    def _setup_data(self, train, val, test, y_col="fm", method="random",
+                    random_state = None, verbose=True):
+        """
+        Combines DataFrames under 'data' keys for train, val, and test. 
+        Batch structure using staircase functions.
+
+        Creates numpy ndarrays X_train, y_train, X_val, y_val, X_test, y_test
+        """
+        
+        self.train_locs = [*train.keys()]
+        
+        if verbose:
+            print(f"Subsetting input data to {self.features_list}")   
+            
+        train = data_funcs.sort_train_dict(train)
+        # Get training samples with staircase, and construct batches
+        # Subset features happens at this step
+        X_list, y_list, t_list = mrnn.staircase_dict(train, features_list = self.features_list)
+        X_train, y_train, loc_train_indices = mrnn.build_training_batches(
+            X_list, y_list,
+            method=method, random_state = random_state
+        )
+        self.X_train = X_train
+        self.y_train = y_train
+
+
+        if val:
+            X_val = self._combine_data(val)
+            self.y_val = X_val[y_col].to_numpy()
+            self.X_val = X_val[self.features_list].to_numpy()            
+        self.X_test, self.y_test = (None, None)
+        if test:
+            X_test = self._combine_data(test)
+            self.y_test = X_test[y_col].to_numpy()
+            self.X_test = X_test[self.features_list].to_numpy()
+
+        if verbose:
+            print(f"X_train shape: {self.X_train.shape}, y_train shape: {self.y_train.shape}")
+            if self.X_val is not None:
+                print(f"X_val shape: {self.X_val.shape}, y_val shape: {self.y_val.shape}")
+            if self.X_test is not None:
+                print(f"X_test shape: {self.X_test.shape}, y_test shape: {self.y_test.shape}")        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## This is my attempt at stateful batching when samples from
+## different time periods
+## Does not work, too complicated going with random for now
+
+# def stateful_batches(X_list, y_list, batch_size = 32, timesteps=12, 
+#                            return_sequences=False, start_times="zeros", verbose=True):
+#     """
+#     Construct data for RNN training (and validation data) with format (batch_size, timesteps, features) 
+#     Intended to be run on train set and validation set (if using)
+
+#     Given list of staircase structured data, i.e. output of staircase_dict, create batches by getting samples from
+#     each list element, so samples within a batch are from different physical locations.
+
+#     If start_times is zeros, in the first batch, and any new batch with all new locations, select the 0th (aka first in python)
+#     sample to build for the batch.
+
+#     Args:
+#         - X_list: (list) list of numpy ndarrays of predictors
+#         - y_list: (list) list of numpy ndarrays of response data
+#         - batch_size: (int) number of samples of length timesteps to include in a single iteration of weight updates
+#         - timesteps: (int) number of discrete time steps that defines a single sample
+#         - return_sequences: (bool) Whether to include all response y values for timesteps, or just last step
+#         - start_times: if "zeros" all samples start at time 0. (Only one for now)
+#     Returns:
+#         XX, yy: tuple of structured predictors and outcomes variables. 
+#             XX shape will be (num_samples, timesteps, features), where num_samples determined by batch size and input X length
+#             yy shape will be (num_samples, 1) OR (num_samples, timesteps) if return sequences
+#     """
+
+#     # Run some checks
+#     if len(X_list) != len(y_list):
+#         raise ValueError(f"Mismatch data. {len(X_list)=}, {len(y_list)=}. Check they were created together")
+#     if len(X_list) < batch_size:
+#         raise ValueError(f"Batch size greter than number of locations. Method not implemented for this, try a smaller batch size. {len(X_list)=}, {batch_size=}.")
+
+#     # Set up return objects    
+#     X_batches = []
+#     y_batches = []
+#     loc_batches = []
+#     t_batches = []
+    
+#     # Set up indices for first batch
+#     loc_index = np.arange(batch_size)
+#     loc_counter = loc_index.max() # used to iterate to new locations
+#     loc_resets = []
+#     X_set = set(np.arange(len(X_list)))
+#     # t_index0 = np.arange(batch_size) # used to reset times on new location
+#     # t_index = np.arange(batch_size)
+#     t_index0 = np.zeros(batch_size)
+#     t_index = np.zeros(batch_size)
+    
+#     b = 0 # batch index     
+#     run = True
+#     while run:
+#         print("~"*75)
+#         print(f"Batch {b}:")
+
+#         print(f"Location Indices: {loc_index}")
+#         print(f"Time Indices: {t_index}")
+        
+#         # Get data
+#         X_batch = np.array([X_list[loc][int(t)] for loc, t in zip(loc_index, t_index)])
+#         y_batch = np.array([y_list[loc][int(t)] for loc, t in zip(loc_index, t_index)])
+#         if not return_sequences:
+#             y_batch = y_batch[:, -1, :] # Get last time step of sequence
+
+#         # Save batch info by appending
+#         X_batches.append(X_batch.copy())
+#         y_batches.append(y_batch.copy())
+#         t_batches.append(t_index.copy())
+#         loc_batches.append(loc_index.copy())
+        
+#         # Update indices for next iteration
+#         t_index += timesteps # iterate time index by timesteps param
+
+#         # Check times and locations, adjust if needed
+#         for i in range(0, len(loc_index)):
+#             loci = loc_index[i]
+#             ti = t_index[i]
+#             Xi = X_list[loci]
+#             if Xi.shape[0] <= ti:
+#                 # Condition triggered that requested time index is 
+#                 # greater than samples available for given location
+#                 # So iterate location index and reset time to t_index0
+#                 t_index[i] = t_index0[i]
+#                 loc_counter += 1
+#                 new_loc_i = loc_counter % len(X_list)
+#                 loc_resets.append(loc_index[i].copy()) # Keep track of which locations get reset
+
+#                 if not set(loc_resets) - X_set:                
+#                     # Condition triggered when maximum loc index has been reset to 0
+#                     # Indicates we have cycles through all locations, STOP
+#                     print(f"Stopping at batch {b}")
+#                     run = False
+#                     break
+#                 loc_index[i] = new_loc_i
+#                 print(f"Changing location {i} index to: {new_loc_i}")
+#                 print(f"    With Time index to: {t_index0[i]}")
+        
+#         b += 1 # iterate batch
+
+
+#     # return np.array(X_batches), np.array(y_batches), t_batches, loc_batches
+#     return np.concatenate(X_batches, axis=0), np.concatenate(y_batches, axis=0), t_batches, loc_batches
+
+
+
+
+
+
+
+
 
 
 

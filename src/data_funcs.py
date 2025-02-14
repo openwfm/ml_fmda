@@ -338,81 +338,16 @@ def get_sts_and_times(dict0, sts_list, times):
         new_dict[st]["times"] = new_dict[st]["data"].date_time.to_numpy()
  
     return new_dict
-
-
-# RNN Data Batching Functions
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-def staircase(df, sequence_length=12, features_list=None, y_col="fm"):
-    """
-    Get sliding-window style sequences from input data frame. 
-    Checks date_time column for consecutive hours and only
-    returns sequences with consecutive hours.
-
-    NOTE: this replaces the staircase function from earlier versions of this project.
-
-    Args:
-        - df: (pandas dataframe) input data frame
-        - sequence_length: (int) number of hours to set samples, equivalent to timesteps param in RNNs
-        - features_list: (list) list of strings used to subset data
-        - y_col: (str) target column name
-        - verbose: (bool) whether to print debug info
-
-    Returns:
-        - X: (numpy array) array of shape (n_samples, sequence_length, n_features)
-        - y: (numpy array) array of shape (n_samples, sequence_length, 1)
-        - y_times: (numpy array) array of shape (n_samples, sequence_length, 1) containing datetime objects
-    """
     
-    times = df["date_time"].values
-
-    if features_list is not None:
-        data = df[features_list].values  # Extract feature columns
-    
-    target = df[y_col].values        # Extract target column
-    X = []
-    y = []
-    t = []
-
-    for i in range(len(df) - sequence_length + 1):
-        time_window = times[i : i + sequence_length]
-        if is_consecutive_hours(time_window):
-            X.append(data[i : i + sequence_length])
-            y.append(target[i : i + sequence_length])
-            t.append(time_window)
-
-    X = np.array(X)
-    y = np.array(y)[..., np.newaxis]  # Ensure y has extra singleton dimension
-    t = np.array(t)[..., np.newaxis]  # Ensure y_times has extra singleton dimension
-
-    return X, y, t
-
-
-def staircase_dict(dict0, sequence_length = 12, features_list=["Ed", "Ew", "rain"], y_col="fm", verbose=True):
+def sort_train_dict(d):
     """
-    Wraps extract_sequences to apply to a dictionary and run for each case.
-    Intended to be run on train dict only
-    """
-    if verbose:
-        print(f"Extracting all consecutive sequences of length {sequence_length}")
-        print(f"Subsetting to features: {features_list}, target: {y_col}")    
-    
-    X_list, y_list, t_list = [], [], []
-    
-    for st, station_data in dict0.items():
-        dfi = station_data["data"]  # Extract DataFrame
-        Xi, yi, ti = staircase(dfi, sequence_length=sequence_length, features_list=features_list, y_col=y_col)
+    Rearrange keys based on number of observations in data subkey. Keys with most observations go first
 
-        if verbose:
-            print(f"Station: {st}")
-            print(f"All Sequences Shape: {Xi.shape}")
-        
-        X_list.append(Xi)
-        y_list.append(yi)
-        t_list.append(ti)
-        
-    return X_list, y_list, t_list
+    Used to make stateful batching easier
+    
+    NOTE: only intended to apply to train dict, as validation and test dicts were constructed so no missing data
+    """
+    return dict(sorted(d.items(), key=lambda item: item[1]["data"].shape[0], reverse=True))
 
 
 
@@ -471,6 +406,10 @@ class MLData(ABC):
         """Abstract method to initialize X_train, y_train, X_val, y_val, X_test, y_test"""
         pass
 
+    def _combine_data(self, data_dict):
+        """Combines all DataFrames under 'data' keys into a single DataFrame."""
+        return pd.concat([v["data"] for v in data_dict.values()], ignore_index=True)  
+    
     def scale_data(self, verbose=True):
         """
         Scales the training data using the set scaler.
@@ -591,9 +530,7 @@ class StaticMLData(MLData):
             if self.X_test is not None:
                 print(f"X_test shape: {self.X_test.shape}, y_test shape: {self.y_test.shape}")
             
-    def _combine_data(self, data_dict):
-        """Combines all DataFrames under 'data' keys into a single DataFrame."""
-        return pd.concat([v["data"] for v in data_dict.values()], ignore_index=True)    
+  
  
 
     
