@@ -377,7 +377,10 @@ class MLData(ABC):
     Abstract base class for ML Data, providing support for scaling. 
     Scaling performed on training data and applied to val and test.
     """    
-    def __init__(self, train, val=None, test=None, scaler="standard", features_list=None):
+    def __init__(self, train, val=None, test=None, scaler="standard", features_list=None, random_state=None):
+        if random_state is not None:
+            reproducibility.set_seed(random_state)
+        
         self._run_checks(train, val, test, scaler)
 
         if scaler not in {"standard", "minmax"}:

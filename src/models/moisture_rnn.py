@@ -30,6 +30,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import Dict, is_consecutive_hours
+import data_funcs
 from data_funcs import MLData
 
 # RNN Data Functions
@@ -99,9 +100,9 @@ def staircase_dict(dict0, sequence_length = 12, features_list=["Ed", "Ew", "rain
         dfi = station_data["data"]  # Extract DataFrame
         Xi, yi, ti = staircase(dfi, sequence_length=sequence_length, features_list=features_list, y_col=y_col)
 
-        if verbose:
-            print(f"Station: {st}")
-            print(f"All Sequences Shape: {Xi.shape}")
+        # if verbose:
+        #     print(f"Station: {st}")
+        #     print(f"All Sequences Shape: {Xi.shape}")
         
         X_list.append(Xi)
         y_list.append(yi)
@@ -154,7 +155,7 @@ def build_training_batches(X_list, y_list,
         print(f"{timesteps=}")
         print(f"X train shape: {X.shape}")
         print(f"y train shape: {y.shape}")
-        print(f"Unique locations: {len(np.unique(locs))}")
+        print(f"Unique locations: {len(np.unique(loc_indices))}")
         print(f"Total Batches: {X.shape[0] // batch_size}")
     
     return X, y, loc_indices
@@ -164,6 +165,11 @@ class RNNData(MLData):
     Custom class to handle RNN data. Performs data scaling and stateful batch structuring.
     In this context, a single "sample" from RNNData is a timeseries with dimensionality (timesteps, n_features)
     """
+    def __init__(self, train, val=None, test=None, scaler="standard", features_list=None,
+                 method="random", random_state=None):    
+        super().__init__(train, val, test, scaler, features_list, random_state)
+        
+        
     def _setup_data(self, train, val, test, y_col="fm", method="random",
                     random_state = None, verbose=True):
         """
@@ -181,8 +187,8 @@ class RNNData(MLData):
         train = data_funcs.sort_train_dict(train)
         # Get training samples with staircase, and construct batches
         # Subset features happens at this step
-        X_list, y_list, t_list = mrnn.staircase_dict(train, features_list = self.features_list)
-        X_train, y_train, loc_train_indices = mrnn.build_training_batches(
+        X_list, y_list, t_list = staircase_dict(train, features_list = self.features_list)
+        X_train, y_train, loc_train_indices = build_training_batches(
             X_list, y_list,
             method=method, random_state = random_state
         )
