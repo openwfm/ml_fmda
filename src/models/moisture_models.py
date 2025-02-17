@@ -20,6 +20,8 @@ from dateutil.relativedelta import relativedelta
 # from joblib import Parallel, delayed
 import multiprocessing as mp
 from tqdm import tqdm
+from functools import partial
+
 
 
 # Set up project paths
@@ -40,7 +42,7 @@ from ingest.RAWS import get_stations, get_file_paths
 import reproducibility
 
 
-# Read RAWS Metadata
+# Read Metadata
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 params_models = read_yml(osp.join(CONFIG_DIR, "params_models.yaml"))
 raws_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "raws_metadata.yaml"))
@@ -105,7 +107,6 @@ def _load_and_filter_pickle(file_path, sts):
 #     return pd.concat([df for df in results if df is not None], ignore_index=True)
 
 
-from functools import partial
 def _parallel_load_pickles(file_list, sts, num_workers=8):
     """Parallel loading and filtering using multiprocessing with a progress bar."""
     with mp.Pool(processes=num_workers) as pool:
@@ -610,26 +611,27 @@ class MLModel(ABC):
         print(f"Predicting with {self.params.mod_type}")
         preds = self.model.predict(X)
         return preds
-        
-    # def eval(self, X_test, y_test):
-    #     preds = self.predict(X_test)
-    #     rmse = np.sqrt(mean_squared_error(y_test, preds))
-    #     # rmse_ros = np.sqrt(mean_squared_error(ros_3wind(y_test), ros_3wind(preds)))
-    #     print(f"Test RMSE: {rmse}")
-    #     # print(f"Test RMSE (ROS): {rmse_ros}")
-    #     return rmse
 
-    def run_model(self, data_dict):
+    def run_train(self, data_dict):
         """
-        Wrapper to take custom data class and train & predict test data
+        Wrapper to take custom data class and train & predict validation data,
+        if present. 
         """
 
         self.fit(data_dict.X_train, data_dict.y_train)
-        m = self.predict(data_dict.X_test)
-        rmse = np.sqrt(mean_squared_error(m, data_dict.y_test))
+
+        m = self.predict(data_dict.X_val)
+        rmse = np.sqrt(mean_squared_error(m, data_dict.y_val))
 
         return m, rmse
         
+    def run_test(self, X_test, y_test):
+        preds = self.predict(X_test)
+        rmse = np.sqrt(mean_squared_error(y_test, preds))
+        # rmse_ros = np.sqrt(mean_squared_error(ros_3wind(y_test), ros_3wind(preds)))
+        print(f"Test RMSE: {rmse}")
+        # print(f"Test RMSE (ROS): {rmse_ros}")
+        return rmse        
 
 
 class XGB(MLModel):
@@ -645,11 +647,6 @@ class XGB(MLModel):
 
         self.model = XGBRegressor(**model_params)
         self.params['mod_type'] = "XGBoost"
-
-    def predict(self, X):
-        print("Predicting with XGB")
-        preds = self.model.predict(X)
-        return preds
 
 
 class LM(MLModel):
