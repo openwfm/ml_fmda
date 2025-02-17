@@ -6,6 +6,7 @@
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import numpy as np
+import os
 import os.path as osp
 import sys
 import pickle
@@ -31,10 +32,15 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import read_pkl, time_range, str2time
+from utils import read_yml, read_pkl, time_range, str2time, is_consecutive_hours
 import reproducibility
 import ingest.RAWS as rr
 import ingest.HRRR as ih
+
+# Read Variable Metadata
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hrrr_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "hrrr_metadata.yaml"))
+
 
 
 # Data Retrieval Wrappers
@@ -109,10 +115,20 @@ def flag_lag_stretches(x, threshold, lag = 1):
         return False  
 
 
+def sort_files_by_date(path, full_paths =True):
+    files = os.listdir(path)
+    sorted_files = sorted(files, key=lambda f: f.split('_')[1].split('.')[0])
+    if full_paths:
+        sorted_files = [osp.join(path, f) for f in sorted_files]
+    return sorted_files
+    
+
 def build_ml_data(dict0, 
                   hours = 72, 
                   max_linear_time = 10,
-                  atm_source="HRRR", save_path = None):
+                  atm_source="HRRR", 
+                  dtype_mapping = {"float": np.float64, "int": np.int64},
+                  save_path = None):
     """
     Given input of retrieved fmda data, i.e. the output of combine_fmda_files, merge RAWS and HRRR, and apply filters that flag long stretches of interpolated or constant data
     
@@ -120,6 +136,7 @@ def build_ml_data(dict0,
         - hours: number of hours to chop input data into in order to apply the filters that flag lag stretches of data.
         - max_linear_time: if the set of data defined by hours has any stretches of data that are longer than this time, set to NAN as considered untrustworthy. (either broken sensor or unreasonably long time to interpolate)
         - atm_source: Only HRRR now, but should work with RAWS in the future and maybe something else
+        - dtype_mapping: (dict) based on metadata dtype string, what to set the column as
 
     Returns: 
         - ml_dict: dict
@@ -157,7 +174,7 @@ def build_ml_data(dict0,
             # df = d[st]["RAWS"]
     
         # Split into periods
-        print(f"Splitting into {hours} hour increments")
+        print(f"Checking {hours} hour increments for constant/linear")
         df['st_period'] = np.arange(len(df)) // hours
     
         # Apply FMC filters and remove suspect data periods. 
@@ -167,17 +184,17 @@ def build_ml_data(dict0,
     ).pipe(lambda flags: flags[flags].index)
         if flagged.size > 0:
             print(f"Removing period {flagged} due to linear period of data longer than {max_linear_time}")
-        
-        # Filter Periods shorter than hours param (72 hours)
-        # small_periods = df.groupby('st_period').filter(
-        #     lambda group: len(group) < params_data['hours']
-        # )['st_period'].unique()
-        
-        # if small_periods.size > 0:
-        #     print(f"Removing period(s) {list(small_periods)} due to insufficient rows (< {params_data['hours']})")
-        # flagged = set(flagged).union(small_periods)
-        
+
+        # Filter flagged periods
         df_filtered = df[~df['st_period'].isin(flagged)]
+        # Set Column types with metadata
+        # Apply dtype conversion to each column
+        for col, meta in hrrr_meta.items():
+            if col in df_filtered.columns:
+                target_dtype = dtype_mapping.get(meta.get("dtype"), None)
+                if target_dtype:
+                    df_filtered[col] = df_filtered[col].astype(target_dtype)   
+                    
         if df_filtered.shape[0] > 0:
             ml_dict[st] = {
                 'data': df_filtered,
@@ -231,39 +248,74 @@ def cv_time_setup(forecast_start_time, train_hours = 8760, forecast_hours = 48, 
     
     return train_times, val_times, test_times
 
-def cv_space_setup(sts_list, fracs = [0.8, 0.1, 0.1], random_state=None, verbose=True):
+
+def get_stids_in_timeperiod(dict0, times, all_times=True):
     """
-    Given input stations list, split cv based on [train, val, test]
-    
-    Returns: list train, test, val
+    Based on input times, get list of stids from input dictionary 
+    that has data availability for that time period.
+
+    Intended use: for static ML models where any samples can be used without
+    maintaining sequences, all_times=False. for recurrent ML models where
+    sequences need to be maintained, all_times=True.
+
+    Args
+        - dict0: (dict) input FMDA dictionary
+        - times: (np.array) array of target date times
+        - all_times: (bool) if True, only select stids that have 
+        full data coverage for input time. If False, any time present 
+        will do
     """
 
+    if all_times:
+        # Return STIDs where input times are fully included in data times
+        stids_output = [stid for stid, data in dict0.items() if set(times).issubset(set(data["times"]))]
+    else:
+        # Return STIDS where intersection of input times and data times is nonempty
+        stids_output = [stid for stid, data in dict0.items() if set(times) & set(data["times"])]
+
+    # Sort return alphabetically, bc set operations non-reproducible
+    return sorted(stids_output)
+
+def cv_space_setup(dict0, val_times, test_times, test_frac = 0.1, verbose=True, random_state=None):
+    """
+    Split cv based on [train, val, test]. Checks for data availability in test and val sets before
+    taking sample of size test_frac from total observations. Remaining stations used for train.
+    This allows size of train set to vary, but forces consistency of test and val sets
+    
+    Returns: tuple of lists, train, test, val
+    """
+    
     if random_state is not None:
         reproducibility.set_seed(random_state)
 
-    train_frac_sp = fracs[0]
-    val_frac_sp = fracs[1]
-    locs = np.arange(len(sts_list)) # indices of locations
-    train_size = int(len(locs) * train_frac_sp)
-    val_size = int(len(locs) * val_frac_sp)
-    random.shuffle(locs)
-    tr_ind = locs[:train_size]
-    val_ind = locs[train_size:train_size + val_size]
-    te_ind = locs[train_size + val_size:]
+    # Define size of test/val
+    N_t = int(np.round(len(dict0)*test_frac))
 
-    train_locs = [sts_list[i] for i in tr_ind]
-    val_locs = [sts_list[i] for i in val_ind]
-    test_locs = [sts_list[i] for i in te_ind]
+    # Select stations from set with data availability
+    # in the test time period
+    test_ids = get_stids_in_timeperiod(dict0, test_times, all_times=True)
+    random.shuffle(test_ids)
+    test_locs = test_ids[:N_t]
+
+    # Excluding test locs, select set with data availability
+    # in the val time period
+    val_ids = get_stids_in_timeperiod(dict0, val_times, all_times=True)
+    val_ids = list(set(val_ids) - set(test_locs))
+    val_ids.sort() # Sort alphabetically since set operations don't guarantee reproducibility
+    random.shuffle(val_ids)
+    val_locs = val_ids[:N_t]
+
+    # Get remaining stations for Train set
+    stids = [*dict0.keys()]
+    train_locs = list(set(stids) - set(val_locs) - set(test_locs))
 
     if verbose:
-        print(f"Total Number of Stations: {len(sts_list)}")
-        print(f"Number of stations in Train: {len(train_locs)}")
-        print(f"Number of stations in Val: {len(val_locs)}")
-        print(f"Number of stations in Test: {len(test_locs)}")
+        print(f"Total stations: {len(stids)}")
+        print(f"Number of train stations: {len(train_locs)}")
+        print(f"Number of val stations: {len(val_locs)}")
+        print(f"Number of test stations: {len(test_locs)}")
     
     return train_locs, val_locs, test_locs
-
-
 
 # Helper function to filter dataframe on time
 def filter_df(df, filter_col, ts):
@@ -286,6 +338,17 @@ def get_sts_and_times(dict0, sts_list, times):
         new_dict[st]["times"] = new_dict[st]["data"].date_time.to_numpy()
  
     return new_dict
+    
+def sort_train_dict(d):
+    """
+    Rearrange keys based on number of observations in data subkey. Keys with most observations go first
+
+    Used to make stateful batching easier
+    
+    NOTE: only intended to apply to train dict, as validation and test dicts were constructed so no missing data
+    """
+    return dict(sorted(d.items(), key=lambda item: item[1]["data"].shape[0], reverse=True))
+
 
 
 # Final data creation code
@@ -314,7 +377,10 @@ class MLData(ABC):
     Abstract base class for ML Data, providing support for scaling. 
     Scaling performed on training data and applied to val and test.
     """    
-    def __init__(self, train, val=None, test=None, scaler="standard", features_list=None):
+    def __init__(self, train, val=None, test=None, scaler="standard", features_list=None, random_state=None):
+        if random_state is not None:
+            reproducibility.set_seed(random_state)
+        
         self._run_checks(train, val, test, scaler)
 
         if scaler not in {"standard", "minmax"}:
@@ -343,6 +409,10 @@ class MLData(ABC):
         """Abstract method to initialize X_train, y_train, X_val, y_val, X_test, y_test"""
         pass
 
+    def _combine_data(self, data_dict):
+        """Combines all DataFrames under 'data' keys into a single DataFrame."""
+        return pd.concat([v["data"] for v in data_dict.values()], ignore_index=True)  
+    
     def scale_data(self, verbose=True):
         """
         Scales the training data using the set scaler.
@@ -463,9 +533,7 @@ class StaticMLData(MLData):
             if self.X_test is not None:
                 print(f"X_test shape: {self.X_test.shape}, y_test shape: {self.y_test.shape}")
             
-    def _combine_data(self, data_dict):
-        """Combines all DataFrames under 'data' keys into a single DataFrame."""
-        return pd.concat([v["data"] for v in data_dict.values()], ignore_index=True)    
+  
  
 
     
