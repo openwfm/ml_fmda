@@ -27,10 +27,10 @@ rnn:
     scaler: standard # One of standard, MinMax. NOTE: MinMax more strongly depends on test data being within range of train data, otherwise scales certain data outside of 0,1 range and then you get nonsense
     time_fracs: [0.8, 0.1, 0.1] # Percentage of data based on time span for train/val/test
     space_fracs: [0.8, 0.1, 0.1] # Percentage of data based on location for train/val/test
-    stateful: true
+    stateful: false
     verbose_fit: true # If True, prints loss metrics on each epoch of training
     verbose_weights: true # If True, prints some extra info on model weights, including unique hashes of values
-    return_sequences: true  # whether or not the LAST recurrent layer should return sequences. If multiple, all previous need to be True
+    return_sequences: false  # whether or not the LAST recurrent layer should return sequences. If multiple, all previous need to be True
     predict_spinup_hours: 5 # Number of hours to run through the model before prediction errors evaluated. Used to stabilize hidden state. NOTE: not implemented yet as of 2024-10-17
 
 
@@ -58,7 +58,7 @@ rnn_repro:
     scaler: standard # One of standard, MinMax. NOTE: MinMax more strongly depends on test data being within range of train data, otherwise scales certain data outside of 0,1 range and then you get nonsense
     time_fracs: [0.8, 0.1, 0.1] # Percentage of data based on time span for train/val/test
     space_fracs: [0.8, 0.1, 0.1] # Percentage of data based on location for train/val/test
-    stateful: true
+    stateful: false
     # features_list_single: ['Ed', 'Ew', 'solar', 'wind', 'rain']
     # features_list_spatial: ['Ed', 'Ew', 'solar', 'wind', 'rain', 'lon', 'lat', 'elev']      
     verbose_fit: true # If True, prints loss metrics on each epoch of training

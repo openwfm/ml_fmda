@@ -194,6 +194,8 @@ def build_ml_data(dict0,
                 target_dtype = dtype_mapping.get(meta.get("dtype"), None)
                 if target_dtype:
                     df_filtered[col] = df_filtered[col].astype(target_dtype)   
+        # Convert Reponse variable type
+        df_filtered["fm"] = df_filtered["fm"].astype(np.float64) 
                     
         if df_filtered.shape[0] > 0:
             ml_dict[st] = {
@@ -387,6 +389,7 @@ class MLData(ABC):
             raise ValueError("scaler must be 'standard' or 'minmax'")
         self.scaler = StandardScaler() if scaler == "standard" else MinMaxScaler()
         self.features_list = features_list if features_list is not None else ["Ed", "Ew", "rain"]
+        self.n_features = len(self.features_list)
 
         # Setup data fiels, e.g. X_train and y_train
         self._setup_data(train, val, test)
@@ -434,7 +437,7 @@ class MLData(ABC):
         if verbose:
             print(f"Scaling training data with scaler {self.scaler}, fitting on X_train")
 
-        # Fit scaler on row-joined training data
+        # Fit scaler on training data
         self.scaler.fit(self.X_train)
         # Transform data using fitted scaler
         self.X_train = self.scaler.transform(self.X_train)
