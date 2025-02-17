@@ -96,6 +96,7 @@ def _load_and_filter_pickle(file_path, sts):
     except Exception as e:
         print(f"Error reading {file_path}: {e}")
     return None
+
 def _parallel_load_pickles(file_list, sts, num_workers=8):
     """Parallel loading and filtering, using helper function above."""
     results = Parallel(n_jobs=num_workers, backend="loky")(delayed(_load_and_filter_pickle)(f, sts) for f in file_list)
@@ -156,7 +157,7 @@ def _mean_fmc_by_stid(filtered_df, min_years):
     return fm10_avg
 
     
-def build_climatology(start, end, bbox, clim_params=None):
+def build_climatology(start, end, bbox, clim_params=None, n_workers = 8):
     """
     Given time period and spatial domain, get all RAWS fm10 data from
     stash based on params. start and end define the forecast hours. 
@@ -197,7 +198,8 @@ def build_climatology(start, end, bbox, clim_params=None):
     print(f"Existing RAWS Files: {len(raws_files)}")    
     
     # Load data and get forecasts
-    clim_data = _parallel_load_pickles(raws_files, sts)
+    print(f"Reading RAWS Files with {n_workers} workers")
+    clim_data = _parallel_load_pickles(raws_files, sts, num_workers = n_workers)
 
     return clim_data
 
