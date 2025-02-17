@@ -45,7 +45,6 @@ if __name__ == '__main__':
     # Read needed data from stash
     if not osp.exists(f"{out_file}_data.pkl"):
         n_cores = cpu_count() -1 # remove 1 to keep system usable
-        print(f"Running Climatology Read with {n_cores} cores")
         clim_data = build_climatology(
             start,
             end,

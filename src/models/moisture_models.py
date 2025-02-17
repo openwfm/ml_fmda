@@ -17,7 +17,9 @@ import os.path as osp
 import sys
 import warnings
 from dateutil.relativedelta import relativedelta
-from joblib import Parallel, delayed
+# from joblib import Parallel, delayed
+import multiprocessing as mp
+from tqdm import tqdm
 
 
 # Set up project paths
@@ -97,11 +99,26 @@ def _load_and_filter_pickle(file_path, sts):
         print(f"Error reading {file_path}: {e}")
     return None
 
-def _parallel_load_pickles(file_list, sts, num_workers=8):
-    """Parallel loading and filtering, using helper function above."""
-    results = Parallel(n_jobs=num_workers, backend="loky")(delayed(_load_and_filter_pickle)(f, sts) for f in file_list)
-    return pd.concat([df for df in results if df is not None], ignore_index=True)
+# def _parallel_load_pickles(file_list, sts, num_workers=8):
+#     """Parallel loading and filtering, using helper function above."""
+#     results = Parallel(n_jobs=num_workers, backend="loky")(delayed(_load_and_filter_pickle)(f, sts) for f in file_list)
+#     return pd.concat([df for df in results if df is not None], ignore_index=True)
 
+
+from functools import partial
+def _parallel_load_pickles(file_list, sts, num_workers=8):
+    """Parallel loading and filtering using multiprocessing with a progress bar."""
+    with mp.Pool(processes=num_workers) as pool:
+        # Use functools.partial to fix the second argument 'sts'
+        func = partial(_load_and_filter_pickle, sts=sts)
+
+        results = []
+        with tqdm(total=len(file_list), desc="Processing Files") as pbar:
+            for result in pool.imap_unordered(func, file_list):
+                results.append(result)
+                pbar.update(1)
+    
+    return pd.concat([df for df in results if df is not None], ignore_index=True)
 
 def _filter_clim_data(clim_data, clim_times):
     """
