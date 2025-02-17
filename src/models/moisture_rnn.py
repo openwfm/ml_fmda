@@ -32,13 +32,10 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 from utils import Dict, is_consecutive_hours
 import data_funcs
 from data_funcs import MLData
+from models.moisture_models import MLModel
 
 # RNN Data Functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-# RNN Data Batching Functions
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 
 def staircase(df, sequence_length=12, features_list=None, y_col="fm"):
     """
@@ -149,6 +146,9 @@ def build_training_batches(X_list, y_list,
         raise ValueError("Stateful not implemented yet for spatial data")
     else:
         raise ValueError(f"Unrecognized batching method: {method}")
+
+    if not return_sequences:
+        y = y[:, -1, :]
     
     if verbose:
         print(f"{batch_size=}")
@@ -170,8 +170,7 @@ class RNNData(MLData):
         super().__init__(train, val, test, scaler, features_list, random_state)
         
         
-    def _setup_data(self, train, val, test, y_col="fm", method="random",
-                    random_state = None, verbose=True):
+    def _setup_data(self, train, val, test, y_col="fm", method="random", random_state = None, verbose=True):
         """
         Combines DataFrames under 'data' keys for train, val, and test. 
         Batch structure using staircase functions.
@@ -213,7 +212,74 @@ class RNNData(MLData):
             if self.X_test is not None:
                 print(f"X_test shape: {self.X_test.shape}, y_test shape: {self.y_test.shape}")        
 
+    def scale_data(self, verbose=True):
+        """
+        Scales the training data using the set scaler. This requires
+        reshaping the 3d train data to 2 before fitting the scaler
+        NOTE: this converts pandas dataframes into numpy ndarrays.
+        Tensorflow requires numpy ndarrays so this is intended behavior
 
+        Parameters:
+        -----------
+        verbose : bool, optional
+            If True, prints status messages. Default is True.
+
+        Returns:
+        ---------
+        Nothing, modifies in place
+        """        
+
+        if not hasattr(self, "X_train"):
+            raise AttributeError("No X_train within object. Run train_test_split first. This is to avoid fitting the scaler with prediction data.")
+        if verbose:
+            print(f"Scaling training data with scaler {self.scaler}, fitting on X_train")
+
+        # Fit scaler on training data, need to reshape
+        n_samples, timesteps, features = self.X_train.shape
+        X_train2 = self.X_train.reshape(-1, features) 
+        self.scaler.fit(X_train2)
+        # Transform data using fitted scaler
+        X_train2 = self.scaler.transform(X_train2)
+        self.X_train = X_train2.reshape(n_samples, timesteps, features)
+        if hasattr(self, 'X_val'):
+            if self.X_val is not None:
+                self.X_val = self.scaler.transform(self.X_val)
+        if self.X_test is not None:
+            self.X_test = self.scaler.transform(self.X_test)    
+
+    def inverse_scale(self, save_changes=False, verbose=True):
+        """
+        Inversely scales the data to its original form. Either save changes internally, or return tuple X_train, X_val, X_test. Need to
+        reshape 3d train array for this
+
+        Parameters:
+        -----------
+        return_X : str, optional
+            Specifies what data to return after inverse scaling. Default is 'all_hours'.
+        save_changes : bool, optional
+            If True, updates the internal data with the inversely scaled values. Default is False.
+        verbose : bool, optional
+            If True, prints status messages. Default is True.
+        """        
+        if verbose:
+            print("Inverse scaling data...")
+        n_samples, timesteps, features = self.X_train.shape
+        X_train2 = self.X_train.reshape(-1, features)
+        X_train2 = self.scaler.inverse_transform(X_train2)
+        X_train = X_train2.reshape(n_samples, timesteps, features)
+        
+        X_val = self.scaler.inverse_transform(self.X_val)
+        X_test = self.scaler.inverse_transform(self.X_test)
+
+        if save_changes:
+            print("Inverse transformed data saved")
+            self.X_train = X_train
+            self.X_val = X_val
+            self.X_test = X_test
+        else:
+            if verbose:
+                print("Inverse scaled, but internal data not changed.")
+            return X_train, X_val, X_test  
 
 
 
@@ -332,7 +398,8 @@ class RNNData(MLData):
 #     return np.concatenate(X_batches, axis=0), np.concatenate(y_batches, axis=0), t_batches, loc_batches
 
 
-
+# RNN Model Class
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 
