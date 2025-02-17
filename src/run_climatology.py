@@ -1,6 +1,10 @@
 import sys
 import pickle
 import os.path as osp
+import pandas as pd
+import multiprocessing
+multiprocessing.set_start_method("spawn", force=True) # Due to warning about 'fork' on linux and mac
+
 
 
 # Set up project paths
@@ -17,29 +21,45 @@ DATA_DIR = osp.join(PROJECT_ROOT, "data")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import parse_bbox
-from models.moisture_models import build_climatology, get_climatology_forecasts
+from utils import parse_bbox, time_range
+from models.moisture_models import build_climatology, calculate_fm_forecasts
 
 if __name__ == '__main__':
 
     if len(sys.argv) != 5:
         print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
         print(('Usage: %s <esmf_from_utc> <esmf_to_utc> <bbox> <output_file>' % sys.argv[0]))
-        print("Example: python src/run_climatology '2023-06-01T00:00:00Z' '2023-06-01T05:00:00Z' '[37,-105,39,-103]' data/test_climatology.pkl")
+        print("Example: python src/run_climatology '2023-06-01T00:00:00Z' '2023-06-01T05:00:00Z' '[37,-105,39,-103]' data/test_climatology")
         print("bbox format should match rtma_cycler: [latmin, lonmin, latmax, lonmax]")
         sys.exit(-1)
 
+    # Setup
     start = sys.argv[1]
     end = sys.argv[2]
     bbox = parse_bbox(sys.argv[3])
     out_file = sys.argv[4]
 
-    clim_dict = build_climatology(
-        start,
-        end,
-        bbox
-    )
+    # Read needed data from stash
+    if not osp.exists(f"{out_file}_data.pkl"):
+        clim_data = build_climatology(
+            start,
+            end,
+            bbox
+        )
+        # Write bulk data
+        with open(f"{out_file}_data.pkl", 'wb') as handle:
+            pickle.dump(clim_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    else:
+        print(f"Climatology file {out_file}_data.pkl already exists, reading that file. To rerun, manually delete")
+        clim_data = pd.read_pickle(f"{out_file}_data.pkl")
+
+
+    # Get forecasts and save
+    ftimes = time_range(start, end) # forecast hours    
+    clim_forecasts = calculate_fm_forecasts(ftimes, clim_data) # calc climatology forecasts
+
+    with open(f"{out_file}_forecasts.pkl", 'wb') as handle:
+        pickle.dump(clim_forecasts, handle, protocol=pickle.HIGHEST_PROTOCOL)    
+  
     
-    with open(out_file, 'wb') as handle:
-        pickle.dump(clim_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
     

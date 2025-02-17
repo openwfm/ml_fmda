@@ -19,6 +19,7 @@ import warnings
 from dateutil.relativedelta import relativedelta
 from joblib import Parallel, delayed
 
+
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## We do this so the module can be imported from different locations
@@ -49,8 +50,6 @@ raws_meta.update({'raws_stash_path': osp.join(PROJECT_ROOT, raws_meta['raws_stas
 
 # Climatology Method
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-# clim_params = Dict(params_models["climatology"])
 
 def time_to_climtimes(t, nyears = 10, ndays=15):
     """
@@ -85,127 +84,8 @@ def time_to_climtimes(t, nyears = 10, ndays=15):
     
     return ts
 
-# def build_climatology(start, end, bbox, nyears=clim_params.nyears, ndays=clim_params.ndays, min_years = clim_params.min_years):
-    
-#     # Helper Functions
-#     # def climtimes_df(start, end):
-#     #     times = time_range(start, end)
-#     #     clim_df = pd.DataFrame([time_to_climtimes(t) for t in times]).transpose()
-#     #     return clim_df
-        
-#     def read_st_fm(path, st):
-#         try:
-#             #print(f"Reading: {path}")
-#             df = pd.read_pickle(path)  # Read the pickle file
-#         except (FileNotFoundError, ValueError):
-#             # warnings.warn(f"File not found: {path}", category=UserWarning) # TODO fix multiple calls to same read
-#             return pd.DataFrame({"STID": [st], "datetime": [pd.NaT], "fm10": [float("nan")]})
+## Helper functions for climatology
 
-        
-#         result = df[df['STID'] == st]  # Filter rows for the specific stid
-        
-#         # If `stid` is missing, add a row with NaNs for other columns
-#         if result.empty:
-#             # result = pd.DataFrame({"STID": [st], "datetime": [pd.NA], "fm10": [pd.NA]})
-#             result = pd.DataFrame({"STID": [st], "datetime": [pd.NaT], "fm10": [float("nan")]})
-#         return result
-    
-#     def get_fm_data(st, file_paths):
-#         df_list = []
-    
-#         for i, col in enumerate(file_paths.columns):
-#             dfi = pd.concat(
-#                 file_paths[col].apply(lambda path: read_st_fm(path, st)).tolist(),
-#                 ignore_index=True
-#             )
-#             # Keep only relevant columns and rename `fm10` to `fm_<i>`
-#             dfi = dfi[["fm10"]].rename(columns={"fm10": i})
-            
-#             # Merge the dataframe on `STID` and `datetime` (by columns)
-#             df_list.append(dfi)
-    
-#         combined_df = pd.concat(df_list, axis=1)
-#         return combined_df    
-#     def count_years(values_df, times_df):
-#         """
-#         Based on years in times_df, count number of non-nan values per year in values_df. 
-#         Result should be a count of the number of years of data with non-nan
-#         """
-#         counts = {
-#             col: times_df[values_df[col].notna()][col].nunique()
-#             for col in values_df.columns
-#         }
-#         counts = pd.Series(counts)
-#         return counts        
-
-#     # Retrieve data
-#     ## Note, many station IDs will be empty, the list of stids was for the entire bbox region in history
-#     print(f"Retrieving climatology data from {start} to {end}")
-#     print("Params for Climatology:")
-#     print(f"    Number of years to look back: {nyears}")
-#     print(f"    Number of days to bracked target hour: {ndays}")
-#     print(f"    Required number of years of data: {min_years}")
-
-#     # Get stations in bbox
-#     stids = get_stations(bbox)["stid"].to_numpy()    
-    
-#     # Calculate times
-#     times = time_range(start, end)
-#     clim_df = pd.DataFrame([time_to_climtimes(t) for t in times]).transpose() 
-#     clim_df.columns = times
-#     climyears = clim_df.map(lambda x: x.year)
-
-#     # Get Stash File Paths 
-#     file_paths = {col: get_file_paths(clim_df[col].dropna()) for col in clim_df.columns} # NOTE: NA's generated when mixing leap year times
-#     file_paths = pd.DataFrame.from_dict(file_paths, orient='index').transpose()    
-    
-#     clim_dict = {}
-#     for st in stids:
-#         print(f"Processing station {st}")
-#         df = get_fm_data(st, file_paths)
-#         df.columns = times
-#         clim_dict[st]={
-#             "climatology_data": df,
-#             "queried_times": time_range(start, end)
-#         }
-    
-#     for st in clim_dict:
-#         df = clim_dict[st]["climatology_data"]
-#         years_count = count_years(df, climyears)
-#         clim_dict[st]["years_count"] = years_count
-#         fm = np.where(
-#             years_count>= 6, 
-#             df.mean(skipna=True),
-#             np.nan
-#         )
-#         clim_dict[st]["fm_forecast"] = fm          
-    
-#     return clim_dict
-
-# def get_climatology_forecasts(clim_dict):
-#     # Get non-empty data and return df
-#     print("~"*75)
-#     sts = [*clim_dict.keys()]
-#     valid_ids = []
-#     rows = []
-#     for st in sts:
-#         dat = clim_dict[st]["fm_forecast"]
-#         if np.all(np.isnan(dat)):
-#             print(f"No forecast generated for station {st}, removing")
-#         else:
-#             rows.append(dat)
-#             valid_ids.append(st)
-    
-#     df = pd.DataFrame(np.vstack(rows), index = valid_ids)
-#     df.columns = clim_dict[sts[0]]["queried_times"] 
-    
-#     print("~"*75)
-#     print(f"Climatology forecasts of FMC built for {df.shape[0]} unique RAWS stations")
-
-#     return df
-
-# Helper functions
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def _load_and_filter_pickle(file_path, sts):
     """Load a pickle file using pd.read_pickle and filter by 'stid' column."""
     try:
@@ -217,9 +97,11 @@ def _load_and_filter_pickle(file_path, sts):
         print(f"Error reading {file_path}: {e}")
     return None
 def _parallel_load_pickles(file_list, sts, num_workers=8):
-    """Parallel loading using joblib instead of multiprocessing."""
+    """Parallel loading and filtering, using helper function above."""
     results = Parallel(n_jobs=num_workers, backend="loky")(delayed(_load_and_filter_pickle)(f, sts) for f in file_list)
     return pd.concat([df for df in results if df is not None], ignore_index=True)
+
+
 def _filter_clim_data(clim_data, clim_times):
     """
     Filters clim_data to include only rows where the 'datetime' column matches 
@@ -313,18 +195,13 @@ def build_climatology(start, end, bbox, clim_params=None):
     raws_files = get_file_paths(all_times)
     raws_files = [f for f in raws_files if os.path.exists(f)]
     print(f"Existing RAWS Files: {len(raws_files)}")    
-
-
-    print("*****DEBUG*******")
-    print(f"{raws_files=}")
-    print(f"{sts=}")
     
     # Load data and get forecasts
-    # clim_data = _parallel_load_pickles(raws_files, sts)
+    clim_data = _parallel_load_pickles(raws_files, sts)
 
     return clim_data
 
-def calculate_fm_forecasts(ftimes, clim_data, clim_params):
+def calculate_fm_forecasts(ftimes, clim_data, clim_params=None):
     """
     Runs `time_to_climtimes` on each time in `ftimes`, filters `clim_data`,
     computes the average `fm10` per `stid`, and combines results.
@@ -337,6 +214,9 @@ def calculate_fm_forecasts(ftimes, clim_data, clim_params):
     Returns:
     - pd.DataFrame: Combined results with average fm10 per stid for each ftime.
     """
+    if clim_params is None:
+        clim_params = Dict(params_models["climatology"])
+    
     results = []
 
     for ftime in ftimes:
