@@ -2,8 +2,11 @@ import sys
 import pickle
 import os.path as osp
 import pandas as pd
-import multiprocessing
-multiprocessing.set_start_method("spawn", force=True) # Due to warning about 'fork' on linux and mac
+from joblib import cpu_count
+
+
+# import multiprocessing
+# multiprocessing.set_start_method("spawn", force=True) # Due to warning about 'fork' on linux and mac
 
 
 
@@ -41,10 +44,12 @@ if __name__ == '__main__':
 
     # Read needed data from stash
     if not osp.exists(f"{out_file}_data.pkl"):
+        n_cores = cpu_count() -1 # remove 1 to keep system usable
         clim_data = build_climatology(
             start,
             end,
-            bbox
+            bbox,
+            n_workers = n_cores
         )
         # Write bulk data
         with open(f"{out_file}_data.pkl", 'wb') as handle:
