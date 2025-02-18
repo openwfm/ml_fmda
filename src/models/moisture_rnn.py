@@ -427,14 +427,15 @@ class RNNData(MLData):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-class RNN(MLModel):
+class RNN0():
     def __init__(self, n_features, params: dict = None, random_state=None):
         if params is None:
             params = Dict(params_models["rnn"])
-        params.update({'n_features': n_features})
+        self.params = Dict(params)
+        self.params.update({'n_features': n_features})
         
-        super().__init__(params)
-        # model_params = self._filter_params(XGBRegressor) 
+        
+        # super().__init__(params)
         if random_state is not None:
             reproducibility.set_seed(random_state)
             self.params.update({"random_state": random_state})
@@ -670,17 +671,267 @@ class RNN(MLModel):
                 fit_args["validation_data"] = validation_data
             
             history = self.model_train.fit(X_train, y_train, **fit_args)            
+            
+            if plot_history:
+                self.plot_history(history,plot_title)
+                
+            if verbose_weights:
+                print(f"Fitted Weights Hash: {hash_weights(self.model_train)}")
+    
+            # Update Weights for Prediction Model
+            w_fitted = self.model_train.get_weights()
+            self.model_predict.set_weights(w_fitted)
+    
+            if return_epochs:
+                # Epoch counting starts at 0, adding 1 for the count
+                return early_stop.best_epoch + 1
+
+    def predict(self, X_test, verbose=True):
+        if verbose:
+            print("Predicting test data")
+        preds = self.model_predict.predict(X_test)
         
-            # # if validation_data is not None:
-            # history = self.model_train.fit(
-            #     X_train, y_train, 
-            #     epochs=self.params['epochs'], 
-            #     batch_size=self.params['batch_size'],
-            #     callbacks = callbacks,
-            #     verbose=verbose_fit,
-            #     validation_data = validation_data,
-            #     *args, **kwargs
-            # )
+        return preds
+
+
+
+class RNN(tf.keras.Model):
+    def __init__(self, n_features, params: dict = None, random_state=None):
+
+        super().__init__()        
+        if params is None:
+            params = Dict(params_models["rnn"])
+        self.params = Dict(params)
+        self.params.update({'n_features': n_features})
+        
+        if random_state is not None:
+            reproducibility.set_seed(random_state)
+            self.params.update({"random_state": random_state})
+
+        # Define model type.
+        if 'lstm' in self.params["hidden_layers"]:
+            self.params['mod_type'] = "LSTM"
+        elif 'rnn' in self.params["hidden_layers"]:
+            self.params["mod_type"] = "SimpleRNN"
+        else:
+            self.params["mod"] = "NN"
+
+        # Build Model, including train and predict model
+        self._build_model()
+        
+        # Compile Models
+        optimizer=Adam(learning_rate=self.params['learning_rate'])
+        self.compile(loss='mean_squared_error', optimizer=optimizer)
+
+    def _build_hidden_layers(self, x, stateful=False, return_sequences=True):
+        """
+        Helper function used to define neural network layers using TF functional interface.
+        Has checks for the "return_sequences" setting. If a recurrent layer feeds in to 
+        another recurrent layer or an attention layer, forces return_sequences to be True
+
+        Uses params where hidden layers are listed in a single list, and corresponding hidden units and activation functions in a single list. If layer is attention or dropout, corresponding units and activation function should be None
+        """
+        params = self.params
+        last_recurrent = None
+        
+        # Identify the last RNN/LSTM layer, unless an Attention layer follows it
+        for i, layer_type in enumerate(params['hidden_layers']):
+            if layer_type in ['rnn', 'lstm']:
+                # Check if there's an Attention layer following the current RNN/LSTM layer
+                if i < len(params['hidden_layers']) - 1 and params['hidden_layers'][i + 1] == 'attention':
+                    continue
+                last_recurrent = i        
+        
+        # Loop over each layer specified in 'hidden_layers'
+        for i, layer_type in enumerate(params['hidden_layers']):
+            units = params['hidden_units'][i]
+            activation = params['hidden_activation'][i]
+    
+            if layer_type == 'dense':
+                x = layers.Dense(units=units, activation=activation)(x)
+    
+            elif layer_type == 'dropout':
+                x = layers.Dropout(params['dropout'])(x)
+            
+            elif layer_type == 'rnn':
+
+                print()
+                
+                is_last_recurrent = (i == last_recurrent)
+                return_seqs_logic = not is_last_recurrent or return_sequences
+                x = layers.SimpleRNN(units=units, activation=activation, dropout=params['dropout'], recurrent_dropout=params['recurrent_dropout'], stateful=stateful,
+                                     return_sequences=return_seqs_logic)(x)
+            
+            elif layer_type == 'lstm':
+                is_last_recurrent = (i == last_recurrent)
+                return_seqs_logic = not is_last_recurrent or return_sequences
+                x = layers.LSTM(units=units, activation=activation, dropout=params['dropout'], recurrent_dropout=params['recurrent_dropout'], stateful=stateful,
+                                return_sequences=return_seqs_logic)(x)    
+            
+            elif layer_type == 'attention':
+                # Self-attention mechanism
+                x = layers.Attention()([x, x])
+            elif layer_type == 'conv1d':
+                kernel_size = params.get('kernel_size', 3)  # Check for kernel size, use 3 if missing
+                x = layers.Conv1D(filters=units, kernel_size=kernel_size, activation=activation, padding='same')(x)
+            else:
+                raise ValueError(f"Unrecognized layer type: {layer_type}, skipping")
+        
+        return x
+            
+    def _build_model(self):
+        """
+        Builds both training and prediction models within this single RNN class.
+        """
+        params = self.params
+
+        # Training model: Fixed batch size, fixed timesteps
+        inputs_train = Input(batch_shape=(params['batch_size'], params['timesteps'], params['n_features']))
+        x_train = self._build_hidden_layers(inputs_train, stateful=params['stateful'], return_sequences=params['return_sequences'])
+        outputs_train = layers.Dense(units=params['output_dimension'], activation=params['output_activation'])(x_train)
+        
+        # Prediction model: Flexible batch size, flexible timesteps
+        inputs_pred = Input(shape=(None, params['n_features']))
+        x_pred = self._build_hidden_layers(inputs_pred, stateful=False, return_sequences=True)
+        outputs_pred = layers.Dense(units=params['output_dimension'], activation=params['output_activation'])(x_pred)
+
+        # Assign model components
+        self.input_train = inputs_train
+        self.output_train = outputs_train
+        self.input_predict = inputs_pred
+        self.output_predict = outputs_pred
+
+        # Assign a reference to the prediction model
+        self.model_predict = models.Model(inputs_pred, outputs_pred)
+        
+
+    def _setup_callbacks(self, val=False):
+        """
+        Create list of callbacks used in fitting stage based on model params.
+        Always use TerminateOnNaN to stop training if loss is ever NA.
+        Other supported callbacks are ResetStates, which controls when hidden states
+        of recurrent layers are reset, and EarlyStopping, which stops training when
+        validation error stops improving for a certain number of times. Early stopping only
+        used when validation data is used
+        """
+        callbacks = [
+            TerminateOnNaN(),
+            UpdatePredictionCallback(self.model_predict)    # updates predict model on epoch end for use in validation step
+        ]
+        
+        if self.params["reset_states"]:
+            print("Using ResetStatesCallback.")
+            callbacks=callbacks+[ResetStatesCallback(verbose=False)]
+
+        if val:
+            print("Using EarlyStoppingCallback")
+            early_stop = EarlyStoppingCallback(patience = self.params['early_stopping_patience'])
+            callbacks=callbacks+[early_stop]
+        else:
+            early_stop = None
+        
+        return callbacks, early_stop
+
+    def is_stateful(self):
+        """
+        Checks whether any of the layers in the internal model (self.model_train) are stateful.
+
+        Returns:
+        bool: True if at least one layer in the model is stateful, False otherwise.
+        
+        This method iterates over all the layers in the model and checks if any of them
+        have the 'stateful' attribute set to True. This is useful for determining if 
+        the model is designed to maintain state across batches during training.
+
+        Example:
+        --------
+        model.is_stateful()
+        """          
+        for layer in self.model_train.layers:
+            if hasattr(layer, 'stateful') and layer.stateful:
+                return True
+        return False
+
+    def test_step(self, data):
+        """
+        Custom validation step called on epoch end, uses model_predict on validation data with
+        flexible input structure (None, None, features). 
+        """
+        x, y = data  
+        y_pred = self.model_predict(x, training=False)  
+        loss = self.compiled_loss(y, y_pred)  
+
+        self.compiled_metrics.update_state(y, y_pred)
+        return {m.name: m.result() for m in self.metrics}
+        
+    def plot_history(self, history, plot_title, create_figure=True):
+        """
+        Plots the training history. Uses log scale on y axis for readability.
+
+        Parameters:
+        -----------
+        history : History object
+            The training history object from model fitting. Output of keras' .fit command
+        plot_title : str
+            The title for the plot.
+        """
+        
+        if create_figure:
+            plt.figure(figsize=(10, 6))
+        plt.semilogy(history.history['loss'], label='Training loss')
+        if 'val_loss' in history.history:
+            plt.semilogy(history.history['val_loss'], label='Validation loss')
+        plt.title(f'{plot_title} Model loss')
+        plt.ylabel('Loss')
+        plt.xlabel('Epoch')
+        plt.legend(loc='upper left')
+        plt.show()
+
+    def fit(self, X_train, y_train, verbose_fit = False, verbose_weights=False, 
+                plot_history=True, plot_title = '', 
+                weights=None, callbacks=[], validation_data=None, return_epochs=False, *args, **kwargs):
+            """
+            Trains the model on the provided training data. Uses the fit method of the training model and then copies the weights over to the prediction model, which has a less restrictive input shape. Formats a list of callbacks to use within the fit method based on params input
+    
+            Parameters:
+            -----------
+            X_train : np.ndarray
+                The input matrix data for training.
+            y_train : np.ndarray
+                The target vector data for training.
+            plot_history : bool, optional
+                If True, plots the training history. Default is True.
+            plot_title : str, optional
+                The title for the training plot. Default is an empty string.
+            weights : optional
+                Initial weights for the model. Default is None.
+            callbacks : list, optional
+                A list of callback functions to use during training. Default is an empty list.
+            validation_data : tuple, optional
+                Validation data to use during training, expected format (X_val, y_val). Default is None.
+            return_epochs : bool
+                If True, return the number of epochs that training took. Used to test and optimize early stopping
+            """        
+            if verbose_weights:
+                print(f"Training simple RNN with params: {self.params}")
+                
+            # Setup callbacks, Check if validation data exists to modify callbacks
+            val = validation_data is not None
+            callbacks, early_stop = self._setup_callbacks(val)
+
+            fit_args = {
+                "epochs": self.params["epochs"],
+                "batch_size": self.params["batch_size"],
+                "callbacks": callbacks,
+                "verbose": verbose_fit,
+                **kwargs
+            }
+            
+            if validation_data is not None:
+                fit_args["validation_data"] = validation_data
+            
+            # Fit model with super class method
+            history = super().fit(X_train, y_train, **fit_ars)
             
             if plot_history:
                 self.plot_history(history,plot_title)
@@ -709,11 +960,14 @@ class RNN(MLModel):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class ResetStatesCallback(Callback):
+    """
+    Class used to control reset of hidden states for recurrent models.
+    """
     def __init__(self, verbose=False):
         super().__init__()
         self.verbose = verbose
 
-    def reset_rnn_states(self):
+    def _reset_rnn_states(self):
         """Reset states for all RNN layers in the model. Helper function that can be called at various times"""
         for layer in self.model.layers:
             if hasattr(layer, "reset_states"):
@@ -723,9 +977,9 @@ class ResetStatesCallback(Callback):
     
     def on_train_batch_end(self, batch, logs=None):
         """
-        For non-stateful model. Would need to be adjusted for a stateful model
+        Reset after each batch of training. This treats batches as independent and intended for a non-stateful model. Would need to be adjusted for a stateful model
         """
-        self.reset_rnn_states()
+        self._reset_rnn_states()
         if self.verbose:
             print(f"Reset hidden states at end of train batch {batch}")
             
@@ -733,11 +987,25 @@ class ResetStatesCallback(Callback):
         """
         Redundant with on_train_batch_end unless stateful model or a batch is skipped internally for some reason
         """
-        self.reset_rnn_states()
+        self._reset_rnn_states()
         if self.verbose:
             print(f"Reset hidden states at end of epoch {epoch}")
 
-    
+
+class UpdatePredictionCallback(Callback):
+    """
+    Class used to copy weights over from the training model to the prediction model at the end of each epoch. This is done so that the flexibility of the input shape of the prediction model can be used in the validation step at the end of an epoch, rather than forcing the validation data into the training model input shape. 
+    """
+    def __init__(self, model_predict, verbose=False):
+        super().__init__()
+        self.verbose=verbose
+        self.model_predict = model_predict  # Store reference to the prediction model
+
+    def on_epoch_end(self, epoch, logs=None):
+        if self.verbose:
+            print("Updating Prediction Model")
+        self.model_predict.set_weights(self.model.get_weights())  # Copy weights        
+
 
 
 def EarlyStoppingCallback(patience=5):
