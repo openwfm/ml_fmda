@@ -193,9 +193,9 @@ def build_ml_data(dict0,
             if col in df_filtered.columns:
                 target_dtype = dtype_mapping.get(meta.get("dtype"), None)
                 if target_dtype:
-                    df_filtered[col] = df_filtered[col].astype(target_dtype)   
+                    df_filtered.loc[:, col] = df_filtered[col].astype(target_dtype)   
         # Convert Reponse variable type
-        df_filtered["fm"] = df_filtered["fm"].astype(np.float64) 
+        df_filtered.loc[:, "fm"] = df_filtered["fm"].astype(np.float64) 
                     
         if df_filtered.shape[0] > 0:
             ml_dict[st] = {
@@ -351,6 +351,24 @@ def sort_train_dict(d):
     """
     return dict(sorted(d.items(), key=lambda item: item[1]["data"].shape[0], reverse=True))
 
+def cv_data_wrap(d, fstart, train_hours, forecast_hours, random_state=42):
+    """
+    Combines functions above to create train/val/test datasets from input data dictionary and params
+    """
+    
+    # Define CV time periods based on params
+    train_times, val_times, test_times = data_funcs.cv_time_setup("2023-01-29T00:00:00Z", train_hours=train_hours, forecast_hours=forecast_hours)
+    # Get CV locations based on size of input data dictionary and calculated CV times
+    tr_sts, val_sts, te_sts = data_funcs.cv_space_setup(d, 
+                                                        val_times=val_times, 
+                                                        test_times=test_times, 
+                                                        random_state=random_state)
+    # Build train/val/test by getting data at needed locations and times
+    train = data_funcs.get_sts_and_times(d, tr_sts, train_times)
+    val = data_funcs.get_sts_and_times(d, val_sts, val_times)
+    test = data_funcs.get_sts_and_times(d, te_sts, test_times)
+
+    return train, val, test
 
 
 # Final data creation code
