@@ -23,7 +23,8 @@ DATA_DIR = osp.join(PROJECT_ROOT, "data")
 from utils import read_yml, Dict, str2time, time_range
 import data_funcs
 import reproducibility
-import models.moisture_models as mm
+from models.moisture_static import XGB
+from models.moisture_ode import ODE_FMC
 
 # Read Metadata and Data Params 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -40,7 +41,7 @@ FORECAST_HOURS = 48
 
 def initialize_models(params):
     models = {
-        'XGB' : mm.XGB(params['xgb']),
+        'XGB' : XGB(params['xgb']),
     }
 
     return models
@@ -140,7 +141,7 @@ if __name__ == '__main__':
             te_sts = [*test.keys()]
             test_times = test[te_sts[0]]["times"]
             ode_data = data_funcs.get_ode_data(ml_dict, te_sts, test_times)
-            ode = mm.ODE_FMC()
+            ode = ODE_FMC()
             m, errs = ode.run_model(ode_data, hours=72, h2=24)
             print(f"ODE RMSE Over Test Period: {errs}")
     
@@ -148,7 +149,7 @@ if __name__ == '__main__':
             print()
             dat = data_funcs.StaticMLData(train, val, test)
             dat.scale_data()
-            xgb_model = mm.XGB()
+            xgb_model = XGB()
             m, err = xgb_model.run_train(dat)
             print(f"XGBoost Validation RMSE: {err}")
             err = xgb_model.run_test(dat.X_test, dat.y_test)
