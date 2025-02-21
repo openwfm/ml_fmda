@@ -20,7 +20,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import read_pkl, hash_ndarray
-import models.moisture_models as mm
+from models.moisture_ode import ODE_FMC
 import data_funcs
 
 expected_model_hash = "0d09cbb16f29ceec4b39f11d5032cd54"
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     ode_data = data_funcs.get_ode_data(ml_data, te_sts, test_times)
 
     # Run Model
-    ode = mm.ODE_FMC()
+    ode = ODE_FMC()
     m, errs = ode.run_model(ode_data, hours=72, h2=24)
     model_hash = hash_ndarray(m)
 

@@ -3,6 +3,7 @@
 import sys
 import pickle
 import os.path as osp
+import os
 from dateutil.relativedelta import relativedelta
 
 # Set up project paths
@@ -36,19 +37,34 @@ params_data = Dict(read_yml(osp.join(CONFIG_DIR, "params_data.yaml")))
 TRAIN_HOURS = 72
 FORECAST_HOURS = 48
 
+
+def initialize_models(params):
+    models = {
+        'XGB' : mm.XGB(params['xgb']),
+    }
+
+    return models
+
+
+# Set up results output dictionary
+# code will incrementally update it and save on each iteration to allow for process end and resume
+# Outputs organized by Forecast Period start on top level key, then models subkeys
+results = {}
+
 if __name__ == '__main__':
 
     if len(sys.argv) != 5:
         print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
         print(('Usage: %s <esmf_from_utc> <esmf_to_utc> <fmda_file_path> <output_file>' % sys.argv[0]))
-        print("Example: python src/run_forecast_analysis.py '2023-02-01T00:00:00Z' '2023-02-10T00:00:00Z' 'data/rocky_fmda' data/forecast_analysis_test.pkl")
+        print("Example: python src/run_forecast_analysis.py '2023-02-01T00:00:00Z' '2023-02-10T00:00:00Z' 'data/rocky_fmda' outputs/forecast_analysis_test")
         print("bbox format should match rtma_cycler: [latmin, lonmin, latmax, lonmax]")
         sys.exit(-1)
 
     fstart = str2time(sys.argv[1])
     fend = str2time(sys.argv[2])
     data_path = sys.argv[3]
-    out_file = sys.argv[4]
+    out_dir = sys.argv[4]
+    os.makedirs(out_dir, exist_ok=True)
 
     # Handle Forecast Periods
     # Define Forecast start times, 48hr spacing
@@ -101,41 +117,42 @@ if __name__ == '__main__':
     data = data_funcs.combine_fmda_files(file_paths)
     ml_dict = data_funcs.build_ml_data(data, hours=params_data.hours, 
                                    max_linear_time = params_data.max_linear_time, 
-                                   save_path = osp.join(PROJECT_ROOT, out_file))
+                                   save_path = osp.join(PROJECT_ROOT, out_dir, "ml_data.pkl"), verbose=False)
     print(f"Total Stations with Data in Time Period: {len(ml_dict)}")
 
     # 
     reproducibility.set_seed(42) # Set seed once here, don't do in the loops
-    for tf in forecast_periods:
+    for ft in forecast_periods:
         print("~"*75)
-        print(f"Running train and forecast for period {tf}")
-        # Handle Time Cross Val
-        train_times, val_times, test_times = data_funcs.cv_time_setup(tf, 
-                                                train_hours=TRAIN_HOURS, forecast_hours=FORECAST_HOURS)
-        # Handle Location Cross Val, don't set random state so we get different samples for stations
-        tr_sts, val_sts, te_sts = data_funcs.cv_space_setup(ml_dict, 
-                                                    val_times=val_times, 
-                                                    test_times=test_times, 
-                                                    random_state=None)
-        train = data_funcs.get_sts_and_times(ml_dict, tr_sts, train_times)
-        val = data_funcs.get_sts_and_times(ml_dict, val_sts, val_times)
-        test = data_funcs.get_sts_and_times(ml_dict, te_sts, test_times)
 
-        # Run Models
-        ## ODE
-        print()
-        ode_data = data_funcs.get_ode_data(ml_dict, te_sts, test_times)
-        ode = mm.ODE_FMC()
-        m, errs = ode.run_model(ode_data, hours=72, h2=24)
-        print(f"ODE RMSE Over Test Period: {errs}")
-
-        ## Static XGBoost
-        print()
-        dat = data_funcs.StaticMLData(train, val, test)
-        dat.scale_data()
-        xgb_model = mm.XGB(mm.xgb_params)
-        m, err = xgb_model.run_model(dat)
-        print(f"XGBoost RMSE over Test Period: {err}")
+        out_file = osp.join(PROJECT_ROOT, out_dir, f"{ft.strftime('%Y%m%d_%H')}.pkl")
+        if osp.exists(out_file):
+            print("Forecast output already exists, skipping to next period")
+        else:
+            print(f"Running train and forecast for period {ft}")
+            # Handle Time Cross Val
+            train, val, test = data_funcs.cv_data_wrap(ml_dict,
+                                        ft, train_hours=TRAIN_HOURS,forecast_hours=FORECAST_HOURS)
+    
+            # Run Models
+            ## ODE
+            print()
+            te_sts = [*test.keys()]
+            test_times = test[te_sts[0]]["times"]
+            ode_data = data_funcs.get_ode_data(ml_dict, te_sts, test_times)
+            ode = mm.ODE_FMC()
+            m, errs = ode.run_model(ode_data, hours=72, h2=24)
+            print(f"ODE RMSE Over Test Period: {errs}")
+    
+            ## Static XGBoost
+            print()
+            dat = data_funcs.StaticMLData(train, val, test)
+            dat.scale_data()
+            xgb_model = mm.XGB()
+            m, err = xgb_model.run_train(dat)
+            print(f"XGBoost Validation RMSE: {err}")
+            err = xgb_model.run_test(dat.X_test, dat.y_test)
+            print(f"XGBoost Test RMSE: {err}")
 
 
 
