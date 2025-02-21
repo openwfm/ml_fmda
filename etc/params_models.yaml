@@ -27,7 +27,7 @@ rnn:
     verbose_weights: true # If True, prints some extra info on model weights, including unique hashes of values
     return_sequences: true  # whether or not the LAST recurrent layer should return sequences. 
     predict_spinup_hours: 5 # Number of hours to run through the model before prediction errors evaluated. Used to stabilize hidden state. NOTE: not implemented yet as of 2024-10-17
-
+    reset_states: true # whether to reset hidden states at end of epochs and batches, see ResetStatesCallback for details
 
 
 # Other ML Params
