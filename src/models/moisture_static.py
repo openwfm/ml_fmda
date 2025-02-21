@@ -64,25 +64,15 @@ class MLModel(ABC):
         preds = self.model.predict(X)
         return preds
 
-    def run_train(self, data_dict):
-        """
-        Wrapper to take custom data class and train & predict validation data,
-        if present. 
-        """
-
-        self.fit(data_dict.X_train, data_dict.y_train)
-
-        m = self.predict(data_dict.X_val)
-        rmse = np.sqrt(mean_squared_error(m, data_dict.y_val))
-
-        return m, rmse
         
-    def run_test(self, X_test, y_test):
+    def test_eval(self, X_test, y_test):
         preds = self.predict(X_test)
         rmse = np.sqrt(mean_squared_error(y_test, preds))
         # rmse_ros = np.sqrt(mean_squared_error(ros_3wind(y_test), ros_3wind(preds)))
-        print(f"Test RMSE: {rmse}")
-        # print(f"Test RMSE (ROS): {rmse_ros}")
+        print(f"Overall Test RMSE: {rmse}")
+        errs = {
+            'rmse': rmse
+        }
         return rmse        
 
 

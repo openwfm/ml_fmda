@@ -661,17 +661,27 @@ class RNN_Flexible(Model):
                 return early_stop.best_epoch + 1        
 
     def test_eval(self, X_test, y_test):
+        """
+        Runs predict and calculates accuracy metrics for given test set.
+        Can also be used on validation data in hyperparameter tuning runs
+        """
         preds = self.predict(X_test)
         # Overall RMSE
         rmse = np.sqrt(mean_squared_error(y_test.flatten(), preds.flatten()))
         print(f"Overall Test RMSE: {rmse}")
         
         # Per loc RMSE
-        batch_rmse = [
+        batch_rmse = np.array([
             np.sqrt(mean_squared_error(y_test[i].reshape(-1), preds[i].reshape(-1)))
             for i in range(y_test.shape[0])
-        ]
-        print(f"Per-Location Mean Test RMSE: {np.mean(batch_rmse)}")
+        ])
+        print(f"Per-Location Mean Test RMSE: {batch_rmse.mean()}")
+        errs = {
+            'rmse': rmse,
+            'loc_rmse': batch_rmse
+        }
+        return errs
+        
 
 
     
