@@ -1,0 +1,23 @@
+# File used to set up restricted grid hyper parameter tuning
+# Tuning is 2 step: 1. Model architecture 2. Optimization params
+# Constraints on model architecture, see paper description
+# Many params are fixed, eg layer activation type
+
+
+# Model architecture grids
+model_architecture:
+    recurrent_layers: [["lstm"], ["lstm", "lstm"]]
+    dense_layers: [[], ["dense"], ["dense", "dense"]]
+    units: [16, 32, 64]
+
+# Optimization parameters grid
+optimization:
+    learning_rate: [0.01, 0.001, 0.0001]
+    batch_size: [32, 64, 128]
+
+# Time Period
+times:
+    forecast_start_times: ["2023-06-01T00:00:00Z", "2023-07-01T00:00:00Z", "2023-08-01T00:00:00Z", "2023-09-01T00:00:00Z", "2023-10-01T00:00:00Z", 
+"2023-11-01T00:00:00Z", "2023-12-01T00:00:00Z"]  
+    train_hours: 4320 # 30 days * 24 hours * 6 months
+    forecast_hours: 48 

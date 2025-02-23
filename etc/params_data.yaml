@@ -19,10 +19,11 @@ min_solar: 0 # minimum wind threshold value
 max_solar: 1400 # maximum solar threshold value
 min_temp: 230 # Minimum air temp (K), corresponds to -43 C
 max_temp: 330 # Maximum air temp (K), corresponds to 56 C (hottest recorded temp in Death Valley)
-# min_soilm: 0 # minimum soil moisture threshold value
+min_soilm: 0 # minimum soil moisture threshold value
 # max_soilm: 0 # minimum soil moisture threshold value, TODO
-# features_all: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'soilm', 'canopyw', 'groundflux', 'rain'] # list of all features to try to process
 
-
+features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'grid_x', 'grid_y', 'rain'] 
+time_fracs: [0.8, 0.1, 0.1] # Percentage of data based on time span for train/val/test
+space_fracs: [0.8, 0.1, 0.1] # Percentage of data based on location for train/val/test
 
 

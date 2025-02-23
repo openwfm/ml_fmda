@@ -5,7 +5,7 @@
 
 # Stateless RNN, batch_size declared at fit step
 rnn:
-    timesteps: 12 # number of time steps that constistutes one single input sample
+    timesteps: 48 # number of time steps that constistutes one single input sample, matches HRRR max forecast cycle and max time this model is intended to be extrapolated into the future
     batch_size: 32 # number of sequences of length `timesteps` that are processed independently in an iteration of weight updates
     hidden_layers: [lstm, dense, dropout] # Sequential order of neural network hidden layers, one of 'dense', 'rnn', 'lstm', 'attention', 'dropout'
     hidden_units: [32, 16, null] # Corresponding number of units for layers, attention & dropout layers should have None for this
@@ -15,19 +15,16 @@ rnn:
     output_layer: dense # Output specifications should not be changed unless input data is restructured. Currently outputing single scalar at each input time step
     output_activation: linear # continuous output, could also possibly use ReLU or another function
     output_dimension: 1 # One-dim output (FMC)
-    learning_rate: 0.0002
+    learning_rate: 0.001
     early_stopping_patience: 5 # Number of epochs with no improvement after which training will be stopped.
     epochs: 100
-    # features_list: [doy, hod, Ed, Ew, rain, elev, lon, lat, solar, wind]
     scaler: standard # One of standard, MinMax. NOTE: MinMax more strongly depends on test data being within range of train data, otherwise scales certain data outside of 0,1 range and then you get nonsense
-    time_fracs: [0.8, 0.1, 0.1] # Percentage of data based on time span for train/val/test
-    space_fracs: [0.8, 0.1, 0.1] # Percentage of data based on location for train/val/test
     stateful: false
     verbose_fit: true # If True, prints loss metrics on each epoch of training
     verbose_weights: true # If True, prints some extra info on model weights, including unique hashes of values
     return_sequences: true  # whether or not the LAST recurrent layer should return sequences. 
-    predict_spinup_hours: 5 # Number of hours to run through the model before prediction errors evaluated. Used to stabilize hidden state. NOTE: not implemented yet as of 2024-10-17
-    reset_states: true # whether to reset hidden states at end of epochs and batches, see ResetStatesCallback for details
+    predict_spinup_hours: 5 # Number of hours to run through the model before prediction errors evaluated. Used to stabilize hidden state. NOTE: not implemented yet as of 2025-2-23 and might never use
+
 
 
 # Other ML Params
@@ -43,9 +40,9 @@ xgb:
   n_estimators: 100
   gamma: .1
   scaler: 'standard'
-  # features_list: ['Ed', 'Ew', 'solar', 'wind', 'rain']
 
-  ### Params sent by Schreck, slow and less accurate for this dataset
+
+  ### Params sent by Schreck that use VIIRS and other inputs, slower and less accurate for this dataset
     # objective: "reg:squarederror"
     # n_splits: 1
     # learning_rate: 0.1 
@@ -72,12 +69,10 @@ rf:
   verbose: 0 # Controls the verbosity when fitting and predicting
   warm_start: false # When set to True, reuse the solution of the previous call to fit and add more estimators to the ensemble
   scaler: null
-  # features_list: ['Ed', 'Ew', 'solar', 'wind', 'rain']
   
 lm:
   fit_intercept: true
   scaler: null
-  # features_list: ['Ed', 'Ew', 'solar', 'wind', 'rain']
 
 
 # Climatology Params

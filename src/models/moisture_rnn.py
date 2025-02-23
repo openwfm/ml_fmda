@@ -15,6 +15,8 @@ from tensorflow.keras import layers, Model
 from tensorflow.keras.layers import LSTM, SimpleRNN, Input, Dropout, Dense
 from tensorflow.keras.optimizers import Adam
 import warnings
+from itertools import product
+
 
 
 # Set up project paths
@@ -1024,3 +1026,100 @@ def EarlyStoppingCallback(patience=5):
         mode='min',
         restore_best_weights=True
     )
+
+# Hyperparameter Tuning helper functions
+# See description of restricted grid search
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+def model_grid(model_dict):
+    """
+    Create grid of hyperparamneters related to Model Architecture. Combine model hyperparameter configurations with various constraints. This is for hidden layers. Output layer determined by nature of the problem. 
+
+    Notes:
+    ----------
+        - Dense layers must follow recurrent, if using dense
+        - Units must decrease or stay the same following a funnel-architecture
+        - One Dropout layer added to final dense layer, if using
+    """
+    
+    recurrent_layers, dense_layers, units = model_dict["recurrent_layers"], model_dict["dense_layers"], model_dict["units"]
+    
+    all_layer_combos = [
+        rec + dense
+        for rec, dense in product(recurrent_layers, dense_layers)
+    ]    
+
+    def generate_unit_configs(num_layers):
+        """Generate valid unit configurations where units decrease deeper in the network."""
+        return [list(combo) for combo in product(units, repeat=num_layers)
+                if all(combo[i] >= combo[i+1] for i in range(len(combo)-1))]
+    # Create parameter grid
+    grid = []
+    
+    for layers in all_layer_combos:
+        valid_units = generate_unit_configs(len(layers))  # Get unit configurations matching layer count
+        for units in valid_units:
+            grid.append({"hidden_layers": layers, "hidden_units": units})
+    
+    # Add dropout following last dense layer
+    dense_grid = []
+    
+    for config in grid:
+        layers = config["hidden_layers"]
+        units = config["hidden_units"]
+    
+        # If last layer is Dense, add Dropout after it
+        if layers[-1] == "dense":
+            layers = layers + ["dropout"]
+            units = units + [None]  # Dropout has no units
+    
+        # Store the updated configuration
+        dense_grid.append({"hidden_layers": layers, "hidden_units": units})
+    
+    final_grid = []
+    
+    for config in dense_grid:
+        layers = config["hidden_layers"]
+        units = config["hidden_units"]
+        
+        # Assign default activation based on layer type
+        activations = []
+        for layer in layers:
+            if layer == "lstm":
+                activations.append("tanh")
+            elif layer == "dense":
+                activations.append("relu")
+            elif layer == "conv1d":
+                activations.append("relu")
+            elif layer == "dropout":
+                activations.append(None)  # Dropout has no activation
+    
+        # Store the updated configuration
+        final_grid.append({
+            "hidden_layers": layers,
+            "hidden_units": units,
+            "hidden_activation": activations
+        })    
+
+    return final_grid
+
+def optimization_grid(opt_dict):
+    """
+    Create simple grid of parameters, intended to use with optmization parameters, including batch size and learning rate. No constraints, just all combos
+
+    Inputs:
+    ----------
+        - opt_dict: (dict) dictionary with top_level  a list of grid values for 
+
+    Returns:
+    ----------
+        list: list of dictionaries with hyperparam configurations
+    """
+    # Get all parameter names (keys) and their possible values (lists)
+    keys, values = zip(*opt_dict.items())
+
+    # Generate all possible combinations
+    grid = [dict(zip(keys, combo)) for combo in product(*values)]
+    
+    return grid
+
