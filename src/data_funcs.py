@@ -47,15 +47,25 @@ hrrr_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "hrrr_metadata.ya
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def subdicts_identical(d1, d2, subdict_keys = ["units", "loc", "misc"]):
+# def subdicts_identical(d1, d2, subdict_keys = ["units", "loc", "misc"]):
+#     """
+#     Helper function to merge retrieved data dictionaries. Checks that subdicts for metadata are the same
+#     """
+#     return all(d1.get(k) == d2.get(k) for k in subdict_keys)
+
+def subdicts_identical(d1, d2, subdict_keys=["units", "loc", "misc"]):
     """
-    Helper function to merge retrieved data dictionaries. Checks that subdicts for metadata are the same
+    Helper function to merge retrieved data dictionaries. Checks that subdicts for metadata are the same.
+    Returns a tuple: (boolean, list of non-matching keys)
     """
-    return all(d1.get(k) == d2.get(k) for k in subdict_keys)
+    mismatched_keys = [k for k in subdict_keys if d1.get(k) != d2.get(k)]
+    return len(mismatched_keys) == 0, mismatched_keys
 
 
 def extend_fmda_dicts(d1, d2, subdict_keys=["RAWS", "HRRR", "times"]):
-    assert subdicts_identical(d1, d2), "Metadata subdicts not the same"
+    identical, mismatched_keys = subdicts_identical(d1, d2)
+    assert identical, f"Metadata subdicts not the same: {mismatched_keys}"
+   
     merged_dict = {k: d1[k] for k in ["units", "loc", "misc"]} # copy metadata
 
     for key in subdict_keys:
@@ -198,9 +208,9 @@ def build_ml_data(dict0,
             if col in df_filtered.columns:
                 target_dtype = dtype_mapping.get(meta.get("dtype"), None)
                 if target_dtype:
-                    df_filtered.loc[:, col] = df_filtered[col].astype(target_dtype)   
+                    df_filtered = df_filtered.assign(**{col: df_filtered[col].astype(target_dtype)})   
         # Convert Reponse variable type
-        df_filtered["fm"] = pd.to_numeric(df_filtered["fm"])
+        df_filtered = df_filtered.assign(fm=pd.to_numeric(df_filtered["fm"]))
                     
         if df_filtered.shape[0] > 0:
             ml_dict[st] = {
