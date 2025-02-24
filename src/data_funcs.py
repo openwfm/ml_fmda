@@ -170,6 +170,11 @@ def build_ml_data(dict0,
         if atm_source == "HRRR":
             raws = d[st]["RAWS"][["stid", "date_time", "fm", "lat", "lon", "elev"]]
             atm = d[st]["HRRR"]
+            # Ensure all names renamed, TODO: handle this more gracefully
+            # Different versions of Herbie and xarray return different names for the spatial objects for wind and solar. 
+            # Manually checking change here, but need to fix moving forward
+            atm.rename(columns={"max_10si": "wind", "sdswrf": "solar"}, inplace=True)
+
             # Check times match
             assert np.all(raws.date_time.to_numpy() == atm.date_time.to_numpy()), f"date_time column doesn't match from RAWS and HRRR for station {st}"
         
