@@ -16,7 +16,7 @@ import random
 import copy
 from abc import ABC, abstractmethod
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-
+import warnings
 
 
 # Set up project paths
@@ -62,10 +62,11 @@ def subdicts_identical(d1, d2, subdict_keys=["units", "loc"]):
     return len(mismatched_keys) == 0, mismatched_keys
 
 
-def extend_fmda_dicts(d1, d2, subdict_keys=["RAWS", "HRRR", "times"]):
+def extend_fmda_dicts(d1, d2, st, subdict_keys=["RAWS", "HRRR", "times"]):
     identical, mismatched_keys = subdicts_identical(d1, d2)
-    assert identical, f"Metadata subdicts not the same: {mismatched_keys}"
-   
+    if not identical:
+        warnings.warn(f"Metadata subdicts not the same for station {st}: {mismatched_keys}", UserWarning)
+
     merged_dict = {k: d1[k] for k in ["units", "loc", "misc"]} # copy metadata
 
     for key in subdict_keys:
@@ -95,7 +96,7 @@ def combine_fmda_files(input_file_paths, save_path = None, verbose=True):
             if st not in combined_dict.keys():
                 combined_dict[st] = di[st]
             else:
-                combined_dict[st] = extend_fmda_dicts(combined_dict[st], di[st])
+                combined_dict[st] = extend_fmda_dicts(combined_dict[st], di[st], st)
 
     if save_path is not None:
         with open(save_path, 'wb') as f:
