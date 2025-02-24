@@ -1,11 +1,21 @@
-# File used to store parameters associated with data filters
+# File used to store parameters associated with data dataset construction and data filters
+
+
+# Data Structuring Params
+# Used in data retrieval and build train/val/test
+features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'grid_x', 'grid_y', 'rain'] 
+space_test_frac: 0.1 # Percentage of data based on location for val and test
+train_hours: 8760 # hours in a 365 day year
+forecast_hours: 48 # based on HRRR max forecast time
+
+
+# Filter Params
 # Assumed units: 
 ## FM: percent from 0-100 (or more)
 ## Rain: mm/hr
 ## Wind: m/s, see https://www.metoffice.gov.uk/weather/guides/coast-and-sea/beaufort-scale
 ## Solar Rad: W/m^2, see https://viirsland.gsfc.nasa.gov/PDF/VIIRS_DSRPAR_UserGuide_v1.2.pdf
 ## Soil Moisture: % (fraction)
-
 max_linear_time: 10 # maximum number of hours that can be perfectly linear, controls interpolation length
 max_const_time: 10 # number of hours where flagged if zero change in a variable
 hours: 72 # total hours to build timeseries, break up longer into this length. Used to help with filters related to over-interpolation
@@ -21,9 +31,5 @@ min_temp: 230 # Minimum air temp (K), corresponds to -43 C
 max_temp: 330 # Maximum air temp (K), corresponds to 56 C (hottest recorded temp in Death Valley)
 min_soilm: 0 # minimum soil moisture threshold value
 # max_soilm: 0 # minimum soil moisture threshold value, TODO
-
-features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'grid_x', 'grid_y', 'rain'] 
-time_fracs: [0.8, 0.1, 0.1] # Percentage of data based on time span for train/val/test
-space_fracs: [0.8, 0.1, 0.1] # Percentage of data based on location for train/val/test
 
 

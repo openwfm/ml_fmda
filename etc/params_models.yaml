@@ -17,7 +17,7 @@ rnn:
     output_dimension: 1 # One-dim output (FMC)
     learning_rate: 0.001
     early_stopping_patience: 5 # Number of epochs with no improvement after which training will be stopped.
-    epochs: 100
+    epochs: 3
     scaler: standard # One of standard, MinMax. NOTE: MinMax more strongly depends on test data being within range of train data, otherwise scales certain data outside of 0,1 range and then you get nonsense
     stateful: false
     verbose_fit: true # If True, prints loss metrics on each epoch of training
