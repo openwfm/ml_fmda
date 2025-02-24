@@ -45,7 +45,7 @@ if __name__ == '__main__':
         'hidden_units': [3, 3, None], 
         'batch_size': 4,
         'timesteps': None,
-        'epochs':4,
+        'epochs':2,
         'random_state': 42
     })
     
