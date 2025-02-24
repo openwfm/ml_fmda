@@ -53,7 +53,7 @@ hrrr_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "hrrr_metadata.ya
 #     """
 #     return all(d1.get(k) == d2.get(k) for k in subdict_keys)
 
-def subdicts_identical(d1, d2, subdict_keys=["units", "loc", "misc"]):
+def subdicts_identical(d1, d2, subdict_keys=["units", "loc"]):
     """
     Helper function to merge retrieved data dictionaries. Checks that subdicts for metadata are the same.
     Returns a tuple: (boolean, list of non-matching keys)
