@@ -20,6 +20,7 @@ from dateutil.relativedelta import relativedelta
 import pickle
 import pandas as pd
 
+
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## We do this so the module can be imported from different locations
@@ -239,6 +240,9 @@ if __name__ == '__main__':
     print(f"Minimum Overall RMSE by Optimization Hyperparams: {mean_errs.min()}")
     print(f"Optimization Hyperparams with Min Err: {min_err_opt["opt"]}")
 
-
+    # Write file of tuned params
+    out_file = osp.join(out_dir, "Final Hyperparams.txt")
+    with open(out_file, "w") as f:
+        f.write(str(min_err_model["model"]) + "\n" + str(min_err_opt["opt"]))
 
     
