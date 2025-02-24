@@ -176,7 +176,7 @@ if __name__ == '__main__':
     min_err_model = err_dicts[0][min_err_index] # NOTE: use first element of data files, since architectures should be the same
     print("~"*75)
     print(f"Minimum Overall RMSE by Model: {mean_errs.min()}")
-    print(f"Model Architecture with Min Err: {min_err_model["model"]}")
+    print(f"Model Architecture with Min Err: {min_err_model['model']}")
 
     # Fix model architecture run optimization grid
     print("~"*75)
@@ -238,7 +238,7 @@ if __name__ == '__main__':
     min_err_opt = err_dicts[0][min_err_index] # NOTE: use first element of data files, since architectures should be the same
     print("~"*75)
     print(f"Minimum Overall RMSE by Optimization Hyperparams: {mean_errs.min()}")
-    print(f"Optimization Hyperparams with Min Err: {min_err_opt["opt"]}")
+    print(f"Optimization Hyperparams with Min Err: {min_err_opt['opt']}")
 
     # Write file of tuned params
     out_file = osp.join(out_dir, "Final Hyperparams.txt")
