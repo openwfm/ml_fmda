@@ -25,7 +25,7 @@ DATA_DIR = osp.join(PROJECT_ROOT, "data")
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import parse_bbox, time_range
-from models.moisture_models import build_climatology, calculate_fm_forecasts
+from models.moisture_climatology import build_climatology, calculate_fm_forecasts
 
 if __name__ == '__main__':
 

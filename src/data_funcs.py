@@ -34,8 +34,8 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import read_yml, read_pkl, time_range, str2time, is_consecutive_hours
 import reproducibility
-import ingest.RAWS as rr
-import ingest.HRRR as ih
+# import ingest.RAWS as rr
+# import ingest.HRRR as ih
 
 # Read Variable Metadata
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -47,15 +47,25 @@ hrrr_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "hrrr_metadata.ya
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def subdicts_identical(d1, d2, subdict_keys = ["units", "loc", "misc"]):
+# def subdicts_identical(d1, d2, subdict_keys = ["units", "loc", "misc"]):
+#     """
+#     Helper function to merge retrieved data dictionaries. Checks that subdicts for metadata are the same
+#     """
+#     return all(d1.get(k) == d2.get(k) for k in subdict_keys)
+
+def subdicts_identical(d1, d2, subdict_keys=["units", "loc"]):
     """
-    Helper function to merge retrieved data dictionaries. Checks that subdicts for metadata are the same
+    Helper function to merge retrieved data dictionaries. Checks that subdicts for metadata are the same.
+    Returns a tuple: (boolean, list of non-matching keys)
     """
-    return all(d1.get(k) == d2.get(k) for k in subdict_keys)
+    mismatched_keys = [k for k in subdict_keys if d1.get(k) != d2.get(k)]
+    return len(mismatched_keys) == 0, mismatched_keys
 
 
 def extend_fmda_dicts(d1, d2, subdict_keys=["RAWS", "HRRR", "times"]):
-    assert subdicts_identical(d1, d2), "Metadata subdicts not the same"
+    identical, mismatched_keys = subdicts_identical(d1, d2)
+    assert identical, f"Metadata subdicts not the same: {mismatched_keys}"
+   
     merged_dict = {k: d1[k] for k in ["units", "loc", "misc"]} # copy metadata
 
     for key in subdict_keys:
@@ -128,7 +138,9 @@ def build_ml_data(dict0,
                   max_linear_time = 10,
                   atm_source="HRRR", 
                   dtype_mapping = {"float": np.float64, "int": np.int64},
-                  save_path = None):
+                  save_path = None,
+                  verbose=True 
+                 ):
     """
     Given input of retrieved fmda data, i.e. the output of combine_fmda_files, merge RAWS and HRRR, and apply filters that flag long stretches of interpolated or constant data
     
@@ -152,8 +164,9 @@ def build_ml_data(dict0,
     print(f"Merging atmospheric data from {atm_source}")
     # Merge RAWS and HRRR
     for st in d:
-        print("~"*50)
-        print(f"Processing station {st}")
+        if verbose:
+            print("~"*50)
+            print(f"Processing station {st}")
         if atm_source == "HRRR":
             raws = d[st]["RAWS"][["stid", "date_time", "fm", "lat", "lon", "elev"]]
             atm = d[st]["HRRR"]
@@ -174,7 +187,8 @@ def build_ml_data(dict0,
             # df = d[st]["RAWS"]
     
         # Split into periods
-        print(f"Checking {hours} hour increments for constant/linear")
+        if verbose:
+            print(f"Checking {hours} hour increments for constant/linear")
         df['st_period'] = np.arange(len(df)) // hours
     
         # Apply FMC filters and remove suspect data periods. 
@@ -182,8 +196,9 @@ def build_ml_data(dict0,
         flagged = df.groupby('st_period')['fm'].apply(
         lambda period: flag_lag_stretches(period, max_linear_time, lag=2)
     ).pipe(lambda flags: flags[flags].index)
-        if flagged.size > 0:
-            print(f"Removing period {flagged} due to linear period of data longer than {max_linear_time}")
+        if verbose:
+            if flagged.size > 0:
+                print(f"Removing period {flagged} due to linear period of data longer than {max_linear_time}")
 
         # Filter flagged periods
         df_filtered = df[~df['st_period'].isin(flagged)]
@@ -193,7 +208,9 @@ def build_ml_data(dict0,
             if col in df_filtered.columns:
                 target_dtype = dtype_mapping.get(meta.get("dtype"), None)
                 if target_dtype:
-                    df_filtered[col] = df_filtered[col].astype(target_dtype)   
+                    df_filtered = df_filtered.assign(**{col: df_filtered[col].astype(target_dtype)})   
+        # Convert Reponse variable type
+        df_filtered = df_filtered.assign(fm=pd.to_numeric(df_filtered["fm"]))
                     
         if df_filtered.shape[0] > 0:
             ml_dict[st] = {
@@ -349,6 +366,24 @@ def sort_train_dict(d):
     """
     return dict(sorted(d.items(), key=lambda item: item[1]["data"].shape[0], reverse=True))
 
+def cv_data_wrap(d, fstart, train_hours, forecast_hours, random_state=None):
+    """
+    Combines functions above to create train/val/test datasets from input data dictionary and params
+    """
+    
+    # Define CV time periods based on params
+    train_times, val_times, test_times = cv_time_setup(fstart, train_hours=train_hours, forecast_hours=forecast_hours)
+    # Get CV locations based on size of input data dictionary and calculated CV times
+    tr_sts, val_sts, te_sts = cv_space_setup(d, 
+                                                        val_times=val_times, 
+                                                        test_times=test_times, 
+                                                        random_state=random_state)
+    # Build train/val/test by getting data at needed locations and times
+    train = get_sts_and_times(d, tr_sts, train_times)
+    val = get_sts_and_times(d, val_sts, val_times)
+    test = get_sts_and_times(d, te_sts, test_times)
+
+    return train, val, test
 
 
 # Final data creation code
@@ -387,6 +422,7 @@ class MLData(ABC):
             raise ValueError("scaler must be 'standard' or 'minmax'")
         self.scaler = StandardScaler() if scaler == "standard" else MinMaxScaler()
         self.features_list = features_list if features_list is not None else ["Ed", "Ew", "rain"]
+        self.n_features = len(self.features_list)
 
         # Setup data fiels, e.g. X_train and y_train
         self._setup_data(train, val, test)
@@ -434,7 +470,7 @@ class MLData(ABC):
         if verbose:
             print(f"Scaling training data with scaler {self.scaler}, fitting on X_train")
 
-        # Fit scaler on row-joined training data
+        # Fit scaler on training data
         self.scaler.fit(self.X_train)
         # Transform data using fitted scaler
         self.X_train = self.scaler.transform(self.X_train)
