@@ -18,6 +18,7 @@ import os
 import os.path as osp
 from dateutil.relativedelta import relativedelta
 import pickle
+import pandas as pd
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -33,7 +34,7 @@ DATA_DIR = osp.join(PROJECT_ROOT, "data")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import Dict, read_yml, str2time, time_range
+from utils import Dict, read_pkl, read_yml, str2time, time_range
 from models.moisture_rnn import model_grid, optimization_grid, RNNData, RNN_Flexible
 import data_funcs
 import reproducibility
@@ -53,9 +54,9 @@ hyper_params = Dict(read_yml(osp.join(CONFIG_DIR, "rnn_hyperparam_tuning_config.
 if __name__ == '__main__':
 
     if len(sys.argv) != 3:
-        print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
+        print(f"Invalid arguments. {len(sys.argv)} was given but 3 expected")
         print(('Usage: %s <fmda_dir_path> <output_dir>' % sys.argv[0]))
-        print("Example: python src/run_hyperparam_tuning.py  'data/rocky_fmda' outputs/rnn_hyperparam_tuning")
+        print("Example: python src/run_rnn_hyperparam_tuning.py  'data/rocky_fmda' outputs/rnn_hyperparam_tuning")
         sys.exit(-1)
 
     
@@ -68,7 +69,8 @@ if __name__ == '__main__':
     # Param Grids    
     model_params_grid = model_grid(hyper_params['model_architecture'])
     opt_grid = optimization_grid(hyper_params['optimization'])
-
+    
+    
     forecast_periods = hyper_params["times"]["forecast_start_times"]
     forecast_periods = np.array([str2time(t) for t in forecast_periods])
     train_hours = hyper_params["times"]["train_hours"]
@@ -117,7 +119,6 @@ if __name__ == '__main__':
 
     print("~"*75)
     for ft in forecast_periods:
-        ft = forecast_periods[0]
         out_file = osp.join(out_dir, f"model_{ft.strftime('%Y%m%d_%H')}.pkl")
         if osp.exists(out_file):
             print("Forecast output already exists, skipping to next period")
@@ -134,6 +135,7 @@ if __name__ == '__main__':
 
             for i in range(0, len(model_params_grid)):
                 print("~"*75)
+                print(i)
                 # Setup params
                 model_i = model_params_grid[i]
                 print(f"Running model configuration: {model_i}")
@@ -162,6 +164,81 @@ if __name__ == '__main__':
             with open(out_file, 'wb') as handle:
                 pickle.dump(err_dict_output, handle, protocol=pickle.HIGHEST_PROTOCOL)      
 
+    # Combine Errors and Evaluate Model Architecture
+    files = [f for f in os.listdir(out_dir) if f.startswith('model_')]
+    assert len(files) == len(forecast_periods), f"Mismatch number of output files ({len(files)}) and forecast periods ({len(forecast_periods)})"
+    err_dicts = [read_pkl(osp.join(out_dir, f)) for f in files]
+    data = [{ key: file_dict[key]['errs']['rmse'] for key in file_dict } for file_dict in err_dicts]
+    df = pd.DataFrame(data)
+    mean_errs = df.mean(axis = 0)
+    min_err_index = mean_errs.argmin()
+    min_err_model = err_dicts[0][min_err_index] # NOTE: use first element of data files, since architectures should be the same
+    print("~"*75)
+    print(f"Minimum Overall RMSE by Model: {mean_errs.min()}")
+    print(f"Model Architecture with Min Err: {min_err_model["model"]}")
 
+    # Fix model architecture run optimization grid
+    print("~"*75)
+    print(f"Running Optimization Hyperparam Tuning with {opt_grid}")
+    params_rnn.update(min_err_model["model"])
+    for ft in forecast_periods:
+        out_file = osp.join(out_dir, f"opt_{ft.strftime('%Y%m%d_%H')}.pkl")
+        if osp.exists(out_file):
+            print("Forecast output already exists, skipping to next period")
+        else:
+            print(f"Running model architecture selection for forecast time {ft}") 
+            print("Defining CV time periods based on time params")
+            train, val, test = data_funcs.cv_data_wrap(ml_dict, ft, train_hours=train_hours,forecast_hours=forecast_hours)
+            # Make RNN Data, reused by different models
+            dat = RNNData(train, val, test, timesteps=48, method="random")
+            dat.scale_data()
 
+            # Setup output file for the forecast period
+            err_dict_output = {}            
+            for i in range(0, len(opt_grid)):
+                print("~"*75)
+                print(i)
+                # Setup params
+                opt_i = opt_grid[i]
+                print(f"Running optimization hyperparam configuration: {opt_i}")
+                params_rnn.update(opt_i)
                 
+                # Run Train and Predict
+                rnn = RNN_Flexible(n_features = dat.n_features, params = params_rnn)
+                rnn.fit(dat.X_train, dat.y_train, 
+                        validation_data=(dat.X_val, dat.y_val),
+                        batch_size = params_rnn["batch_size"],
+                        # epochs = params_rnn["epochs"],
+                        epochs = 3,
+                        verbose_fit = True, plot_history=False
+                       )
+                errs = rnn.test_eval(dat.X_test, dat.y_test)
+                print(errs)
+
+                # Save to output file
+                err_dict_output[i] = {
+                    'opt': opt_i,
+                    'errs': errs
+                }
+
+            # Write output for forecast period
+            print(f"Writing Output: {out_file}")
+            with open(out_file, 'wb') as handle:
+                pickle.dump(err_dict_output, handle, protocol=pickle.HIGHEST_PROTOCOL)  
+
+    # Combine Errors and Evaluate Optimization Params
+    files = [f for f in os.listdir(out_dir) if f.startswith('opt_')]
+    assert len(files) == len(forecast_periods), f"Mismatch number of output files ({len(files)}) and forecast periods ({len(forecast_periods)})"
+    err_dicts = [read_pkl(osp.join(out_dir, f)) for f in files]
+    data = [{ key: file_dict[key]['errs']['rmse'] for key in file_dict } for file_dict in err_dicts]
+    df = pd.DataFrame(data)
+    mean_errs = df.mean(axis = 0)
+    min_err_index = mean_errs.argmin()
+    min_err_opt = err_dicts[0][min_err_index] # NOTE: use first element of data files, since architectures should be the same
+    print("~"*75)
+    print(f"Minimum Overall RMSE by Optimization Hyperparams: {mean_errs.min()}")
+    print(f"Optimization Hyperparams with Min Err: {min_err_opt["opt"]}")
+
+
+
+    
