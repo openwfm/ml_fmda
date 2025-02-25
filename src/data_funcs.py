@@ -366,6 +366,9 @@ def sort_train_dict(d):
     """
     return dict(sorted(d.items(), key=lambda item: item[1]["data"].shape[0], reverse=True))
 
+def filter_empty_data(input_dict):
+    return {k: v for k, v in input_dict.items() if v["data"].shape[0] > 0}
+
 def cv_data_wrap(d, fstart, train_hours, forecast_hours, random_state=None):
     """
     Combines functions above to create train/val/test datasets from input data dictionary and params
@@ -383,6 +386,11 @@ def cv_data_wrap(d, fstart, train_hours, forecast_hours, random_state=None):
     val = get_sts_and_times(d, val_sts, val_times)
     test = get_sts_and_times(d, te_sts, test_times)
 
+    # Drop stations with empty data
+    train = filter_empty_data(train)
+    val = filter_empty_data(val)
+    test = filter_empty_data(test)    
+    
     return train, val, test
 
 
@@ -405,7 +413,9 @@ def get_ode_data(dict0, sts, test_times, spinup=24):
     all_times = time_range(spinup_times.min(), test_times.max())
     ode_data = get_sts_and_times(d, sts, all_times)
 
-    return ode_data
+    # Drop Stations with less than spinup + forecast hours
+    return {k: v for k, v in ode_data.items() if v["data"].shape[0] == 72}    
+    # return ode_data
 
 class MLData(ABC):
     """
