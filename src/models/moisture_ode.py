@@ -277,12 +277,26 @@ class ODE_FMC:
         """
         
         assert u.shape == fm.shape, "Arrays must have the same shape."
+
+        # Overall RMSE
         # Reshape to 2D: (N * timesteps, features)
         fm2 = fm.reshape(-1, fm.shape[-1])
         u2 = u.reshape(-1, u.shape[-1])
         rmse = np.sqrt(mean_squared_error(u2, fm2))
+
+        # Per-loc RMSE
+        batch_rmse = np.array([
+            np.sqrt(mean_squared_error(fm[i].reshape(-1), u[i].reshape(-1)))
+            for i in range(fm.shape[0])
+        ])        
+
+        # Set up error return dict, support for multiple metrics
+        errs = {
+            'rmse': rmse,
+            'loc_rmse': batch_rmse
+        }
     
-        return rmse
+        return errs
 
     def run_model(self, dict0, hours=72, h2=24):
         """
@@ -300,7 +314,7 @@ class ODE_FMC:
         preds = self.run_dict(dict0, hours=hours, h2=h2)
         m = self.slice_fm_forecasts(preds, h2 = h2)
 
-        rmse = self.eval(m, fm)
+        errs = self.eval(m, fm)
 
-        return m, rmse
+        return m, errs
 
