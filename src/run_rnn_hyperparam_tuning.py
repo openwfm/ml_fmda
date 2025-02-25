@@ -120,6 +120,7 @@ if __name__ == '__main__':
     print(f"Running Model Architecture Hyperparameter Selection with param grids: {hyper_params['model_architecture']}")
 
     print("~"*75)
+    params_rnn.update({'learning_rate': 0.0001}) # Setting relative small initial learning rate, which will get optimized later
     for ft in forecast_periods:
         out_file = osp.join(out_dir, f"model_{ft.strftime('%Y%m%d_%H')}.pkl")
         if osp.exists(out_file):
@@ -148,8 +149,7 @@ if __name__ == '__main__':
                 rnn.fit(dat.X_train, dat.y_train, 
                         validation_data=(dat.X_val, dat.y_val),
                         batch_size = params_rnn["batch_size"],
-                        # epochs = params_rnn["epochs"],
-                        epochs = 3,
+                        epochs = params_rnn["epochs"],
                         verbose_fit = True, plot_history=False
                        )
                 errs = rnn.test_eval(dat.X_test, dat.y_test)
@@ -210,8 +210,7 @@ if __name__ == '__main__':
                 rnn.fit(dat.X_train, dat.y_train, 
                         validation_data=(dat.X_val, dat.y_val),
                         batch_size = params_rnn["batch_size"],
-                        # epochs = params_rnn["epochs"],
-                        epochs = 3,
+                        epochs = params_rnn["epochs"],
                         verbose_fit = True, plot_history=False
                        )
                 errs = rnn.test_eval(dat.X_test, dat.y_test)
