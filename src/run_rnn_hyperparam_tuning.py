@@ -47,6 +47,7 @@ params_data = Dict(read_yml(osp.join(CONFIG_DIR, "params_data.yaml")))
 params_rnn = Dict(read_yml(osp.join(CONFIG_DIR, "params_models.yaml"), subkey="rnn"))
 hyper_params = Dict(read_yml(osp.join(CONFIG_DIR, "rnn_hyperparam_tuning_config.yaml")))
 
+features_list = ['Ed', 'Ew', 'elev', 'wind', 'solar', 'grid_x', 'grid_y', 'rain'] 
 
 # code will loop through forecast period, then loop through model architecture 
 # as determined by hyperparam tuning config file
@@ -128,7 +129,7 @@ if __name__ == '__main__':
             print("Defining CV time periods based on time params")
             train, val, test = data_funcs.cv_data_wrap(ml_dict, ft, train_hours=train_hours,forecast_hours=forecast_hours)
             # Make RNN Data, reused by different models
-            dat = RNNData(train, val, test, timesteps=48, method="random")
+            dat = RNNData(train, val, test, timesteps=48, method="random", features_list=features_list)
             dat.scale_data()
 
             # Setup output file for the forecast period
@@ -191,7 +192,7 @@ if __name__ == '__main__':
             print("Defining CV time periods based on time params")
             train, val, test = data_funcs.cv_data_wrap(ml_dict, ft, train_hours=train_hours,forecast_hours=forecast_hours)
             # Make RNN Data, reused by different models
-            dat = RNNData(train, val, test, timesteps=48, method="random")
+            dat = RNNData(train, val, test, timesteps=48, method="random", features_list=features_list)
             dat.scale_data()
 
             # Setup output file for the forecast period
@@ -241,7 +242,7 @@ if __name__ == '__main__':
     print(f"Optimization Hyperparams with Min Err: {min_err_opt['opt']}")
 
     # Write file of tuned params
-    out_file = osp.join(out_dir, "Final Hyperparams.txt")
+    out_file = osp.join(out_dir, "Final_Hyperparams.txt")
     with open(out_file, "w") as f:
         f.write(str(min_err_model["model"]) + "\n" + str(min_err_opt["opt"]))
 
