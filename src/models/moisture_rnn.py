@@ -664,7 +664,7 @@ class RNN_Flexible(Model):
                 # Epoch counting starts at 0, adding 1 for the count
                 return early_stop.best_epoch + 1        
 
-    def test_eval(self, X_test, y_test):
+    def test_eval(self, X_test, y_test, verbose=False):
         """
         Runs predict and calculates accuracy metrics for given test set.
         Can also be used on validation data in hyperparameter tuning runs
@@ -672,14 +672,15 @@ class RNN_Flexible(Model):
         preds = self.predict(X_test)
         # Overall RMSE
         rmse = np.sqrt(mean_squared_error(y_test.flatten(), preds.flatten()))
-        print(f"Overall Test RMSE: {rmse}")
         
         # Per loc RMSE
         batch_rmse = np.array([
             np.sqrt(mean_squared_error(y_test[i].reshape(-1), preds[i].reshape(-1)))
             for i in range(y_test.shape[0])
         ])
-        print(f"Per-Location Mean Test RMSE: {batch_rmse.mean()}")
+        if verbose:
+            print(f"Overall Test RMSE: {rmse}")
+            print(f"Per-Location Mean Test RMSE: {batch_rmse.mean()}")
         errs = {
             'rmse': rmse,
             'loc_rmse': batch_rmse
@@ -1044,7 +1045,7 @@ def model_grid(model_dict):
         - One Dropout layer added to final dense layer, if using
     """
     
-    recurrent_layers, dense_layers, units = model_dict["recurrent_layers"], model_dict["dense_layers"], model_dict["units"]
+    recurrent_layers, dense_layers, layer_units = model_dict["recurrent_layers"], model_dict["dense_layers"], model_dict["units"]
     
     all_layer_combos = [
         rec + dense
@@ -1053,8 +1054,9 @@ def model_grid(model_dict):
 
     def generate_unit_configs(num_layers):
         """Generate valid unit configurations where units decrease deeper in the network."""
-        return [list(combo) for combo in product(units, repeat=num_layers)
+        return [list(combo) for combo in product(layer_units, repeat=num_layers)
                 if all(combo[i] >= combo[i+1] for i in range(len(combo)-1))]
+        
     # Create parameter grid
     grid = []
     
@@ -1062,7 +1064,8 @@ def model_grid(model_dict):
         valid_units = generate_unit_configs(len(layers))  # Get unit configurations matching layer count
         for units in valid_units:
             grid.append({"hidden_layers": layers, "hidden_units": units})
-    
+
+
     # Add dropout following last dense layer
     dense_grid = []
     
