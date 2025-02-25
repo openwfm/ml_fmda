@@ -32,7 +32,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import read_yml, read_pkl, time_range, str2time, is_consecutive_hours
+from utils import read_yml, read_pkl, time_range, str2time, is_consecutive_hours, time_intp
 import reproducibility
 # import ingest.RAWS as rr
 # import ingest.HRRR as ih
@@ -172,7 +172,16 @@ def build_ml_data(dict0,
             atm = d[st]["HRRR"]
             # Check times match
             assert np.all(raws.date_time.to_numpy() == atm.date_time.to_numpy()), f"date_time column doesn't match from RAWS and HRRR for station {st}"
-        
+
+            # Interpolate any missing HRRR 
+            # NOTE: I think there should be no NA, but including to be sure, investigate if this is the case
+            times = atm.date_time.to_numpy()
+            for var in hrrr_meta:
+                if var in atm.columns:
+                    v = time_intp(times, atm[var].to_numpy(), times)
+                    atm.loc[:, var] = v
+                    
+            
             # Merge, if repeated names add 
             df = pd.merge(
                 raws,
@@ -211,6 +220,7 @@ def build_ml_data(dict0,
                     df_filtered = df_filtered.assign(**{col: df_filtered[col].astype(target_dtype)})   
         # Convert Reponse variable type
         df_filtered = df_filtered.assign(fm=pd.to_numeric(df_filtered["fm"]))
+        df_filtered = df_filtered.reset_index(drop=True) # restart index counter
                     
         if df_filtered.shape[0] > 0:
             ml_dict[st] = {
@@ -338,7 +348,7 @@ def cv_space_setup(dict0, val_times, test_times, test_frac = 0.1, verbose=True, 
 def filter_df(df, filter_col, ts):
     return df[df[filter_col].isin(ts)]
 
-def get_sts_and_times(dict0, sts_list, times):
+def get_sts_and_times(dict0, sts_list, times, data_dict = 'data'):
     """
     Given input retrieved fmda data, return sudictionary based on given stations list and observed data times
     """
@@ -351,8 +361,8 @@ def get_sts_and_times(dict0, sts_list, times):
     # Get times
     for st in new_dict:
         new_dict[st]["times"] = times
-        new_dict[st]["data"] = filter_df(new_dict[st]["data"], "date_time", times)
-        new_dict[st]["times"] = new_dict[st]["data"].date_time.to_numpy()
+        new_dict[st][data_dict] = filter_df(new_dict[st][data_dict], "date_time", times)
+        new_dict[st]["times"] = new_dict[st][data_dict].date_time.to_numpy()
  
     return new_dict
     
