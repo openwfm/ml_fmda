@@ -25,32 +25,24 @@ import data_funcs
 import reproducibility
 from models.moisture_static import XGB
 from models.moisture_ode import ODE_FMC
+from models.moisture_rnn import RNN_Flexible, RNNData
 
-# Read Metadata and Data Params 
+# Config and Params 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 params_data = Dict(read_yml(osp.join(CONFIG_DIR, "params_data.yaml")))
-
+params_models = Dict(read_yml(osp.join(CONFIG_DIR, "params_models.yaml")))
+params_models['rnn'].update({'timesteps': None}) # For flexible training and prediction
+n_features = len(params_data['features_list'])
 
 
 # Define Global Variables for analysis
 # TRAIN_HOURS = 8760 # includes validation set hours, which is set to same as forecast hours
-TRAIN_HOURS = 72
+TRAIN_HOURS = 144
 FORECAST_HOURS = 48
 
 
-def initialize_models(params):
-    models = {
-        'XGB' : XGB(params['xgb']),
-    }
 
-    return models
-
-
-# Set up results output dictionary
-# code will incrementally update it and save on each iteration to allow for process end and resume
-# Outputs organized by Forecast Period start on top level key, then models subkeys
-results = {}
 
 if __name__ == '__main__':
 
@@ -63,7 +55,7 @@ if __name__ == '__main__':
 
     fstart = str2time(sys.argv[1])
     fend = str2time(sys.argv[2])
-    data_path = sys.argv[3]
+    data_dir = sys.argv[3]
     out_dir = sys.argv[4]
     os.makedirs(out_dir, exist_ok=True)
 
@@ -88,7 +80,7 @@ if __name__ == '__main__':
     # Get FMDA Data Paths based on CV Scheme
     # 48hr test periods, 1 year train (incl 48 hour validation)
     # Assuming structure of pickle files for 1 day of some bbox
-    # Format: {data_path}/YYYYMM/fmda_YYYYMMDD.pkl
+    # Format: {data_dir}/YYYYMM/fmda_YYYYMMDD.pkl
 
     print("~"*75)
     print("Defining CV time periods based on earliest and latest forecast times")
@@ -99,7 +91,7 @@ if __name__ == '__main__':
     print(f"Earliest Day of Data: {days.min()}")
     print(f"Latest Day of Data: {days.max()}")
 
-    file_paths = [f"{data_path}/{dt.strftime('%Y%m')}/fmda_{dt.strftime('%Y%m%d')}.pkl" for dt in days]
+    file_paths = [f"{data_dir}/{dt.strftime('%Y%m')}/fmda_{dt.strftime('%Y%m%d')}.pkl" for dt in days]
     
     all_exist = all(osp.exists(path) for path in file_paths)
     # For now, hard exit if not all data exists. Maybe relax in the future
@@ -111,7 +103,7 @@ if __name__ == '__main__':
             print(path)
         sys.exit(-1)
     else:
-        print(f"All Needed Data exists in {data_path}, proceeding...")
+        print(f"All Needed Data exists in {data_dir}, proceeding...")
 
     # Read and Format Data, get set up for train and test
     print("~"*75)
@@ -136,24 +128,48 @@ if __name__ == '__main__':
                                         ft, train_hours=TRAIN_HOURS,forecast_hours=FORECAST_HOURS)
     
             # Run Models
-            ## ODE
+            # ODE
             print()
             te_sts = [*test.keys()]
             test_times = test[te_sts[0]]["times"]
             ode_data = data_funcs.get_ode_data(ml_dict, te_sts, test_times)
             ode = ODE_FMC()
-            m, errs = ode.run_model(ode_data, hours=72, h2=24)
-            print(f"ODE RMSE Over Test Period: {errs}")
+            m, errs_ode = ode.run_model(ode_data, hours=72, h2=24)
+            print(f"ODE Test RMSE: {errs_ode}")
     
             ## Static XGBoost
             print()
             dat = data_funcs.StaticMLData(train, val, test)
             dat.scale_data()
             xgb_model = XGB()
-            m, err = xgb_model.run_train(dat)
-            print(f"XGBoost Validation RMSE: {err}")
-            err = xgb_model.run_test(dat.X_test, dat.y_test)
-            print(f"XGBoost Test RMSE: {err}")
+            xgb_model.fit(dat.X_train, dat.y_train)
+            errs_xgb = xgb_model.test_eval(dat.X_test, dat.y_test, verbose=False)
+            print(f"XGBoost Test RMSE: {errs_xgb['rmse']}")
+
+            # RNN
+            dat = RNNData(train, val, test, method="random", random_state=None)
+            dat.scale_data()
+            rnn = RNN_Flexible(n_features=dat.n_features,params=params_models['rnn'])
+            rnn.fit(dat.X_train, dat.y_train, 
+                    validation_data=(dat.X_val, dat.y_val),
+                    batch_size = params_models['rnn']["batch_size"],
+                    epochs = 3,
+                    verbose_fit = True,
+                    plot_history=False
+                   )
+            errs_rnn = rnn.test_eval(dat.X_test, dat.y_test, verbose=False)
+            print(f"RNN Test RMSE: {errs_rnn['rmse']}")
+
+            # Write output for forecast period
+            err_dict_output = {
+                'ODE': errs_ode,
+                'XGB': errs_xgb,
+                'RNN': errs_rnn
+            }
+            print(f"Writing Output: {out_file}")
+            with open(out_file, 'wb') as handle:
+                pickle.dump(err_dict_output, handle, protocol=pickle.HIGHEST_PROTOCOL)  
+            
 
 
 
