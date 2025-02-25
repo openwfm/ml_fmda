@@ -32,7 +32,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import read_yml, read_pkl, time_range, str2time, is_consecutive_hours
+from utils import read_yml, read_pkl, time_range, str2time, is_consecutive_hours, time_intp
 import reproducibility
 # import ingest.RAWS as rr
 # import ingest.HRRR as ih
@@ -178,7 +178,16 @@ def build_ml_data(dict0,
 
             # Check times match
             assert np.all(raws.date_time.to_numpy() == atm.date_time.to_numpy()), f"date_time column doesn't match from RAWS and HRRR for station {st}"
-        
+
+            # Interpolate any missing HRRR 
+            # NOTE: I think there should be no NA, but including to be sure, investigate if this is the case
+            times = atm.date_time.to_numpy()
+            for var in hrrr_meta:
+                if var in atm.columns:
+                    v = time_intp(times, atm[var].to_numpy(), times)
+                    atm.loc[:, var] = v
+                    
+            
             # Merge, if repeated names add 
             df = pd.merge(
                 raws,
@@ -217,6 +226,7 @@ def build_ml_data(dict0,
                     df_filtered = df_filtered.assign(**{col: df_filtered[col].astype(target_dtype)})   
         # Convert Reponse variable type
         df_filtered = df_filtered.assign(fm=pd.to_numeric(df_filtered["fm"]))
+        df_filtered = df_filtered.reset_index(drop=True) # restart index counter
                     
         if df_filtered.shape[0] > 0:
             ml_dict[st] = {
@@ -344,7 +354,7 @@ def cv_space_setup(dict0, val_times, test_times, test_frac = 0.1, verbose=True, 
 def filter_df(df, filter_col, ts):
     return df[df[filter_col].isin(ts)]
 
-def get_sts_and_times(dict0, sts_list, times):
+def get_sts_and_times(dict0, sts_list, times, data_dict = 'data'):
     """
     Given input retrieved fmda data, return sudictionary based on given stations list and observed data times
     """
@@ -357,8 +367,8 @@ def get_sts_and_times(dict0, sts_list, times):
     # Get times
     for st in new_dict:
         new_dict[st]["times"] = times
-        new_dict[st]["data"] = filter_df(new_dict[st]["data"], "date_time", times)
-        new_dict[st]["times"] = new_dict[st]["data"].date_time.to_numpy()
+        new_dict[st][data_dict] = filter_df(new_dict[st][data_dict], "date_time", times)
+        new_dict[st]["times"] = new_dict[st][data_dict].date_time.to_numpy()
  
     return new_dict
     
@@ -371,6 +381,9 @@ def sort_train_dict(d):
     NOTE: only intended to apply to train dict, as validation and test dicts were constructed so no missing data
     """
     return dict(sorted(d.items(), key=lambda item: item[1]["data"].shape[0], reverse=True))
+
+def filter_empty_data(input_dict):
+    return {k: v for k, v in input_dict.items() if v["data"].shape[0] > 0}
 
 def cv_data_wrap(d, fstart, train_hours, forecast_hours, random_state=None):
     """
@@ -389,6 +402,11 @@ def cv_data_wrap(d, fstart, train_hours, forecast_hours, random_state=None):
     val = get_sts_and_times(d, val_sts, val_times)
     test = get_sts_and_times(d, te_sts, test_times)
 
+    # Drop stations with empty data
+    train = filter_empty_data(train)
+    val = filter_empty_data(val)
+    test = filter_empty_data(test)    
+    
     return train, val, test
 
 
@@ -411,7 +429,9 @@ def get_ode_data(dict0, sts, test_times, spinup=24):
     all_times = time_range(spinup_times.min(), test_times.max())
     ode_data = get_sts_and_times(d, sts, all_times)
 
-    return ode_data
+    # Drop Stations with less than spinup + forecast hours
+    return {k: v for k, v in ode_data.items() if v["data"].shape[0] == 72}    
+    # return ode_data
 
 class MLData(ABC):
     """

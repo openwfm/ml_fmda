@@ -228,7 +228,7 @@ def read_yml(yaml_path, subkey=None):
     return d
     
 # Generic helper function to read pickle files
-def read_pkl(file_path):
+def read_pkl(file_path, verbose=True):
     """
     Reads a pickle file and returns its contents.
 
@@ -254,7 +254,8 @@ def read_pkl(file_path):
 
     """    
     with open(file_path, 'rb') as file:
-        print(f"loading file {file_path}")
+        if verbose:
+            print(f"loading file {file_path}")
         d = pickle.load(file)
     return d
 

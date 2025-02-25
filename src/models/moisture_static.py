@@ -65,15 +65,16 @@ class MLModel(ABC):
         return preds
 
         
-    def test_eval(self, X_test, y_test):
+    def test_eval(self, X_test, y_test, verbose=True):
         preds = self.predict(X_test)
         rmse = np.sqrt(mean_squared_error(y_test, preds))
         # rmse_ros = np.sqrt(mean_squared_error(ros_3wind(y_test), ros_3wind(preds)))
-        print(f"Overall Test RMSE: {rmse}")
+        if verbose:
+            print(f"Overall Test RMSE: {rmse}")
         errs = {
             'rmse': rmse
         }
-        return rmse        
+        return errs        
 
 
 class XGB(MLModel):
