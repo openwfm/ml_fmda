@@ -38,7 +38,7 @@ n_features = len(params_data['features_list'])
 
 # Define Global Variables for analysis
 # TRAIN_HOURS = 8760 # includes validation set hours, which is set to same as forecast hours
-TRAIN_HOURS = 144
+TRAIN_HOURS = 720
 FORECAST_HOURS = 48
 
 
@@ -49,8 +49,7 @@ if __name__ == '__main__':
     if len(sys.argv) != 5:
         print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
         print(('Usage: %s <esmf_from_utc> <esmf_to_utc> <fmda_file_path> <output_file>' % sys.argv[0]))
-        print("Example: python src/run_forecast_analysis.py '2023-02-01T00:00:00Z' '2023-02-10T00:00:00Z' 'data/rocky_fmda' outputs/forecast_analysis_test")
-        print("bbox format should match rtma_cycler: [latmin, lonmin, latmax, lonmax]")
+        print("Example: python src/run_forecast_analysis.py '2023-07-01T00:00:00Z' '2023-07-31T00:00:00Z' 'data/rocky_fmda' outputs/forecast_analysis_test")
         sys.exit(-1)
 
     fstart = str2time(sys.argv[1])
@@ -108,9 +107,7 @@ if __name__ == '__main__':
     # Read and Format Data, get set up for train and test
     print("~"*75)
     data = data_funcs.combine_fmda_files(file_paths)
-    ml_dict = data_funcs.build_ml_data(data, hours=params_data.hours, 
-                                   max_linear_time = params_data.max_linear_time, 
-                                   save_path = osp.join(PROJECT_ROOT, out_dir, "ml_data.pkl"), verbose=False)
+    ml_dict = data_funcs.build_ml_data(data, hours=params_data.hours,  save_path = osp.join(PROJECT_ROOT, out_dir, "ml_data.pkl"), max_linear_time = params_data.max_linear_time, verbose=False)
     print(f"Total Stations with Data in Time Period: {len(ml_dict)}")
 
     # 
@@ -153,7 +150,7 @@ if __name__ == '__main__':
             rnn.fit(dat.X_train, dat.y_train, 
                     validation_data=(dat.X_val, dat.y_val),
                     batch_size = params_models['rnn']["batch_size"],
-                    epochs = 3,
+                    epochs = params_models['rnn']["epochs"],
                     verbose_fit = True,
                     plot_history=False
                    )
@@ -162,13 +159,15 @@ if __name__ == '__main__':
 
             # Write output for forecast period
             err_dict_output = {
+                'times': test_times,
+                'stids': te_sts,
                 'ODE': errs_ode,
                 'XGB': errs_xgb,
                 'RNN': errs_rnn
             }
             print(f"Writing Output: {out_file}")
             with open(out_file, 'wb') as handle:
-                pickle.dump(err_dict_output, handle, protocol=pickle.HIGHEST_PROTOCOL)  
+                pickle.dump(err_dict_output, handle, protocol=pickle.HIGHEST_PROTOCOL)
             
 
 
