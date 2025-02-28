@@ -72,10 +72,9 @@ if __name__ == '__main__':
         models = file.readlines()
 
     # Ensure task_id is within bounds
-    if not (0 <= task_id < len(models)):
+    if not (0 <= task_id-1 < len(models)):
         raise IndexError(f"task_id {task_id} is out of range. File has {len(models)} lines.")
     row_i = models[task_id-1].strip() # NOTE: -1 since slurm array counts from 1, python from 0
-    print(f"Running model configuration [{task_id-1}]")
     # Parse to dict
     try:
         model_i = ast.literal_eval(row_i)
