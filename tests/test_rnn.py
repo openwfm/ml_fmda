@@ -1,7 +1,6 @@
 # Module to test RNN
 # Runs train with validation data and predicts test data
-# Uses very simple "toy" model and few number of epochs,
-# So not expected to be accurate, just expected to run without error
+# Uses random data, so accuracy not expected 
 
 
 import os.path as osp
@@ -28,16 +27,25 @@ import reproducibility
 
 params = Dict(read_yml(osp.join(CONFIG_DIR, "params_models.yaml"), subkey="rnn"))
 
+
+# Simulation Params
+n_train = 100
+n_test = 10
+n_features = 3
+sequence_length=48
+
 if __name__ == '__main__':
 
     reproducibility.set_seed(123)
     
-    # Setup RNN Data
-    rnn_dat = read_pkl("data/test_data/test_rnn_dat.pkl")
-    rnn_dat.X_train = rnn_dat.X_train[0:100, :, :] # subset data
-    rnn_dat.y_train = rnn_dat.y_train[0:100, :, :]
-    rnn_dat.scale_data()
-    
+    # Simulate Random RNN Data
+    X_train = np.random.rand(n_train, sequence_length, n_features)
+    y_train = np.random.rand(n_train, sequence_length, 1)
+    X_val = np.random.rand(n_test, sequence_length, n_features)
+    y_val = np.random.rand(n_test, sequence_length, 1)
+    X_test = np.random.rand(n_test, sequence_length, n_features)
+    y_test = np.random.rand(n_test, sequence_length, 1)
+
     # Setup params
     params.update({
         'stateful': False,
@@ -50,16 +58,18 @@ if __name__ == '__main__':
     })
     
     # Run Model
-    rnn = mrnn.RNN_Flexible(n_features = rnn_dat.n_features, params = params)
-    rnn.fit(rnn_dat.X_train, rnn_dat.y_train, 
-            validation_data=(rnn_dat.X_val, rnn_dat.y_val),
+    rnn = mrnn.RNN_Flexible(n_features = n_features, params = params)
+    rnn.fit(X_train, y_train, 
+            validation_data=(X_val, y_val),
             batch_size = params["batch_size"],
             epochs = params["epochs"],
             verbose_fit = True, plot_history=False
            )
-    rnn.test_eval(rnn_dat.X_test, rnn_dat.y_test)
+    rnn.test_eval(X_test, y_test)
     
     print(f"Trained Model Weights Hash: {hash_weights(rnn)}")
-
-    # print("TEST PASSED")
     
+    if hash_weights(rnn) == "6efbc3225d68acdcb4065101a61f0879":
+        print("TEST PASSED")
+    else:
+        print("Trained weights don't match expected hash")
