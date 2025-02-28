@@ -69,12 +69,12 @@ if __name__ == '__main__':
     # Read model grid and get task_id row
     file_path = osp.join(model_dir, "model_grid.txt")
     with open(file_path, "r") as file:
-        model_grid = file.readlines()
+        models = file.readlines()
 
     # Ensure task_id is within bounds
-    if not (0 <= task_id < len(model_grid)):
-        raise IndexError(f"task_id {task_id} is out of range. File has {len(model_grid)} lines.")
-    row_i = model_grid[task_id].strip()
+    if not (0 <= task_id < len(models)):
+        raise IndexError(f"task_id {task_id} is out of range. File has {len(models)} lines.")
+    row_i = models[task_id].strip()
     print(f"Running model configuration [{task_id}]")
     # Parse to dict
     try:
