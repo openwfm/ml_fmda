@@ -21,8 +21,6 @@ if [ "$#" -ne 1 ]; then
 fi
 
 MODEL_DIRECTORY="$1"
-# MODEL_DIRECTORY="outputs/rnn_hyperparam_tuning_test"
-
 
 echo "Model directory: $MODEL_DIRECTORY"
 

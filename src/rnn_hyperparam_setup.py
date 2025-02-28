@@ -57,13 +57,13 @@ if __name__ == '__main__':
         print(f"Invalid arguments. {len(sys.argv)} was given but 3 expected")
         print(('Usage: %s <model_dir> <data_dir>' % sys.argv[0]))
         print("<model_dir> is where outputs from the hyperparam tuning are sent. <data_dir> is where data for analysis lives")
-        print("Example: python src/rnn_hyperparam_setup.py outputs/rnn_hyperparam_tuning_test")
+        print("Example: python src/rnn_hyperparam_setup.py models/rnn_hyperparam_tuning_test data/rocky_fmda")
         sys.exit(-1)
 
     # Get input args
-    output_dir = sys.argv[1]
+    model_dir = sys.argv[1]
     data_dir = sys.argv[2]
-    os.makedirs(output_dir, exist_ok=True)
+    # os.makedirs(output_dir, exist_ok=True)
 
     
     # Time setup
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     data = data_funcs.combine_fmda_files(file_paths)
     ml_dict = data_funcs.build_ml_data(data, hours=params_data.hours,
                                    max_linear_time = params_data.max_linear_time,
-                                   verbose=False, save_path = osp.join(output_dir, 'ml_data.pkl'))
+                                   verbose=False, save_path = osp.join(model_dir, 'ml_data.pkl'))
     print(f"Total Stations with Data in Time Period: {len(ml_dict)}")
 
 
@@ -119,8 +119,8 @@ if __name__ == '__main__':
     # print(opt_grid)
 
     # Write out
-    write_txt(model_params_grid, osp.join(output_dir, "model_grid.txt"))
-    write_txt(opt_grid, osp.join(output_dir, "opt_grid.txt"))
+    write_txt(model_params_grid, osp.join(model_dir, "model_grid.txt"))
+    write_txt(opt_grid, osp.join(model_dir, "opt_grid.txt"))
 
     
 
