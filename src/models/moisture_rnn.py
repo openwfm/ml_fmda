@@ -190,9 +190,6 @@ class RNNData(MLData):
         
         self.train_locs = [*train.keys()]
         
-        if verbose:
-            print(f"Subsetting input data to {self.features_list}")   
-            
         train = data_funcs.sort_train_dict(train)
         # Get training samples with staircase, and construct batches
         # Subset features happens at this step
@@ -204,7 +201,7 @@ class RNNData(MLData):
         self.X_train = X_train
         self.y_train = y_train
 
-
+        self.X_val, self.y_val = (None, None)
         if val:
             self.X_val = self._combine_data(val, self.features_list)
             self.y_val = self._combine_data(val, [y_col])
@@ -604,7 +601,7 @@ class RNN_Flexible(Model):
     def fit(self, X_train, y_train, batch_size = 32, epochs=100,
             verbose_fit = False, verbose_weights=False, 
             plot_history=True, plot_title = '', 
-            weights=None, callbacks=[], validation_data=None, return_epochs=False, *args, **kwargs):
+            weights=None, callbacks=[], validation_data=(None, None), return_epochs=False, *args, **kwargs):
             """
             Trains the model on the provided training data. Formats a list of callbacks to use within the fit method based on params input
     
@@ -638,7 +635,7 @@ class RNN_Flexible(Model):
                 print(f"Training simple RNN with params: {self.params}")
                 
             # Setup callbacks, Check if validation data exists to modify callbacks
-            val = validation_data is not None
+            val = validation_data[0] is not None
             callbacks, early_stop = self._setup_callbacks(val)
 
             fit_args = {
@@ -649,9 +646,12 @@ class RNN_Flexible(Model):
                 **kwargs
             }
             
-            if validation_data is not None:
+            if val:
                 fit_args["validation_data"] = validation_data
-            
+            else:
+                warnings.warn("Running fit with no validation data, setting epochs to smaller number to avoid overfitting")
+                fit_args.update({'epochs': 10})
+
             history = super().fit(X_train, y_train, **fit_args)      
             
             if plot_history:
