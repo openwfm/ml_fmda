@@ -74,15 +74,15 @@ if __name__ == '__main__':
     # Ensure task_id is within bounds
     if not (0 <= task_id < len(models)):
         raise IndexError(f"task_id {task_id} is out of range. File has {len(models)} lines.")
-    row_i = models[task_id].strip()
-    print(f"Running model configuration [{task_id}]")
+    row_i = models[task_id-1].strip() # NOTE: -1 since slurm array counts from 1, python from 0
+    print(f"Running model configuration [{task_id-1}]")
     # Parse to dict
     try:
         model_i = ast.literal_eval(row_i)
         if not isinstance(model_i, dict):
             raise ValueError("Parsed row is not a dictionary")
     except (SyntaxError, ValueError) as e:
-        raise ValueError(f"Failed to parse row {task_id} as a dictionary: {e}")    
+        raise ValueError(f"Failed to parse row {task_id-1} as a dictionary: {e}")    
     print(f"{model_i}")
 
 
