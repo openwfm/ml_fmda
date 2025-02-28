@@ -88,10 +88,11 @@ if __name__ == '__main__':
 
     # Set up data and paths
     ml_data = read_pkl(osp.join(model_dir, "ml_data.pkl"))
-    out_file = osp.join(model_dir, f"model_{task_id}.pkl")
+    out_file = osp.join(model_dir, 'model_errors', f"model_{task_id}.pkl")
     err_dict_output = {
             'model': model_i,
-            'opt': {'batch_size': params_rnn['batch_size'], 'learning_rate': params_rnn['learning_rate']}
+            'opt': {'batch_size': params_rnn['batch_size'], 'learning_rate': params_rnn['learning_rate']},
+            'errs': {}
             }
 
     # Run model with target params over forecast periods
@@ -121,10 +122,7 @@ if __name__ == '__main__':
         errs = rnn.test_eval(dat.X_test, dat.y_test)
         print(errs)        
         # Save to output file
-        err_dict_output[ft.strftime('%Y%m%d_%H')] = {
-            'forecast_period': ft.strftime('%Y%m%d_%H'),
-            'errs': errs
-        }
+        err_dict_output['errs'][ft.strftime('%Y%m%d_%H')] = errs
 
 
 
