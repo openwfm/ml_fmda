@@ -1,9 +1,9 @@
 #!/bin/bash
 
 
-#SBATCH --job-name=rnn_hyperparam
+#SBATCH --job-name=rmodels
 
-# #SBATCH --output=logs/rnn_hyperparam_%a.out
+# #SBATCH --output=logs/rmodels_%a.out
 
 #SBATCH --partition=math-alderaan-short
 
@@ -11,7 +11,7 @@
 
 # #SBATCH --array=1-50
 
-# Credit to user lorellis for code structure
+# Credit to user lorellis for aspects of this code structure
 # Pass the variable {SLURM_TASK_ARRAY_ID} to the test_slurm_array.sh script and run said script
 
 if [ "$#" -ne 1 ]; then

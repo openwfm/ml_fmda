@@ -77,6 +77,7 @@ if __name__ == '__main__':
         mean_errs = df.mean(axis = 0)
         min_err_index = mean_errs.argmin()
         min_err_model = err_list[min_err_index]['model'] 
+        min_err_model.update({'id': err_list[min_err_index]['id']})
         print(f"Model Architecture Summary:")
         print(f"    Minimum Error Model: {min_err_index}")
         print(f"    Minimum Error: {mean_errs.min()}")
@@ -113,6 +114,7 @@ if __name__ == '__main__':
             mean_errs = df.mean(axis = 0)
             min_err_index = mean_errs.argmin()
             min_err_opt = err_list[min_err_index]['opt']
+            min_err_opt.update({'id': err_list[min_err_index]['id']})
             print(f"Optimization Params Summary:")
             print(f"    Minimum Error Model: {min_err_index}")
             print(f"    Minimum Error: {mean_errs.min()}")
