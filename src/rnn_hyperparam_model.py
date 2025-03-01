@@ -89,6 +89,8 @@ if __name__ == '__main__':
     ml_data = read_pkl(osp.join(model_dir, "ml_data.pkl"))
     out_file = osp.join(model_dir, 'model_errors', f"model_{task_id}.pkl")
     err_dict_output = {
+            'id': int(task_id),
+            'file_name':out_file,
             'model': model_i,
             'opt': {'batch_size': params_rnn['batch_size'], 'learning_rate': params_rnn['learning_rate']},
             'errs': {}
