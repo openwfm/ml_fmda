@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=rnn_hyperparam
-#SBATCH --output=logs/rnn_hyperparam_%a.out
+#SBATCH --job-name=tune_model
+#SBATCH --output=logs/rnn_hyperparam_%j.out
 #SBATCH --ntasks=1
 #SBATCH --partition=math-alderaan-short
 
