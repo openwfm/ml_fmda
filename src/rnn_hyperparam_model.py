@@ -107,11 +107,6 @@ if __name__ == '__main__':
         dat.scale_data()
 
 
-        print("TEST CODE, SUBSETTING DATA AND REDUCING EPOCHS")
-        params_rnn.update({'epochs':1})
-        dat.X_train = dat.X_train[0:100, :, :]
-        dat.y_train = dat.y_train[0:100, :, :]
-
         # Train and predict
         rnn = RNN_Flexible(n_features = dat.n_features, params = params_rnn)
         rnn.fit(dat.X_train, dat.y_train, 

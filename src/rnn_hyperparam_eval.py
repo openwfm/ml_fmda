@@ -105,7 +105,7 @@ if __name__ == '__main__':
             # arrange by opt number
             err_list = [read_pkl(osp.join(err_dir, f)) for f in files]            
             rmse_dict = {
-                f"opt_{model['id']}": {date: values["rmse"] for date, values in opt["errs"].items()}
+                f"opt_{opt['id']}": {date: values["rmse"] for date, values in opt["errs"].items()}
                 for opt in err_list
             }
 
