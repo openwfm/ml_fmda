@@ -30,7 +30,7 @@ conda activate ml_fmda_models
 
 # Analyze Model Error, extract minimum error model
 python src/rnn_hyperparam_eval.py "$MODEL_DIRECTORY"
-column -s, -t < "$MODEL_DIRECTORY/model_err_df.csv" | less -S
+# column -s, -t < "$MODEL_DIRECTORY/model_err_df.csv"
 
 
 # Run Optimization parameter tuning
