@@ -101,7 +101,7 @@ def combine_fmda_files(input_file_paths, save_path = None, verbose=True):
                 combined_dict[st] = di[st]
             else:
                 merged_dict, warning_str = extend_fmda_dicts(combined_dict[st], di[st], st)
-                # combined_dict[st] = extend_fmda_dicts(combined_dict[st], di[st], st)
+                combined_dict[st] = merged_dict
                 if warning_str and warning_str not in warning_set:
                     warnings.warn(warning_str, UserWarning)
                     warning_set.add(warning_str)
