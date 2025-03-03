@@ -39,10 +39,27 @@ if __name__ == '__main__':
     if len(sys.argv) != 3:
         print(f"Invalid arguments. {len(sys.argv)} was given but 3 expected")
         print(f"Usage: {sys.argv[0]} <task_id> <directory>")
-        print("Example: python test_slurm_array.py 5 outputs/rnn_hyperparam_test")
+        print("Example: python rnn_hyperparam_model.py 5 outputs/rnn_hyperparam_test")
         print("NOTE: count from zero with the task_id")
         sys.exit(-1)
+    
+    # Get model architecture from slurm task array
+    task_id = int(sys.argv[1])
+    model_dir = sys.argv[2]
+    print(f"Running task {task_id}")
 
+    # Check if output already exists, exit if so.
+    # Allows for running multiple times if process stops for any reason
+    # Requires manual deletion of old files if you want to rerun
+    out_file = osp.join(model_dir, 'model_errors', f"model_{task_id}.pkl")
+
+    if osp.exists(out_file):
+        print(f"Output for task {task_id} already exists at: {out_file}, exiting")
+        sys.exit(0)
+
+
+    else:
+        print(f"Running task {task_id}")
 
     # Initial setup
     forecast_periods = hyper_params["times"]["forecast_start_times"]
@@ -58,13 +75,7 @@ if __name__ == '__main__':
     print(f"    {train_hours=}")
     print(f"Using Hyperparam grid from {osp.join(CONFIG_DIR, 'rnn_hyperparam_tuning_config.yaml')}")
     print(f"Using other RNN params from {osp.join(CONFIG_DIR, 'params_models.yaml')}")   
-
     
-
-    # Get model architecture from slurm task array
-    task_id = int(sys.argv[1])
-    model_dir = sys.argv[2]
-    print(f"Running task {task_id}")
 
     # Read model grid and get task_id row
     file_path = osp.join(model_dir, "model_grid.txt")
@@ -87,7 +98,6 @@ if __name__ == '__main__':
 
     # Set up data and paths
     ml_data = read_pkl(osp.join(model_dir, "ml_data.pkl"))
-    out_file = osp.join(model_dir, 'model_errors', f"model_{task_id}.pkl")
     err_dict_output = {
             'id': int(task_id),
             'file_name':out_file,
