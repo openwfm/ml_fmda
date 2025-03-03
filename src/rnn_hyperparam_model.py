@@ -39,8 +39,7 @@ if __name__ == '__main__':
     if len(sys.argv) != 3:
         print(f"Invalid arguments. {len(sys.argv)} was given but 3 expected")
         print(f"Usage: {sys.argv[0]} <task_id> <directory>")
-        print("Example: python rnn_hyperparam_model.py 5 outputs/rnn_hyperparam_test")
-        print("NOTE: count from zero with the task_id")
+        print("Example: python rnn_hyperparam_model.py 5 models/rnn_hyperparam_test")
         sys.exit(-1)
     
     # Get model architecture from slurm task array
