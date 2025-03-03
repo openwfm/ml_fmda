@@ -37,6 +37,6 @@ python src/forecast_analysis_setup.py "$FORECAST_DIRECTORY" "$DATA_DIRECTORY"
 # Create slurm job array for each forecast period
 N_PERIOD=$(jq '.forecast_periods' forecasts/fmc_forecast_test/analysis_info.json)
 echo $N_PERIOD
-# sbatch --array=1-$N_PERIODS --output="$FORECAST_DIRECTORY/logs/fperiod_%a_%j.out" run_forecast_period.sh "$FORECAST_DIRECTORY"
+sbatch --array=1-$N_PERIOD --output="$FORECAST_DIRECTORY/logs/fperiod_%j_%a.out" run_forecast_period.sh "$FORECAST_DIRECTORY"
 
 
