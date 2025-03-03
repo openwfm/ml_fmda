@@ -64,9 +64,10 @@ def subdicts_identical(d1, d2, subdict_keys=["units", "loc"]):
 
 def extend_fmda_dicts(d1, d2, st, subdict_keys=["RAWS", "HRRR", "times"]):
     identical, mismatched_keys = subdicts_identical(d1, d2)
+    warning_str = ""
     if not identical:
-        warnings.warn(f"Metadata subdicts not the same for station {st}: {mismatched_keys}", UserWarning)
-
+        # warnings.warn(f"Metadata subdicts not the same for station {st}: {mismatched_keys}", UserWarning)
+        warning_str = f"Metadata subdicts not the same for station {st}: {mismatched_keys}"
     merged_dict = {k: d1[k] for k in ["units", "loc", "misc"]} # copy metadata
 
     for key in subdict_keys:
@@ -80,7 +81,7 @@ def extend_fmda_dicts(d1, d2, st, subdict_keys=["RAWS", "HRRR", "times"]):
         elif key == "times":  # NumPy datetime array
             merged_dict[key] = np.unique(np.concatenate([d1[key], d2[key]]))
 
-    return merged_dict
+    return merged_dict, warning_str
 
 def combine_fmda_files(input_file_paths, save_path = None, verbose=True):
     """
@@ -90,14 +91,20 @@ def combine_fmda_files(input_file_paths, save_path = None, verbose=True):
     dicts = [read_pkl(path) for path in input_file_paths]
     # Initialize combined dictionary as first dict, then loop over others and merge
     combined_dict = dicts[0]
+    
+    warning_set = set() # Store unique warnings from before
+    
     for i in range(1, len(dicts)):
         di = dicts[i]
         for st in di:
             if st not in combined_dict.keys():
                 combined_dict[st] = di[st]
             else:
-                combined_dict[st] = extend_fmda_dicts(combined_dict[st], di[st], st)
-
+                merged_dict, warning_str = extend_fmda_dicts(combined_dict[st], di[st], st)
+                # combined_dict[st] = extend_fmda_dicts(combined_dict[st], di[st], st)
+                if warning_str and warning_str not in warning_set:
+                    warnings.warn(warning_str, UserWarning)
+                    warning_set.add(warning_str)
     if save_path is not None:
         with open(save_path, 'wb') as f:
             pickle.dump(combined_dict, f)
