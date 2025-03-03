@@ -63,7 +63,14 @@ if __name__ == '__main__':
     # Get input args
     model_dir = sys.argv[1]
     data_dir = sys.argv[2]
-    # os.makedirs(output_dir, exist_ok=True)
+
+    # Check if already run, exit if so
+    # Allows for rerun of process
+    if osp.exists(osp.join(model_dir, "model_grid.txt")) and osp.exists(osp.join(model_dir, "opt_grid.txt")) and osp.exists(osp.join(model_dir, "ml_data.pkl")):
+        print(f"Setup already run in {model_dir}, exiting")
+        sys.exit(0)
+    else:
+        print(f"Setting up hyperparam tuning at {model_dir}")
 
     
     # Time setup
