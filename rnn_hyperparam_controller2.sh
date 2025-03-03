@@ -2,7 +2,7 @@
 #SBATCH --job-name=tune_opt
 #SBATCH --output=logs/rnn_hyperparam_%j.out
 #SBATCH --ntasks=1
-#SBATCH --partition=math-alderaan-short
+#SBATCH --partition=math-alderaan
 
 
 
@@ -37,5 +37,5 @@ python src/rnn_hyperparam_eval.py "$MODEL_DIRECTORY"
 # Extract number of opt configurations from setup
 mkdir -p "$MODEL_DIRECTORY/opt_errors"
 N_OPT=$(wc -l < "$MODEL_DIRECTORY/opt_grid.txt")
-sbatch --array=1-$N_OPT --output="$MODEL_DIRECTORY/logs/opt_%a.out" run_rnn_hyperparam_opt.sh "$MODEL_DIRECTORY" 
+sbatch --array=1-$N_OPT --output="$MODEL_DIRECTORY/logs/opt_%a_%j.out" run_rnn_hyperparam_opt.sh "$MODEL_DIRECTORY" 
 

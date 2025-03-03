@@ -2,7 +2,7 @@
 #SBATCH --job-name=tune_model
 #SBATCH --output=logs/rnn_hyperparam_%j.out
 #SBATCH --ntasks=1
-#SBATCH --partition=math-alderaan-short
+#SBATCH --partition=math-alderaan
 
 
 
@@ -37,7 +37,7 @@ python src/rnn_hyperparam_setup.py "$MODEL_DIRECTORY" "$DATA_DIRECTORY"
 # Create log directory and send outputs there
 mkdir -p "$MODEL_DIRECTORY/logs"
 N_MODELS=$(wc -l < "$MODEL_DIRECTORY/model_grid.txt")
-sbatch --array=1-$N_MODELS --output="$MODEL_DIRECTORY/logs/model_%a.out" run_rnn_hyperparam_model.sh "$MODEL_DIRECTORY"
+sbatch --array=1-$N_MODELS --output="$MODEL_DIRECTORY/logs/model_%a_%j.out" run_rnn_hyperparam_model.sh "$MODEL_DIRECTORY"
 
 
 
