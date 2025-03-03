@@ -8,8 +8,6 @@
 # Logical checks to see if output files exist in the script
 
 import numpy as np
-from sklearn.model_selection import ParameterGrid
-from itertools import product
 import sys
 import os
 import os.path as osp
@@ -40,7 +38,7 @@ if __name__ == '__main__':
     if len(sys.argv) != 2:
         print(f"Invalid arguments. {len(sys.argv)} was given but 2 expected")
         print(('Usage: %s <model_dir>' % sys.argv[0]))
-        print("Example: python src/run_rnn_hyperparam_tuning.py models/rnn_hyperparam_tuning_test")
+        print("Example: python src/rnn_hyperparam_eval.py models/rnn_hyperparam_tuning_test")
         sys.exit(-1)
 
     model_dir = sys.argv[1]
