@@ -66,8 +66,6 @@ if __name__ == '__main__':
     FORECAST_HOURS = params_data.forecast_hours
     TRAIN_HOURS = params_data.train_hours
 
-
-
     # Handle Forecast Periods
     # Define Forecast start times, 48hr spacing
     forecast_periods = time_range(
