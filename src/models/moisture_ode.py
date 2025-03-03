@@ -193,11 +193,11 @@ class ODE_FMC:
 
         # Define params
         self.params = params
-        process_variance = np.float_(params['process_variance'])
+        process_variance = np.float64(params['process_variance'])
         self.Q = np.array([[process_variance, 0.],
                            [0., process_variance]])
         self.H = np.array([[1., 0.]]) # observation matrix
-        self.R = np.array([np.float_(params['data_variance'])]) # data variance
+        self.R = np.array([np.float64(params['data_variance'])]) # data variance
         self.r0 = params["r0"]
         self.rs = params["rs"]
         self.Tr = params["Tr"]
