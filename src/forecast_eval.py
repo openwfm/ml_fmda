@@ -55,19 +55,60 @@ if __name__ == '__main__':
         end = fend,
         freq = "2d"
     )    
+    print("~"*75)
+    print(f"Running Forecast Analysis from {fstart} to {fend}")
+    print(f"Analysis Params: ")
+    print(f"    {FORECAST_HOURS=}")
+    print(f"    {TRAIN_HOURS=}")
+    print(f"Total Forecast Periods: {forecast_periods.shape[0]}")
+    print(f"Earliest forecast start: {forecast_periods.min()}")
+    print(f"Latest forecast start: {forecast_periods.max()}")
 
-
-
-    # Set up files and read
+    # Read output files for analysis run
+    ## FMC models
     files = os.listdir(osp.join(f_dir, 'forecast_periods'))
     files = sorted(files, key=lambda x: int(re.search(r'_(\d+)\.pkl', x).group(1))) # Sort by task number, shouldn't be necessary but for clarity
     results = [read_pkl(osp.join(f_dir, 'forecast_periods', f)) for f in files]
     assert len(results) == len(forecast_periods), "Mismatch number of results files {len(results)} vs target forecast periods {len(forecast_periods)}"
+
+
+
+    ## Climatology, extract needed periods and stations, then calculate MSE
+    ## Climatology forecasts wont exist for certain stations, eg new stations without long climate history
+    ## Test stations chosen by ones with data availability, so there should be minimal missing data for raws in the forecast periods
+    clim_file = forecast_config.climatology_file
+    clim = read_pkl(osp.join(f_dir, clim_file))
+    raws_file = forecast_config.raws_file
+    raws = read_pkl(osp.join(PROJECT_ROOT, raws_file))
+    assert all(pd.Timestamp(dt) in clim.columns for dt in forecast_periods), "Climatology missing some target forecast periods, can't make comparison"
+    for i in range(0, len(results)):
+        dat = results[i]
+        clim_i = clim.loc[clim.index.isin(dat['stids']), clim.columns.isin(dat['times'])]
+        clim_i = clim_i.reindex(dat['stids'])
+        raws_i = data_funcs.get_sts_and_times(raws, dat['stids'], dat['times'], data_dict = 'RAWS')
+        raws_i = pd.DataFrame({k: v["RAWS"]["fm"] for k, v in raws_i.items()}).T
+        raws_i.columns = dat['times']
+        raws_i = raws_i.reindex(dat['stids'])
+        raws_i = raws_i.astype(np.float64) # ensure type match
+        assert clim_i.shape[1] == raws_i.shape[1], "Column mismatch between raws and climatology for forecast period {i}, {forecast_period[i]}"
+        sts = clim_i.index.intersection(raws_i.index) # get common row indices, corresponding to stations, these should be the same in most cases except brand new stations without clim history
+        clim_i = clim_i.loc[sts]
+        raws_i = raws_i.loc[sts]
+        diff_i = raws_i.sub(clim_i) # calc residual
+        diff_i = diff_i ** 2         # square difference
+        # Add to results dict
+        results[i]['CLIMATOLOGY'] = {
+            'rmse': np.sqrt(diff_i.mean().mean()),
+            'loc_rmse': np.sqrt(diff_i.mean(axis=1).to_numpy())
+        }
+
+
     # Compare Models
     # Run some checks on time and location, combine results into a df
     ode_errs = []
     xgb_errs = []
     rnn_errs = []
+    clim_errs = []
     for i, fperiod in enumerate(results):
         stids = fperiod['stids']
         times = fperiod['times']
@@ -75,15 +116,17 @@ if __name__ == '__main__':
         # Check times match, num stations matches
         assert pd.Timestamp(forecast_periods[i]) == times[0], "Time array from ML output dict doesn't match target file time"
         for mod in ['RNN']:
-            assert len(fperiod[mod]['loc_mse']) == len(stids), "Mismatch between number of stations and number of MSE per station"
-        ode_errs.append(fperiod['ODE']['mse'])
-        xgb_errs.append(fperiod['XGB']['mse'])
-        rnn_errs.append(fperiod['RNN']['mse'])
+            assert len(fperiod[mod]['loc_rmse']) == len(stids), "Mismatch between number of stations and number of MSE per station"
+        ode_errs.append(fperiod['ODE']['rmse'])
+        xgb_errs.append(fperiod['XGB']['rmse'])
+        rnn_errs.append(fperiod['RNN']['rmse'])
+        clim_errs.append(fperiod['CLIMATOLOGY']['rmse'])
 
     df = pd.DataFrame({
         'ODE': ode_errs,
         'XGB': xgb_errs,
         'RNN': rnn_errs,
+        'CLIMATOLOGY': clim_errs
     })
     df.index = forecast_periods
     print('~'*75)

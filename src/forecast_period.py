@@ -94,7 +94,7 @@ if __name__ == '__main__':
 
     # Run Models
     # ODE
-    print()
+    print('~'*75)
     params = params_models['ode']
     te_sts = [*test.keys()]
     test_times = test[te_sts[0]]["times"]
@@ -104,7 +104,7 @@ if __name__ == '__main__':
     print(f"ODE Test MSE: {errs_ode}")
 
     ## Static XGBoost
-    print()
+    print('~'*75)
     params = params_models['xgb']
     dat = data_funcs.StaticMLData(train, val, test)
     dat.scale_data()

@@ -369,7 +369,12 @@ def get_sts_and_times(dict0, sts_list, times, data_dict = 'data'):
     d = copy.deepcopy(dict0)
 
     # Get stations
-    new_dict =  {k: d[k] for k in sts_list}
+    new_dict = {}
+    for k in sts_list:
+        if k in d:
+            new_dict[k] = d[k]
+        else:
+            print(f"Warning: Station {k} not found in data")
 
     # Get times
     for st in new_dict:
