@@ -670,20 +670,20 @@ class RNN_Flexible(Model):
         Can also be used on validation data in hyperparameter tuning runs
         """
         preds = self.predict(X_test)
-        # Overall RMSE
-        rmse = np.sqrt(mean_squared_error(y_test.flatten(), preds.flatten()))
+        # Overall MSE
+        mse = mean_squared_error(y_test.flatten(), preds.flatten())
         
-        # Per loc RMSE
-        batch_rmse = np.array([
-            np.sqrt(mean_squared_error(y_test[i].reshape(-1), preds[i].reshape(-1)))
+        # Per loc MSE
+        batch_mse = np.array([
+            mean_squared_error(y_test[i].reshape(-1), preds[i].reshape(-1))
             for i in range(y_test.shape[0])
         ])
         if verbose:
-            print(f"Overall Test RMSE: {rmse}")
-            print(f"Per-Location Mean Test RMSE: {batch_rmse.mean()}")
+            print(f"Overall Test MSE: {mse}")
+            print(f"Per-Location Mean Test MSE: {batch_mse.mean()}")
         errs = {
-            'rmse': rmse,
-            'loc_rmse': batch_rmse
+            'mse': mse,
+            'loc_mse': batch_mse
         }
         return errs
         

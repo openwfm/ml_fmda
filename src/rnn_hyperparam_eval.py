@@ -60,17 +60,17 @@ if __name__ == '__main__':
         print("Getting model architecture with min err")
 
         # Get minimum error model architecture 
-        # Read files, extract rmse for each time period, write csv output, calc mean err, extract model from min err
+        # Read files, extract mse for each time period, write csv output, calc mean err, extract model from min err
         files = [f for f in os.listdir(err_dir) if f.startswith('model_')]
         # arrange by model number (shouldn't be necessary, but doing for clarity)
         # files = sorted(files, key=lambda x: int(x.split('_')[1].split('.')[0]))
         assert len(files) == len(models), "Number of model error files {len(files)} not equal to number of model architectures in model_grid.txt {len(models)}"
         err_list = [read_pkl(osp.join(err_dir, f)) for f in files]
-        rmse_dict = {
-            f"model_{model['id']}": {date: values["rmse"] for date, values in model["errs"].items()}
+        mse_dict = {
+            f"model_{model['id']}": {date: values["mse"] for date, values in model["errs"].items()}
             for model in err_list
         }        
-        df = pd.DataFrame(rmse_dict).sort_index()
+        df = pd.DataFrame(mse_dict).sort_index()
         df.to_csv(osp.join(model_dir, 'model_err_df.csv'))
         mean_errs = df.mean(axis = 0)
         min_err_index = mean_errs.argmin()
@@ -99,15 +99,15 @@ if __name__ == '__main__':
         else:
             print("Getting optmization params with min err")
             # Get minimum error optmization params
-            # Read files, extract rmse for each time period, write csv output, calc mean err, extract opt from min err
+            # Read files, extract mse for each time period, write csv output, calc mean err, extract opt from min err
             # arrange by opt number
             err_list = [read_pkl(osp.join(err_dir, f)) for f in files]            
-            rmse_dict = {
-                f"opt_{opt['id']}": {date: values["rmse"] for date, values in opt["errs"].items()}
+            mse_dict = {
+                f"opt_{opt['id']}": {date: values["mse"] for date, values in opt["errs"].items()}
                 for opt in err_list
             }
 
-            df = pd.DataFrame(rmse_dict).sort_index()
+            df = pd.DataFrame(mse_dict).sort_index()
             df.to_csv(osp.join(model_dir, 'opt_err_df.csv'))
             mean_errs = df.mean(axis = 0)
             min_err_index = mean_errs.argmin()
