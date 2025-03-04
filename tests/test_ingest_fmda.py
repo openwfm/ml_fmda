@@ -35,7 +35,7 @@ TT591_HRRR_Ed_hash = 'b7cbd20f7e375f81dd59365cdbb85ae3'
 if __name__ == '__main__':
     print("Testing getting fmda from various data sources and joining into formatted fmda data")
 
-    d = retrieve_fmda_data(start, end, bbox, raws_source="stash")
+    d = retrieve_fmda_data(start, end, bbox, raws_source="stash", save_path = osp.join(PROJECT_ROOT, "data/test_data/test_fmda_data.pkl"))
     d_sts = [*d.keys()]
     fm = np.array(d["HRSN1"]["RAWS"]["fm"].to_numpy(), dtype=float)
     hash1 = hash_ndarray(np.round(fm, 8))
