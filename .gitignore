@@ -3,4 +3,8 @@ data/*
 .virtual_documents/
 .DS_Store
 __pycache__/
+*.pyc
+outputs/*
+models/*
+logs/*
 
