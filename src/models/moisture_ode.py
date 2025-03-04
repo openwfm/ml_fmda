@@ -193,11 +193,11 @@ class ODE_FMC:
 
         # Define params
         self.params = params
-        process_variance = np.float_(params['process_variance'])
+        process_variance = np.float64(params['process_variance'])
         self.Q = np.array([[process_variance, 0.],
                            [0., process_variance]])
         self.H = np.array([[1., 0.]]) # observation matrix
-        self.R = np.array([np.float_(params['data_variance'])]) # data variance
+        self.R = np.array([np.float64(params['data_variance'])]) # data variance
         self.r0 = params["r0"]
         self.rs = params["rs"]
         self.Tr = params["Tr"]
@@ -273,27 +273,27 @@ class ODE_FMC:
     
     def eval(self, u, fm):
         """
-        Return RMSE of forecast u versus observed FMC
+        Return MSE of forecast u versus observed FMC
         """
         
         assert u.shape == fm.shape, "Arrays must have the same shape."
 
-        # Overall RMSE
+        # Overall MSE
         # Reshape to 2D: (N * timesteps, features)
         fm2 = fm.reshape(-1, fm.shape[-1])
         u2 = u.reshape(-1, u.shape[-1])
-        rmse = np.sqrt(mean_squared_error(u2, fm2))
+        mse = mean_squared_error(u2, fm2)
 
-        # Per-loc RMSE
-        batch_rmse = np.array([
-            np.sqrt(mean_squared_error(fm[i].reshape(-1), u[i].reshape(-1)))
+        # Per-loc MSE
+        batch_mse = np.array([
+            mean_squared_error(fm[i].reshape(-1), u[i].reshape(-1))
             for i in range(fm.shape[0])
         ])        
 
         # Set up error return dict, support for multiple metrics
         errs = {
-            'rmse': rmse,
-            'loc_rmse': batch_rmse
+            'mse': mse,
+            'loc_mse': batch_mse
         }
     
         return errs
