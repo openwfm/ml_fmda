@@ -98,8 +98,8 @@ if __name__ == '__main__':
         diff_i = diff_i ** 2         # square difference
         # Add to results dict
         results[i]['CLIMATOLOGY'] = {
-            'rmse': np.sqrt(diff_i.mean().mean()),
-            'loc_rmse': np.sqrt(diff_i.mean(axis=1).to_numpy())
+            'mse': diff_i.mean().mean(),
+            'loc_mse': diff_i.mean(axis=1).to_numpy()
         }
 
 
@@ -116,11 +116,11 @@ if __name__ == '__main__':
         # Check times match, num stations matches
         assert pd.Timestamp(forecast_periods[i]) == times[0], "Time array from ML output dict doesn't match target file time"
         for mod in ['RNN']:
-            assert len(fperiod[mod]['loc_rmse']) == len(stids), "Mismatch between number of stations and number of MSE per station"
-        ode_errs.append(fperiod['ODE']['rmse'])
-        xgb_errs.append(fperiod['XGB']['rmse'])
-        rnn_errs.append(fperiod['RNN']['rmse'])
-        clim_errs.append(fperiod['CLIMATOLOGY']['rmse'])
+            assert len(fperiod[mod]['loc_mse']) == len(stids), "Mismatch between number of stations and number of MSE per station"
+        ode_errs.append(fperiod['ODE']['mse'])
+        xgb_errs.append(fperiod['XGB']['mse'])
+        rnn_errs.append(fperiod['RNN']['mse'])
+        clim_errs.append(fperiod['CLIMATOLOGY']['mse'])
 
     df = pd.DataFrame({
         'ODE': ode_errs,
