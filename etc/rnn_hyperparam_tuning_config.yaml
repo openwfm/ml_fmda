@@ -17,7 +17,6 @@ optimization:
 
 # Time Period
 times:
-    forecast_start_times: ["2023-06-01T00:00:00Z", "2023-07-01T00:00:00Z", "2023-08-01T00:00:00Z", "2023-09-01T00:00:00Z", "2023-10-01T00:00:00Z", 
-"2023-11-01T00:00:00Z", "2023-12-01T00:00:00Z"]  
-    train_hours: 4320 # 30 days * 24 hours * 6 months
+    forecast_start_times: ["2023-07-01T00:00:00Z", "2023-08-01T00:00:00Z"]  
+    train_hours: 100 # 30 days * 24 hours * 3 months
     forecast_hours: 48 
