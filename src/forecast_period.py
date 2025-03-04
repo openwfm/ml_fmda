@@ -101,7 +101,7 @@ if __name__ == '__main__':
     ode_data = data_funcs.get_ode_data(ml_data, te_sts, test_times)
     ode = ODE_FMC(params=params)
     m, errs_ode = ode.run_model(ode_data, hours=72, h2=24)
-    print(f"ODE Test RMSE: {errs_ode}")
+    print(f"ODE Test MSE: {errs_ode}")
 
     ## Static XGBoost
     print()
@@ -111,7 +111,7 @@ if __name__ == '__main__':
     xgb_model = XGB(params=params)
     xgb_model.fit(dat.X_train, dat.y_train)
     errs_xgb = xgb_model.test_eval(dat.X_test, dat.y_test, verbose=False)
-    print(f"XGBoost Test RMSE: {errs_xgb['rmse']}")
+    print(f"XGBoost Test MSE: {errs_xgb['mse']}")
 
     # RNN
     params = params_models['rnn']
@@ -127,7 +127,7 @@ if __name__ == '__main__':
             plot_history=False
            )
     errs_rnn = rnn.test_eval(dat.X_test, dat.y_test, verbose=False)
-    print(f"RNN Test RMSE: {errs_rnn['rmse']}")
+    print(f"RNN Test MSE: {errs_rnn['mse']}")
 
     # Write output for forecast period
     err_dict_output = {

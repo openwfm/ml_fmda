@@ -67,12 +67,12 @@ class MLModel(ABC):
         
     def test_eval(self, X_test, y_test, verbose=True):
         preds = self.predict(X_test)
-        rmse = np.sqrt(mean_squared_error(y_test, preds))
-        # rmse_ros = np.sqrt(mean_squared_error(ros_3wind(y_test), ros_3wind(preds)))
+        mse = mean_squared_error(y_test, preds)
+        # mse_ros = mean_squared_error(ros_3wind(y_test), ros_3wind(preds))
         if verbose:
-            print(f"Overall Test RMSE: {rmse}")
+            print(f"Overall Test MSE: {mse}")
         errs = {
-            'rmse': rmse
+            'mse': mse
         }
         return errs        
 
