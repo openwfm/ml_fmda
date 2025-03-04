@@ -109,17 +109,12 @@ if __name__ == '__main__':
     params_rnn.update(opt_i)
     reproducibility.set_seed(task_id)
     for ft in forecast_periods:
+        print('~'*75)
         print(f"Running forecast period {ft}")
         # Make data for period
         train, val, test = data_funcs.cv_data_wrap(ml_data, ft, train_hours=train_hours,forecast_hours=forecast_hours)
         dat = RNNData(train, val, test, timesteps=48, method="random", features_list=features_list)
         dat.scale_data()
-
-
-        print("TEST CODE, SUBSETTING DATA AND REDUCING EPOCHS")
-        params_rnn.update({'epochs':1})
-        dat.X_train = dat.X_train[0:100, :, :]
-        dat.y_train = dat.y_train[0:100, :, :]
 
         # Train and predict
         rnn = RNN_Flexible(n_features = dat.n_features, params = params_rnn)
