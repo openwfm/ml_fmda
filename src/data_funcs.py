@@ -284,7 +284,7 @@ def cv_time_setup(forecast_start_time, train_hours = 8760, forecast_hours = 48, 
         print(f"Number of Validation Hours: {len(val_times)}")
         print(f"Val Period: {val_times.min()} to {val_times.max()}")        
         print(f"Number of Forecast Hours: {len(test_times)}")
-        print(f"Forecast Period Period: {test_times.min()} to {test_times.max()}")
+        print(f"Forecast Period: {test_times.min()} to {test_times.max()}")
     
     return train_times, val_times, test_times
 

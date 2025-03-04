@@ -109,6 +109,7 @@ if __name__ == '__main__':
     params_rnn.update(model_i)
     reproducibility.set_seed(task_id)
     for ft in forecast_periods:
+        print('~'*75)
         print(f"Running forecast period {ft}")
         # Make data for period
         train, val, test = data_funcs.cv_data_wrap(ml_data, ft, train_hours=train_hours,forecast_hours=forecast_hours)
