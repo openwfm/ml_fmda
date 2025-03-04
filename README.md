@@ -96,6 +96,14 @@ sbatch rnn_hyperparam_controller.sh models/rnn_hyperparam_tuning_rocky23_TEST/ d
 sbatch rnn_hyperparam_controller2.sh models/rnn_hyperparam_tuning_rocky23_TEST/ 
 ```
 
+For running the corecast analysis, it is recommened to run on Aleraan or another computing system with many available cores and slurm software
+
+1. Run setup and analysis with controller shell file
+
+```
+sbatch forecast_analysis_controller.sh forecasts/fmc_forecast_test/ data/rocky_fmda
+```
+
 
 ## Troubleshooting 
 
