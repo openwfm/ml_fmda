@@ -15,7 +15,7 @@ import os.path as osp
 import numpy as np
 from dateutil.relativedelta import relativedelta
 import pickle
-
+import yaml
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -39,7 +39,6 @@ import data_funcs
 
 params_data = Dict(read_yml(osp.join(CONFIG_DIR, "params_data.yaml")))
 params_rnn = Dict(read_yml(osp.join(CONFIG_DIR, "params_models.yaml"), subkey="rnn"))
-hyper_params = Dict(read_yml(osp.join(CONFIG_DIR, "rnn_hyperparam_tuning_config.yaml")))
 
 features_list = ['Ed', 'Ew', 'elev', 'wind', 'solar', 'grid_x', 'grid_y', 'rain']
 
@@ -53,16 +52,22 @@ def write_txt(lst, outpath):
 
 if __name__ == '__main__':
 
-    if len(sys.argv) != 3:
-        print(f"Invalid arguments. {len(sys.argv)} was given but 3 expected")
-        print(('Usage: %s <model_dir> <data_dir>' % sys.argv[0]))
-        print("<model_dir> is where outputs from the hyperparam tuning are sent. <data_dir> is where data for analysis lives")
-        print("Example: python src/rnn_hyperparam_setup.py models/rnn_hyperparam_tuning_test data/rocky_fmda")
+    if len(sys.argv) != 4:
+        print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
+        print(('Usage: %s <model_dir> <data_dir> <config_file>' % sys.argv[0]))
+        print("<model_dir> is where outputs from the hyperparam tuning are sent. <data_dir> is where data for analysis lives. <config_file> stores configurations to set up model search grids")
+        print("Example: python src/rnn_hyperparam_setup.py models/rnn_hyperparam_tuning_test data/rocky_fmda etc/rnn_hyperparam_tuning_config_TEST.yaml ")
         sys.exit(-1)
 
     # Get input args
     model_dir = sys.argv[1]
     data_dir = sys.argv[2]
+    config_file = sys.argv[3]
+    
+    ## Read setup hyperparams and store a copy to model directory
+    hyper_params = read_yml(osp.join(CURRENT_DIR, config_file))
+    with open(osp.join(model_dir, "hyperparam_config.yaml"), "w") as file:
+        yaml.dump(hyper_params, file, default_flow_style=False) 
 
     # Check if already run, exit if so
     # Allows for rerun of process
