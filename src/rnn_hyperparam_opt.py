@@ -31,7 +31,6 @@ import reproducibility
 
 params_data = Dict(read_yml(osp.join(CONFIG_DIR, "params_data.yaml")))
 params_rnn = Dict(read_yml(osp.join(CONFIG_DIR, "params_models.yaml"), subkey="rnn"))
-hyper_params = Dict(read_yml(osp.join(CONFIG_DIR, "rnn_hyperparam_tuning_config.yaml")))
 
 features_list = params_data['features_list']
 
@@ -42,6 +41,11 @@ if __name__ == '__main__':
         print(f"Example: python src/rnn_hyperparam_opt.py 2 model/rnn_hyperparam_tuning_test")
         print("NOTE: count from zero with the task_id")
         sys.exit(-1)
+
+    task_id = int(sys.argv[1])
+    model_dir = sys.argv[2]
+    hyper_params = Dict(read_yml(osp.join(model_dir, "hyperparam_config.yaml")))
+    print(f"Running task {task_id}")
 
 
     # Initial setup
@@ -59,10 +63,6 @@ if __name__ == '__main__':
     print(f"Using Hyperparam grid from {osp.join(CONFIG_DIR, 'rnn_hyperparam_tuning_config.yaml')}")
     print(f"Using other RNN params from {osp.join(CONFIG_DIR, 'params_models.yaml')}")   
 
-    
-    task_id = int(sys.argv[1])
-    model_dir = sys.argv[2]
-    print(f"Running task {task_id}")
 
     # Read opt grid and get task_id row
     file_path = osp.join(model_dir, "opt_grid.txt")

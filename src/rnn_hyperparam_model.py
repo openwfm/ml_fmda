@@ -31,7 +31,6 @@ import reproducibility
 
 params_data = Dict(read_yml(osp.join(CONFIG_DIR, "params_data.yaml")))
 params_rnn = Dict(read_yml(osp.join(CONFIG_DIR, "params_models.yaml"), subkey="rnn"))
-hyper_params = Dict(read_yml(osp.join(CONFIG_DIR, "rnn_hyperparam_tuning_config.yaml")))
 
 features_list = params_data['features_list']
 
@@ -45,6 +44,7 @@ if __name__ == '__main__':
     # Get model architecture from slurm task array
     task_id = int(sys.argv[1])
     model_dir = sys.argv[2]
+    hyper_params = Dict(read_yml(osp.join(model_dir, "hyperparam_config.yaml")))
     print(f"Running task {task_id}")
 
     # Check if output already exists, exit if so.
