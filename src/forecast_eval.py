@@ -56,13 +56,8 @@ if __name__ == '__main__':
         freq = "2d"
     )    
     print("~"*75)
-    print(f"Running Forecast Analysis from {fstart} to {fend}")
-    print(f"Analysis Params: ")
-    print(f"    {FORECAST_HOURS=}")
-    print(f"    {TRAIN_HOURS=}")
+    print(f"Evaluating Forecast Analysis from {fstart} to {fend}")
     print(f"Total Forecast Periods: {forecast_periods.shape[0]}")
-    print(f"Earliest forecast start: {forecast_periods.min()}")
-    print(f"Latest forecast start: {forecast_periods.max()}")
 
     # Read output files for analysis run
     ## FMC models
@@ -77,7 +72,7 @@ if __name__ == '__main__':
     ## Climatology forecasts wont exist for certain stations, eg new stations without long climate history
     ## Test stations chosen by ones with data availability, so there should be minimal missing data for raws in the forecast periods
     clim_file = forecast_config.climatology_file
-    clim = read_pkl(osp.join(f_dir, clim_file))
+    clim = read_pkl(osp.join(PROJECT_ROOT, clim_file))
     raws_file = forecast_config.raws_file
     raws = read_pkl(osp.join(PROJECT_ROOT, raws_file))
     assert all(pd.Timestamp(dt) in clim.columns for dt in forecast_periods), "Climatology missing some target forecast periods, can't make comparison"
