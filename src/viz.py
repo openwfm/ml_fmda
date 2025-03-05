@@ -182,7 +182,15 @@ def make_st_map_interactive(df, color=None):
         marker_dict["color"] = df[color]
         marker_dict["colorscale"] = "viridis"
         marker_dict["colorbar"] = dict(title=color)        
-    
+        marker_dict["colorbar"] = {
+            "title": color,  
+            "orientation": "h",  # Makes the colorbar horizontal
+            "x": 0.5,  # Centers it horizontally
+            "y": -0.15,  # Moves it below the map
+            "xanchor": "center",  # Ensures centering
+            "yanchor": "bottom"
+        }    
+        
     fig = go.Figure(go.Scattermapbox(
         lat=df['lat'],
         lon=df['lon'],
@@ -214,6 +222,6 @@ def make_st_map_interactive(df, color=None):
         margin={"r":0,"t":0,"l":0,"b":0},
         mapbox_zoom =5,
         mapbox_center={"lat": np.median(df.lat), "lon": np.median(df.lon)},  # Center the map on desired location
-        width=1000, height=600
+        width=800, height=600
     )
     return fig
