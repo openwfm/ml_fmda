@@ -30,12 +30,18 @@ conda activate ml_fmda_models
 
 # Analyze Model Error, extract minimum error model
 python src/rnn_hyperparam_eval.py "$MODEL_DIRECTORY"
-# column -s, -t < "$MODEL_DIRECTORY/model_err_df.csv"
 
 
 # Run Optimization parameter tuning
 # Extract number of opt configurations from setup
 mkdir -p "$MODEL_DIRECTORY/opt_errors"
 N_OPT=$(wc -l < "$MODEL_DIRECTORY/opt_grid.txt")
-sbatch --array=1-$N_OPT --output="$MODEL_DIRECTORY/logs/opt_%a_%j.out" run_rnn_hyperparam_opt.sh "$MODEL_DIRECTORY" 
+job2_id=$(sbatch --array=1-$N_OPT --output="$MODEL_DIRECTORY/logs/opt_%j_%a.out" run_rnn_hyperparam_opt.sh "$MODEL_DIRECTORY" |  awk '{print $NF}') 
 
+
+# Wait for process to finish and run eval again
+while squeue -j "$job2_id" &>/dev/null; do
+    sleep 120  # Check every 2 minutes
+done
+
+python src/rnn_hyperparam_eval.py "$MODEL_DIRECTORY"
