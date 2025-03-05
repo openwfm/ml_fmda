@@ -66,6 +66,16 @@ if __name__ == '__main__':
     results = [read_pkl(osp.join(f_dir, 'forecast_periods', f)) for f in files]
     assert len(results) == len(forecast_periods), "Mismatch number of results files {len(results)} vs target forecast periods {len(forecast_periods)}"
 
+    # Write output of error for RNN by location for mapping
+    results_i = results[0]
+    df = pd.DataFrame(
+        {'stid': np.array(results_i['stids']), 'loc_error': results_i['RNN']['loc_rmse'] }
+    ) 
+    dfs = [
+        pd.DataFrame({'stid': np.array(result_i['stids']), 'loc_error': result_i['RNN']['loc_mse']}) for result_i in results
+    ]
+    df = pd.concat(dfs, ignore_index=True)
+    df.to_csv(osp.join(f_dir, 'rnn_loc_errors.csv'))
 
 
     ## Climatology, extract needed periods and stations, then calculate MSE
