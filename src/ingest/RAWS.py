@@ -352,18 +352,18 @@ def build_raws_dict_stash(start, end, bbox, rename=True, verbose = True, save_pa
         except Exception as e:
             print(f"An error occured: {e}") 
             
-    # Combine the lists of DataFrames for each station into a single DataFrame, rename, and interpolate
-    for st in raws_dict:
-        if raws_dict[st]["RAWS"]:  # Check if the list is not empty
-            raws_dict[st]["RAWS"] = pd.concat(raws_dict[st]["RAWS"], ignore_index=True)
-            # Add a few static vars
-            raws_dict[st]["RAWS"]["lat"] = raws_dict[st]["loc"]["lat"]
-            raws_dict[st]["RAWS"]["lon"] = raws_dict[st]["loc"]["lon"]
-            raws_dict[st]["RAWS"]["elev"] = raws_dict[st]["loc"]["elev"]      
-        else:
-            raws_dict[st]["RAWS"] = pd.DataFrame()  # Set an empty DataFrame if no data was found
-        if rename:
-            raws_dict[st]["RAWS"].rename(columns=raws_meta["rename_stash"], inplace=True)
+# Combine the lists of DataFrames for each station into a single DataFrame, rename, and interpolate
+for st in raws_dict:
+    if raws_dict[st]["RAWS"]:  # Check if the list is not empty
+        raws_dict[st]["RAWS"] = pd.concat(raws_dict[st]["RAWS"], ignore_index=True)
+        # Add a few static vars
+        raws_dict[st]["RAWS"]["lat"] = raws_dict[st]["loc"]["lat"]
+        raws_dict[st]["RAWS"]["lon"] = raws_dict[st]["loc"]["lon"]
+        raws_dict[st]["RAWS"]["elev"] = raws_dict[st]["loc"]["elev"]      
+    else:
+        raws_dict[st]["RAWS"] = pd.DataFrame()  # Set an empty DataFrame if no data was found
+    if rename:
+        raws_dict[st]["RAWS"].rename(columns=raws_meta["rename_stash"], inplace=True)
 
     # Remove Stations with missing data
     # no_data = []
@@ -373,7 +373,7 @@ def build_raws_dict_stash(start, end, bbox, rename=True, verbose = True, save_pa
     #         raws_dict.pop(st)
     # print(f"No data found for stations {no_data}, removing")
     # print(f"Retrieved data for {len(raws_dict.keys())} stations")
-    
+
     # Interpolate
     # No start time offset here
     # Hard coded static and time columns
@@ -384,7 +384,7 @@ def build_raws_dict_stash(start, end, bbox, rename=True, verbose = True, save_pa
             no_data.append(st)
         else:
             vals_to_na(raws_dict[st]["RAWS"], "fm", verbose=False) # Filter extreme values based on data params
-            if np.mean(np.isnan(raws_dict[st]["RAWS"]["fm"])):
+            if np.mean(np.isnan(raws_dict[st]["RAWS"]["fm"])) == 1:
                 no_data.append(st)
             else:
                 nsteps = raws_dict[st]["RAWS"].shape[0]
@@ -405,18 +405,18 @@ def build_raws_dict_stash(start, end, bbox, rename=True, verbose = True, save_pa
     print(f"No data found for stations {len(no_data)} stations within input bbox for given time period. Removing")
     for st in no_data:
         raws_dict.pop(st)
-    
+
     print(f"Retrieved data for {len(raws_dict.keys())} stations")
-    
+
     # Save if path provided
     if save_path is not None:
         with open(save_path, 'wb') as handle:
             pickle.dump(raws_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    
+
     return raws_dict
 
 
-def parse_bbox(box_str):
+    def parse_bbox(box_str):
     try:
         # Use ast.literal_eval to safely parse the string representation
         # This will only evaluate literals and avoids security risks associated with eval
@@ -431,7 +431,7 @@ def parse_bbox(box_str):
         sys.exit(-1)
         return None
 
-if __name__ == '__main__':
+    if __name__ == '__main__':
     if len(sys.argv) != 5:
         print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
         print(('Usage: %s <esmf_from_utc> <esmf_to_utc> <bbox> <output_dir>' % sys.argv[0]))
@@ -450,4 +450,4 @@ if __name__ == '__main__':
 
 
 
-    
+
