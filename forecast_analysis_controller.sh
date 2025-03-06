@@ -36,7 +36,12 @@ python src/forecast_analysis_setup.py "$FORECAST_DIRECTORY" "$DATA_DIRECTORY"
 # Run train/test for each forecast period
 # Create slurm job array for each forecast period
 N_PERIOD=$(jq '.forecast_periods' forecasts/fmc_forecast_test/analysis_info.json)
-echo $N_PERIOD
-sbatch --array=1-$N_PERIOD --output="$FORECAST_DIRECTORY/logs/fperiod_%j_%a.out" run_forecast_period.sh "$FORECAST_DIRECTORY"
+job_id=$(sbatch --array=1-$N_PERIOD --output="$FORECAST_DIRECTORY/logs/fperiod_%j_%a.out" run_forecast_period.sh "$FORECAST_DIRECTORY")
 
+# Wait for job to finish and run eval
+while squeue -j "$job_id" &>/dev/null; do
+    sleep 120  # Check every 2 minutes
+done
+
+python src/forecast_eval.py "$FORECAST_DIRECTORY"
 
