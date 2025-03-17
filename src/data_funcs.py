@@ -192,7 +192,8 @@ def build_ml_data(dict0,
             for var in hrrr_meta:
                 if var in atm.columns:
                     v = time_intp(times, atm[var].to_numpy(), times)
-                    atm.loc[:, var] = v
+                    atm[var] = v
+                    #atm.loc[:, var] = v
            
 
             # Merge, if repeated names add 
@@ -269,18 +270,20 @@ def remove_invalid_data(dict0, df_valid):
         t1 = pd.Timestamp(str2time(di.end.values[0]))
         print(f"Removing invalid data for station {st} from {t0} to {t1}")
         # Remove data within time range of invalid flag
-        dict1[st]['data'].drop(
-            dict1[st]['data'][(dict1[st]['data']["date_time"] >= t0) & 
-                                 (dict1[st]['data']["date_time"] <= t1)].index, 
-            inplace=True        
-        )
-        dict1[st]['times'] = dict1[st]['data'].date_time.to_numpy()
-        if dict1[st]['data'].empty:
-            st_remove.append(st)
+        if st in dict1:
+            dict1[st]['data'].drop(
+                dict1[st]['data'][(dict1[st]['data']["date_time"] >= t0) & 
+                                     (dict1[st]['data']["date_time"] <= t1)].index, 
+                inplace=True        
+            )
+            dict1[st]['times'] = dict1[st]['data'].date_time.to_numpy()
+            if dict1[st]['data'].empty:
+                st_remove.append(st)
     
     # Remove empty stations
     print("~"*50)
     print(f"No remaining data for {len(st_remove)} stations, removing {st_remove}")
+    st_remove = set(st_remove) # get unique
     for st in st_remove:
         dict1.pop(st)
 
