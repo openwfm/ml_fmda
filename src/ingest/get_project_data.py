@@ -25,6 +25,7 @@ import sys
 from dateutil.relativedelta import relativedelta
 import pickle
 import ast
+import gc
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

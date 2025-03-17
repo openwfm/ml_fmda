@@ -254,6 +254,41 @@ def build_ml_data(dict0,
     return ml_dict
 
 
+def remove_invalid_data(dict0, df_valid):
+    """
+    Remove data from dictionary based on formatted input csv, manually created
+    """
+    df = df_valid[df_valid.valid == 0].reset_index(drop=True)
+    dict1 = copy.deepcopy(dict0)
+    st_remove = [] # Running list of stations to fully remove if no data left
+    
+    for i in range(0, df.shape[0]):
+        di = df[df.index == i]
+        st = di.stid.values[0]
+        t0 = pd.Timestamp(str2time(di.start.values[0]))
+        t1 = pd.Timestamp(str2time(di.end.values[0]))
+        print(f"Removing invalid data for station {st} from {t0} to {t1}")
+        # Remove data within time range of invalid flag
+        dict1[st]['data'].drop(
+            dict1[st]['data'][(dict1[st]['data']["date_time"] >= t0) & 
+                                 (dict1[st]['data']["date_time"] <= t1)].index, 
+            inplace=True        
+        )
+        dict1[st]['times'] = dict1[st]['data'].date_time.to_numpy()
+        if dict1[st]['data'].empty:
+            st_remove.append(st)
+    
+    # Remove empty stations
+    print("~"*50)
+    print(f"No remaining data for {len(st_remove)} stations, removing {st_remove}")
+    for st in st_remove:
+        dict1.pop(st)
+
+    print(f"Data remaining for {len(dict1)} unique stations")
+    
+    return dict1
+
+
 # Cross Validation Functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
