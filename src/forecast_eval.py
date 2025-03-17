@@ -40,10 +40,10 @@ if __name__ == '__main__':
         sys.exit(-1)
 
     f_dir = sys.argv[1]
-    # Check output exists
-    if osp.exists(osp.join(f_dir, 'forecast_errs.csv')) and osp.exists(osp.join(f_dir, 'forecast_summary.csv')):
-        print(f"Output already exists at {f_dir}, exiting")
-        sys.exit(0)
+    ## Check output exists
+    #if osp.exists(osp.join(f_dir, 'forecast_errs.csv')) and osp.exists(osp.join(f_dir, 'forecast_summary.csv')):
+    #    print(f"Output already exists at {f_dir}, exiting")
+    #    sys.exit(0)
 
     # Read analysis config, used for QC checks that input actually matches target
     # Get analysis run configuration
@@ -72,7 +72,17 @@ if __name__ == '__main__':
         pd.DataFrame({'stid': np.array(result_i['stids']), 'ftime': result_i['times'][0], 'loc_error': result_i['RNN']['loc_mse'] }) for result_i in results
     ]
     df = pd.concat(dfs, ignore_index=True)
+    print(f"Writing RNN Forecast Errors to: {osp.join(f_dir, 'rnn_loc_errors.csv')}")
     df.to_csv(osp.join(f_dir, 'rnn_loc_errors.csv'))
+
+
+    # Write output of error for ODE by location for data QC
+    dfs = [
+        pd.DataFrame({'stid': np.array(result_i['stids']), 'ftime': result_i['times'][0], 'loc_error': result_i['ODE']['loc_mse'] }) for result_i in results
+    ]
+    df = pd.concat(dfs, ignore_index=True)
+    print(f"Writing ODE Forecast Errors to: {osp.join(f_dir, 'ode_loc_errors.csv')}")
+    df.to_csv(osp.join(f_dir, 'ode_loc_errors.csv'))
 
 
     ## Climatology, extract needed periods and stations, then calculate MSE
