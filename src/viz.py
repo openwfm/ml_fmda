@@ -22,34 +22,49 @@ plot_styles = {
     'rain': {'color': 'b', 'linestyle': '-', 'alpha':.9, 'label': 'Rain'}
 }
 
-def plot_one(d, st, start_time="2024-01-01", end_time = "2024-01-07", save_path = None):
+def plot_one(d, st, start_time="2024-01-01", end_time = "2024-01-07", title2 = "", save_path = None, show=True):
     """
     Plot univariate timeseries for formatted dictionary, one station key from output of build_ml_data
     """
     import pandas as pd
+
+    if type(start_time) is str:
+        start_time = pd.Timestamp(start_time, tz="UTC")
+        end_time = pd.Timestamp(end_time, tz="UTC")
+
+    title = f"Observed FMC at RAWS {st}"
+    if title2:
+        title = title + " - " + title2
     
-    start_time = pd.Timestamp(start_time, tz="UTC")
-    end_time = pd.Timestamp(end_time, tz="UTC")
     timestamps = d[st]["times"]
     inds = np.where((timestamps >= start_time) & (timestamps <= end_time))[0]
     fm = d[st]["data"]["fm"].to_numpy()[inds]
     Ed = d[st]["data"]["Ed"].to_numpy()[inds]
     Ew = d[st]["data"]["Ew"].to_numpy()[inds]
+    rain = d[st]["data"]["rain"].to_numpy()[inds]
     x = d[st]["times"][inds]
     plt.plot(x, fm, **plot_styles['fm'])
-    # plt.plot(x, Ed, **plot_styles['Ed'])
-    # plt.plot(x, Ew, **plot_styles['Ew'])
+    plt.plot(x, Ed, **plot_styles['Ed'])
+    plt.plot(x, Ew, **plot_styles['Ew'])
+    plt.plot(x, rain, **plot_styles['rain'])
     plt.xlabel("Hour")
     plt.ylabel("FMC (%)")
-    plt.title(f"Observed FMC at RAWS {st}")
+    plt.title(title)
     plt.xticks(rotation=90)
     plt.legend()
     plt.grid()
     plt.tight_layout()
 
+    # Save plot if path provided
     if save_path is not None:
         plt.savefig(save_path)
 
+    # Show plot unless False
+    if not show:
+        plt.close()
+
+
+        
 # Dictionary to store mapping schemes, eg cmaps and titles
 ## Using NWS color maps from the herbie package
 ## Moisture vars, like equil and FMC, use NWS humidity scheme
