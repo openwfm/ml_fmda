@@ -32,7 +32,6 @@ python src/setup.py
 …
 ```
 
-
 ## Data Retrieval Description
 
 Retrieved data is organized by RAWS station. This is not necessarily the most computationally efficient approach, but it makes it easier to organize spatiotemporal cross validation and pointwise deployment of baseline models. Data from various sources, including RAWS, HRRR, and LandFire, and combined into one dictionary object.
