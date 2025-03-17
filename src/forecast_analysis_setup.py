@@ -9,6 +9,7 @@ import os.path as osp
 import os
 from dateutil.relativedelta import relativedelta
 import json
+import pandas as pd
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -54,6 +55,7 @@ if __name__ == '__main__':
     # Get input args
     f_dir = sys.argv[1]
     data_dir = sys.argv[2]
+    os.makedirs(f_dir, exist_ok=True)
 
     # Check if already run, allows for easy rerun of process
     if osp.exists(osp.join(f_dir, 'ml_data.pkl')) and osp.exists(osp.join(f_dir, 'analysis_info.json')):
@@ -116,9 +118,12 @@ if __name__ == '__main__':
     # Read and Format Data, get set up for train and test
     print("~"*75)
     data = data_funcs.combine_fmda_files(file_paths)
-    ml_dict = data_funcs.build_ml_data(data, hours=params_data.hours,  save_path = osp.join(PROJECT_ROOT, f_dir, "ml_data.pkl"), max_linear_time = params_data.max_linear_time, verbose=False)
-    print(f"Total Stations with Data in Time Period: {len(ml_dict)}")
-    
+    ml_dict = data_funcs.build_ml_data(data, hours=params_data.hours, max_linear_time = params_data.max_linear_time, verbose=False)
+    df_valid = pd.read_csv(osp.join(PROJECT_ROOT, params_data.valid_path))
+    ml_dict = data_funcs.remove_invalid_data(ml_dict, df_valid)
+    data_file =  osp.join(PROJECT_ROOT, f_dir, "ml_data.pkl")
+    with open(data_file, 'wb') as f:
+        pickle.dump(ml_dict, f)
 
     # Write output file storing configuration
     info = {
