@@ -77,6 +77,33 @@ Changing this from 72 might lead to errors, particularly if changed to something
 python src/run_climatology.py '2024-01-01T00:00:00Z' '2024-12-31T23:00:00Z' '[37,-111,46,-95]' data/climatology_rocky2024.pkl
 ```
 
+### RNN
+
+For hyperparameter tuning, it is recommended to run on Alderaan or another computing system with many available cores slurm software.
+Steps:
+
+1. Confirm hyperparameter search criteria with config file. `etc/rnn_hyperparam_tuning_config.yaml`
+
+2. Run model architecture tuning
+
+```
+sbatch rnn_hyperparam_controller.sh models/rnn_hyperparam_tuning_rocky23_TEST/ data/rocky_fmda/
+```
+
+3. Run optimization parameter tuning
+
+```
+sbatch rnn_hyperparam_controller2.sh models/rnn_hyperparam_tuning_rocky23_TEST/ 
+```
+
+For running the corecast analysis, it is recommened to run on Aleraan or another computing system with many available cores and slurm software
+
+1. Run setup and analysis with controller shell file
+
+```
+sbatch forecast_analysis_controller.sh forecasts/fmc_forecast_test/ data/rocky_fmda
+```
+
 
 ## Troubleshooting 
 

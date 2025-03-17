@@ -66,6 +66,7 @@ wind:
     herbie_str: "WIND:10 m"
     xarray_name: "si10"
     dtype: "float"
+    # NOTE: some versions software return max_10si which is the same, figuring out a way to rename these properly
     
 solar: 
     long_name: "Downward Short-Wave Radiation Flux"
@@ -77,7 +78,8 @@ solar:
     herbie_str: "DSWRF:surface"
     xarray_name: "dswrf"
     dtype: "float"
-    
+    # NOTE: some versions software return sdswrf which is the same, figuring out a way to rename these properly    
+
 canopyw:
     long_name: "Plant Canopy Surface Water"
     units: "kg/m^2"
