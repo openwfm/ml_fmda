@@ -352,27 +352,18 @@ def build_raws_dict_stash(start, end, bbox, rename=True, verbose = True, save_pa
         except Exception as e:
             print(f"An error occured: {e}") 
             
-# Combine the lists of DataFrames for each station into a single DataFrame, rename, and interpolate
-for st in raws_dict:
-    if raws_dict[st]["RAWS"]:  # Check if the list is not empty
-        raws_dict[st]["RAWS"] = pd.concat(raws_dict[st]["RAWS"], ignore_index=True)
-        # Add a few static vars
-        raws_dict[st]["RAWS"]["lat"] = raws_dict[st]["loc"]["lat"]
-        raws_dict[st]["RAWS"]["lon"] = raws_dict[st]["loc"]["lon"]
-        raws_dict[st]["RAWS"]["elev"] = raws_dict[st]["loc"]["elev"]      
-    else:
-        raws_dict[st]["RAWS"] = pd.DataFrame()  # Set an empty DataFrame if no data was found
-    if rename:
-        raws_dict[st]["RAWS"].rename(columns=raws_meta["rename_stash"], inplace=True)
-
-    # Remove Stations with missing data
-    # no_data = []
-    # for st in list(raws_dict.keys()):
-    #     if raws_dict[st]["RAWS"].shape[0] == 0:
-    #         no_data.append(st)
-    #         raws_dict.pop(st)
-    # print(f"No data found for stations {no_data}, removing")
-    # print(f"Retrieved data for {len(raws_dict.keys())} stations")
+    # Combine the lists of DataFrames for each station into a single DataFrame, rename, and interpolate
+    for st in raws_dict:
+        if raws_dict[st]["RAWS"]:  # Check if the list is not empty
+            raws_dict[st]["RAWS"] = pd.concat(raws_dict[st]["RAWS"], ignore_index=True)
+            # Add a few static vars
+            raws_dict[st]["RAWS"]["lat"] = raws_dict[st]["loc"]["lat"]
+            raws_dict[st]["RAWS"]["lon"] = raws_dict[st]["loc"]["lon"]
+            raws_dict[st]["RAWS"]["elev"] = raws_dict[st]["loc"]["elev"]      
+        else:
+            raws_dict[st]["RAWS"] = pd.DataFrame()  # Set an empty DataFrame if no data was found
+        if rename:
+            raws_dict[st]["RAWS"].rename(columns=raws_meta["rename_stash"], inplace=True)
 
     # Interpolate
     # No start time offset here
@@ -416,7 +407,7 @@ for st in raws_dict:
     return raws_dict
 
 
-    def parse_bbox(box_str):
+def parse_bbox(box_str):
     try:
         # Use ast.literal_eval to safely parse the string representation
         # This will only evaluate literals and avoids security risks associated with eval
@@ -431,7 +422,7 @@ for st in raws_dict:
         sys.exit(-1)
         return None
 
-    if __name__ == '__main__':
+if __name__ == '__main__':
     if len(sys.argv) != 5:
         print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
         print(('Usage: %s <esmf_from_utc> <esmf_to_utc> <bbox> <output_dir>' % sys.argv[0]))
