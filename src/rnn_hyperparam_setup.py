@@ -16,6 +16,7 @@ import numpy as np
 from dateutil.relativedelta import relativedelta
 import pickle
 import yaml
+import pandas as pd
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -63,7 +64,8 @@ if __name__ == '__main__':
     model_dir = sys.argv[1]
     data_dir = sys.argv[2]
     config_file = sys.argv[3]
-    
+    os.makedirs(model_dir, exist_ok=True)
+
     ## Read setup hyperparams and store a copy to model directory
     hyper_params = read_yml(osp.join(CURRENT_DIR, config_file))
     with open(osp.join(model_dir, "hyperparam_config.yaml"), "w") as file:
@@ -115,11 +117,12 @@ if __name__ == '__main__':
 
     reproducibility.set_seed(123)
     data = data_funcs.combine_fmda_files(file_paths)
-    ml_dict = data_funcs.build_ml_data(data, hours=params_data.hours,
-                                   max_linear_time = params_data.max_linear_time,
-                                   verbose=False, save_path = osp.join(model_dir, 'ml_data.pkl'))
-    print(f"Total Stations with Data in Time Period: {len(ml_dict)}")
-
+    ml_dict = data_funcs.build_ml_data(data, hours=params_data.hours, max_linear_time = params_data.max_linear_time, verbose=False)
+    df_valid = pd.read_csv(osp.join(PROJECT_ROOT, params_data.valid_path))
+    ml_dict = data_funcs.remove_invalid_data(ml_dict, df_valid)
+    data_file =  osp.join(PROJECT_ROOT, model_dir, "ml_data.pkl")
+    with open(data_file, 'wb') as f:
+        pickle.dump(ml_dict, f)
 
     # Param Grids    
     model_params_grid = model_grid(hyper_params['model_architecture'])
