@@ -95,8 +95,8 @@ if __name__ == '__main__':
     subprocess.run(command, shell=True)
 
     # Get a HRRR File for Spatial Projection Into
-    # hpath = herbie.Herbie("2025-01-01", product="prs").download(save_dir = data_path)
-    # print(f"Saving Local copy of HRRR grib2 file at: {hpath}")
+    hpath = herbie.Herbie("2025-01-01", product="prs").download(save_dir = DATA_DIR)
+    print(f"Saving Local copy of HRRR grib2 file at: {hpath}")
 
     
 
