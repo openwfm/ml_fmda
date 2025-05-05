@@ -343,7 +343,9 @@ def build_raws_dict_stash(start, end, bbox, rename=True, verbose = True, save_pa
     # Loop through file paths and extract info from need STID
     for path in paths:
         try:
-            dat = read_pkl(path)           
+            #dat = read_pkl(path)           
+            print(f"loading file {path}")
+            dat = pd.read_pickle(path)
             for st in sts["stid"]:
                 # Filter the data for the current station and append
                 filtered = dat[dat['STID'] == st]
