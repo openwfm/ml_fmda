@@ -74,7 +74,7 @@ class MLModel(ABC):
         errs = {
             'mse': mse
         }
-        return errs        
+        return preds, errs        
 
 
 class XGB(MLModel):

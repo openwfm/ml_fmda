@@ -60,7 +60,7 @@ if __name__ == '__main__':
     if osp.exists(out_file):
         print(f"Output for task {task_id} already exists at: {out_file}, exiting")
         sys.exit(0)
-    
+
 
 
     # Get analysis run configuration
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     test_times = test[te_sts[0]]["times"]
     ode_data = data_funcs.get_ode_data(ml_data, te_sts, test_times)
     ode = ODE_FMC(params=params)
-    m, errs_ode = ode.run_model(ode_data, hours=72, h2=24)
+    m_ode, errs_ode = ode.run_model(ode_data, hours=72, h2=24)
     print(f"ODE Test MSE: {errs_ode}")
 
     ## Static XGBoost
@@ -110,7 +110,7 @@ if __name__ == '__main__':
     dat.scale_data()
     xgb_model = XGB(params=params)
     xgb_model.fit(dat.X_train, dat.y_train)
-    errs_xgb = xgb_model.test_eval(dat.X_test, dat.y_test, verbose=False)
+    m_xgb, errs_xgb = xgb_model.test_eval(dat.X_test, dat.y_test, verbose=False)
     print(f"XGBoost Test MSE: {errs_xgb['mse']}")
 
     # RNN
@@ -126,19 +126,19 @@ if __name__ == '__main__':
             verbose_fit = True,
             plot_history=False
            )
-    errs_rnn = rnn.test_eval(dat.X_test, dat.y_test, verbose=False)
+    m_rnn, errs_rnn = rnn.test_eval(dat.X_test, dat.y_test, verbose=False)
     print(f"RNN Test MSE: {errs_rnn['mse']}")
 
     # Write output for forecast period
-    err_dict_output = {
+    output = {
         'times': test_times,
         'stids': te_sts,
-        'ODE': errs_ode,
-        'XGB': errs_xgb,
-        'RNN': errs_rnn
+        'ODE': {'errs': errs_ode, 'preds': m_ode},
+        'XGB': {'errs': errs_xgb, 'preds': m_xgb},
+        'RNN': {'errs': errs_rnn, 'preds': m_rnn}
     }
     print(f"Writing Output: {out_file}")
     with open(out_file, 'wb') as handle:
-        pickle.dump(err_dict_output, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(output, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 

@@ -685,7 +685,7 @@ class RNN_Flexible(Model):
             'mse': mse,
             'loc_mse': batch_mse
         }
-        return errs
+        return preds, errs
         
 
 
