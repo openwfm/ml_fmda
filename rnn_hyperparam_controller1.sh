@@ -40,7 +40,7 @@ python src/rnn_hyperparam_setup.py "$MODEL_DIRECTORY" "$DATA_DIRECTORY" "$CONFIG
 # Extract the jobid to use with waiting for the next things to run
 mkdir -p "$MODEL_DIRECTORY/logs"
 N_MODELS=$(wc -l < "$MODEL_DIRECTORY/model_grid.txt")
-job1_id=$(sbatch --array=1-$N_MODELS --output="$MODEL_DIRECTORY/logs/model_%j_%a.out" run_rnn_hyperparam_model.sh "$MODEL_DIRECTORY" |  awk '{print $NF}')
+job1_id=$(sbatch --array=1-$N_MODELS --mem=8G --output="$MODEL_DIRECTORY/logs/model_%j_%a.out" run_rnn_hyperparam_model.sh "$MODEL_DIRECTORY" |  awk '{print $NF}')
 
 
 
