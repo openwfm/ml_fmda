@@ -36,7 +36,7 @@ python src/rnn_hyperparam_eval.py "$MODEL_DIRECTORY"
 # Extract number of opt configurations from setup
 mkdir -p "$MODEL_DIRECTORY/opt_errors"
 N_OPT=$(wc -l < "$MODEL_DIRECTORY/opt_grid.txt")
-job2_id=$(sbatch --array=1-$N_OPT --output="$MODEL_DIRECTORY/logs/opt_%j_%a.out" run_rnn_hyperparam_opt.sh "$MODEL_DIRECTORY" |  awk '{print $NF}') 
+job2_id=$(sbatch --array=1-$N_OPT --mem=8G --output="$MODEL_DIRECTORY/logs/opt_%j_%a.out" run_rnn_hyperparam_opt.sh "$MODEL_DIRECTORY" |  awk '{print $NF}') 
 
 
 # Wait for process to finish and run eval again
