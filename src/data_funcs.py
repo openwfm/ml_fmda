@@ -623,18 +623,20 @@ class StaticMLData(MLData):
 
         
         X_train = self._combine_data(train)
+        self.train_locs = X_train['stid'].to_numpy()
         self.y_train = X_train[y_col].to_numpy()
         self.X_train = X_train[self.features_list].to_numpy()
 
         self.X_val, self.y_val = (None, None)
         if val:
             X_val = self._combine_data(val)
+            self.val_locs = X_val['stid'].to_numpy()
             self.y_val = X_val[y_col].to_numpy()
             self.X_val = X_val[self.features_list].to_numpy()
-    
         self.X_test, self.y_test = (None, None)
         if test:
             X_test = self._combine_data(test)
+            self.test_locs = X_test['stid'].to_numpy()
             self.y_test = X_test[y_col].to_numpy()
             self.X_test = X_test[self.features_list].to_numpy()
 
