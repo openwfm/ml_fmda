@@ -7,9 +7,9 @@
 rnn:
     timesteps: 48 # number of time steps that constistutes one single input sample, matches HRRR max forecast cycle and max time this model is intended to be extrapolated into the future
     batch_size: 32 # number of sequences of length `timesteps` that are processed independently in an iteration of weight updates
-    hidden_layers: [lstm, dense, dropout] # Sequential order of neural network hidden layers, one of 'dense', 'rnn', 'lstm', 'attention', 'dropout'
-    hidden_units: [32, 16, null] # Corresponding number of units for layers, attention & dropout layers should have None for this
-    hidden_activation: [tanh, relu, null] # Corresponding activation func for layers, attention & dropout layers should have None for this
+    hidden_layers: [lstm, dense, dense, dense, dropout] # Sequential order of neural network hidden layers, one of 'dense', 'rnn', 'lstm', 'attention', 'dropout'
+    hidden_units: [32, 16, 16, 8, null] # Corresponding number of units for layers, attention & dropout layers should have None for this
+    hidden_activation: [tanh, relu, relu, relu, null] # Corresponding activation func for layers, attention & dropout layers should have None for this
     dropout: 0.2 # Used automatically internally in LSTM and RNN layers, used for value if entire dropout layer is specified (typically after a dense)
     recurrent_dropout: 0.2 # Used internally in recurrent layers
     output_layer: dense # Output specifications should not be changed unless input data is restructured. Currently outputing single scalar at each input time step
@@ -17,7 +17,7 @@ rnn:
     output_dimension: 1 # One-dim output (FMC)
     learning_rate: 0.001
     early_stopping_patience: 5 # Number of epochs with no improvement after which training will be stopped.
-    epochs: 100
+    epochs: 100 # NOTE: early stopping controls this, so epochs intended to be set to some large number greater than reached in practice
     scaler: standard # One of standard, MinMax. NOTE: MinMax more strongly depends on test data being within range of train data, otherwise scales certain data outside of 0,1 range and then you get nonsense
     stateful: false
     verbose_fit: true # If True, prints loss metrics on each epoch of training
@@ -89,14 +89,14 @@ climatology:
 
 ode:
     hours: 72                # Number of hours to run sim, forecast period will be hours-spinup_hours
-    spinup_hours: 24         # number of timesteps to spinup model before validation metrics calculated
+    spinup_hours: 24         # number of timesteps to spinup model before validation metrics calculated (24 is conservative)
     process_variance: 1e-3   # used to build diagonal Q matrix 
     data_variance: 1e-3 
     r0: 0.05                 # threshold rainfall [mm/h]
     rs: 8.0                  # saturation rain intensity [mm/h]
     Tr: 14.0                 # time constant for rain wetting model [h]
-    S: 250                   # saturation intensity [dimensionless]
-    T: 10.0                  # time constant for wetting/drying
+    S: 250                   # saturation intensity [dimensionless, or % fmc]
+    T: 10.0                  # time constant for wetting/drying (dead fuel class)
 
 
 
