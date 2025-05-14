@@ -7,6 +7,8 @@
 
 #SBATCH --ntasks=1
 
+#SBATCH --mem=8G
+
 # Credit to user lorellis for aspects of this code structure
 # Pass the variable {SLURM_TASK_ARRAY_ID} to the test_slurm_array.sh script and run said script
 

@@ -1,8 +1,6 @@
 # Script used to setup analysis of forecast error of models over a time period
 # Creates formatted data for use in the various forecast periods
 
-
-
 import sys
 import pickle
 import os.path as osp
@@ -10,6 +8,7 @@ import os
 from dateutil.relativedelta import relativedelta
 import json
 import pandas as pd
+import yaml
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -36,7 +35,6 @@ from models.moisture_rnn import RNN_Flexible, RNNData
 # Config and Params
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-forecast_config = Dict(read_yml(osp.join(CONFIG_DIR, "forecast_analysis.yaml")))
 
 params_data = Dict(read_yml(osp.join(CONFIG_DIR, "params_data.yaml")))
 params_models = Dict(read_yml(osp.join(CONFIG_DIR, "params_models.yaml")))
@@ -45,17 +43,23 @@ n_features = len(params_data['features_list'])
 
 if __name__ == '__main__':
 
-    if len(sys.argv) != 3:
-        print(f"Invalid arguments. {len(sys.argv)} was given but 3 expected")
-        print(('Usage: %s <forecast_dir> <data_dir>' % sys.argv[0]))
-        print("<forecast_dir> is where outputs from the forecasts are sent. <data_dir> is where data for analysis lives")
-        print("Example: python src/forecast_analysis_setup.py forecasts/fmc_forecast_test data/rocky_fmda")
+    if len(sys.argv) != 4:
+        print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
+        print(('Usage: %s <forecast_dir> <data_dir>' '<config_path>' % sys.argv[0]))
+        print("<forecast_dir> is where outputs from the forecasts are sent. <data_dir> is where data for analysis lives. <config_path> is path to yaml file setting up time frame and other analysis parameters")
+        print("Example: python src/forecast_analysis_setup.py forecasts/fmc_forecast_test data/rocky_fmda etc/forecast_analysis.yaml")
         sys.exit(-1)
 
     # Get input args
     f_dir = sys.argv[1]
     data_dir = sys.argv[2]
+    conf_path = sys.argv[3]
+    forecast_config = read_yml(conf_path)
     os.makedirs(f_dir, exist_ok=True)
+    # Write copy of forecast config file to forecast directory, do this so multiple tests can be run with different input config files
+    with open(osp.join(f_dir, "forecast_config.yaml"), 'w') as f:
+        yaml.dump(forecast_config, f, default_flow_style=False)
+    forecast_config = Dict(forecast_config)
 
     # Check if already run, allows for easy rerun of process
     if osp.exists(osp.join(f_dir, 'ml_data.pkl')) and osp.exists(osp.join(f_dir, 'analysis_info.json')):
