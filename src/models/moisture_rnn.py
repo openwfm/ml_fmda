@@ -5,7 +5,6 @@ from abc import ABC, abstractmethod
 from sklearn.metrics import mean_squared_error
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-import reproducibility
 import os.path as osp
 import sys
 from dateutil.relativedelta import relativedelta
@@ -17,17 +16,11 @@ from tensorflow.keras.optimizers import Adam
 import warnings
 from itertools import product
 
-
-
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## We do this so the module can be imported from different locations
-CURRENT_DIR = osp.abspath(__file__)
-while osp.basename(CURRENT_DIR) != "ml_fmda":
-    CURRENT_DIR = osp.dirname(CURRENT_DIR)
-PROJECT_ROOT = CURRENT_DIR
-CODE_DIR = osp.join(PROJECT_ROOT, "src")
-sys.path.append(CODE_DIR)
+CURRENT_DIR = osp.dirname(osp.normpath(osp.abspath(__file__)))
+PROJECT_ROOT = osp.dirname(osp.dirname(osp.normpath(CURRENT_DIR)))
+sys.path.append(osp.join(PROJECT_ROOT, "src"))
 CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
@@ -1126,4 +1119,9 @@ def optimization_grid(opt_dict):
     grid = [dict(zip(keys, combo)) for combo in product(*values)]
     
     return grid
+
+
+if __name__ == '__main__':
+
+    print("Imports successful, no executable code")
 

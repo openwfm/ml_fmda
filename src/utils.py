@@ -422,3 +422,8 @@ def parse_bbox(box_str):
         print("Error parsing bounding box:", e)
         sys.exit(-1)
         return None
+
+
+if __name__ == '__main__':
+
+    print("Imports successful, no executable code")

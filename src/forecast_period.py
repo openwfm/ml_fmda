@@ -12,15 +12,10 @@ import h5py
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## We do this so the module can be imported from different locations
-CURRENT_DIR = osp.abspath(__file__)
-while osp.basename(CURRENT_DIR) != "ml_fmda":
-    CURRENT_DIR = osp.dirname(CURRENT_DIR)
-PROJECT_ROOT = CURRENT_DIR
-CODE_DIR = osp.join(PROJECT_ROOT, "src")
-sys.path.append(CODE_DIR)
+CURRENT_DIR = osp.dirname(osp.normpath(osp.abspath(__file__)))
+PROJECT_ROOT = osp.dirname(osp.normpath(CURRENT_DIR))
+sys.path.append(osp.join(PROJECT_ROOT, "src"))
 CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
-DATA_DIR = osp.join(PROJECT_ROOT, "data")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -99,6 +94,7 @@ if __name__ == '__main__':
     # Run Models
     # ODE
     print('~'*75)
+    print("Running ODE")
     params = params_models['ode']
     te_sts = [*test.keys()]
     test_times = test[te_sts[0]]["times"]
@@ -111,6 +107,7 @@ if __name__ == '__main__':
 
     ## Static XGBoost
     print('~'*75)
+    print("Running XGB")
     params = params_models['xgb']
     dat = data_funcs.StaticMLData(train, val, test, features_list = features_list)
     dat.scale_data()
@@ -128,6 +125,8 @@ if __name__ == '__main__':
     gc.collect()
 
     # RNN
+    print('~'*75)
+    print('Running RNN')
     params = params_models['rnn']
     params.update({'timesteps': None}) # Allows for flexible sequence length
     dat = RNNData(train, val, test, method="random", timesteps=FORECAST_HOURS, random_state=None, features_list = features_list)
@@ -153,8 +152,9 @@ if __name__ == '__main__':
         'times': [t.strftime('%Y-%m-%d %H:%M:%S') for t in test_times],
         'stids': te_sts,
         'fmc_observed': y_test,
-        'models': ["ODE", "XGB", "RNN"],
-        'preds': np.concatenate([m_ode, m_xgb, m_rnn], axis=2)
+        "ODE": m_ode, 
+        "XGB": m_xgb, 
+        "RNN": m_rnn
     }
     print(f"Writing Output: {out_file}")
     # Write as h5 object, pickles are too unstable and version specific
