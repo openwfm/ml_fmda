@@ -649,8 +649,7 @@ class RNN_Flexible(Model):
             if val:
                 fit_args["validation_data"] = validation_data
             else:
-                warnings.warn("Running fit with no validation data, setting epochs to smaller number to avoid overfitting")
-                fit_args.update({'epochs': 10})
+                warnings.warn("Running fit with no validation data, consider setting epochs to smaller number to avoid overfitting")
 
             history = super().fit(X_train, y_train, **fit_args)      
             
