@@ -12,15 +12,10 @@ import pickle
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## We do this so the module can be imported from different locations
-CURRENT_DIR = osp.abspath(__file__)
-while osp.basename(CURRENT_DIR) != "ml_fmda":
-    CURRENT_DIR = osp.dirname(CURRENT_DIR)
-PROJECT_ROOT = CURRENT_DIR
-CODE_DIR = osp.join(PROJECT_ROOT, "src")
-sys.path.append(CODE_DIR)
+CURRENT_DIR = osp.dirname(osp.normpath(osp.abspath(__file__)))
+PROJECT_ROOT = osp.dirname(osp.normpath(CURRENT_DIR))
+sys.path.append(osp.join(PROJECT_ROOT, "src"))
 CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
-DATA_DIR = osp.join(PROJECT_ROOT, "data")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -39,7 +34,6 @@ if __name__ == '__main__':
         print(f"Invalid arguments. {len(sys.argv)} was given but 3 expected")
         print(f"Usage: {sys.argv[0]} <task_id> <directory>")
         print(f"Example: python src/rnn_hyperparam_opt.py 2 model/rnn_hyperparam_tuning_test")
-        print("NOTE: count from zero with the task_id")
         sys.exit(-1)
 
     task_id = int(sys.argv[1])

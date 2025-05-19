@@ -20,13 +20,9 @@ import ast
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## We do this so the module can be imported from different locations
-CURRENT_DIR = osp.abspath(__file__)
-while osp.basename(CURRENT_DIR) != "ml_fmda":
-    CURRENT_DIR = osp.dirname(CURRENT_DIR)
-PROJECT_ROOT = CURRENT_DIR
-CODE_DIR = osp.join(PROJECT_ROOT, "src")
-sys.path.append(CODE_DIR)
+CURRENT_DIR = osp.dirname(osp.normpath(osp.abspath(__file__)))
+PROJECT_ROOT = osp.dirname(osp.dirname(osp.normpath(CURRENT_DIR)))
+sys.path.append(osp.join(PROJECT_ROOT, "src"))
 CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
@@ -424,23 +420,25 @@ def parse_bbox(box_str):
         sys.exit(-1)
         return None
 
+#if __name__ == '__main__':
+#    if len(sys.argv) != 5:
+#        print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
+#        print(('Usage: %s <esmf_from_utc> <esmf_to_utc> <bbox> <output_dir>' % sys.argv[0]))
+#        print("Example: python src/ingest/RAWS.py '2024-01-01T00:00:00Z' '2024-03-01T00:00:00Z' '[40,-111,45,-110]' data/raws_test.pkl")
+#        print("bbox format should match rtma_cycler: [latmin, lonmin, latmax, lonmax]")
+#        print("Times should match format: 2023-06-01T00:00:00Z")
+#        sys.exit(-1)
+#
+#    start = sys.argv[1]
+#    end = sys.argv[2]
+#    bbox = parse_bbox(sys.argv[3])
+#    output_file = sys.argv[4]
+#
+#    print(f"Retrieving data from RAWS stash")
+#    raws_dict = build_raws_dict_stash(start, end, bbox, save_path = output_file)
+
+
+
 if __name__ == '__main__':
-    if len(sys.argv) != 5:
-        print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
-        print(('Usage: %s <esmf_from_utc> <esmf_to_utc> <bbox> <output_dir>' % sys.argv[0]))
-        print("Example: python src/ingest/RAWS.py '2024-01-01T00:00:00Z' '2024-03-01T00:00:00Z' '[40,-111,45,-110]' data/raws_test.pkl")
-        print("bbox format should match rtma_cycler: [latmin, lonmin, latmax, lonmax]")
-        print("Times should match format: 2023-06-01T00:00:00Z")
-        sys.exit(-1)
 
-    start = sys.argv[1]
-    end = sys.argv[2]
-    bbox = parse_bbox(sys.argv[3])
-    output_file = sys.argv[4]
-
-    print(f"Retrieving data from RAWS stash")
-    raws_dict = build_raws_dict_stash(start, end, bbox, save_path = output_file)
-
-
-
-
+    print("Imports successful, no executable code")

@@ -18,24 +18,18 @@ from abc import ABC, abstractmethod
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import warnings
 
-
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## We do this so the module can be imported from different locations
-CURRENT_DIR = osp.abspath(__file__)
-while osp.basename(CURRENT_DIR) != "ml_fmda":
-    CURRENT_DIR = osp.dirname(CURRENT_DIR)
-PROJECT_ROOT = CURRENT_DIR
-CODE_DIR = osp.join(PROJECT_ROOT, "src")
-sys.path.append(CODE_DIR)
+CURRENT_DIR = osp.dirname(osp.normpath(osp.abspath(__file__)))
+PROJECT_ROOT = osp.dirname(osp.normpath(CURRENT_DIR))
+sys.path.append(osp.join(PROJECT_ROOT, "src"))
 CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
+
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import read_yml, read_pkl, time_range, str2time, is_consecutive_hours, time_intp
 import reproducibility
-# import ingest.RAWS as rr
-# import ingest.HRRR as ih
 
 # Read Variable Metadata
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -648,6 +642,8 @@ class StaticMLData(MLData):
                 print(f"X_test shape: {self.X_test.shape}, y_test shape: {self.y_test.shape}")
             
   
- 
+if __name__ == '__main__':
+
+    print("Imports successful, no executable code") 
 
     

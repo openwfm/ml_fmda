@@ -13,15 +13,10 @@ import re
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## We do this so the module can be imported from different locations
-CURRENT_DIR = osp.abspath(__file__)
-while osp.basename(CURRENT_DIR) != "ml_fmda":
-    CURRENT_DIR = osp.dirname(CURRENT_DIR)
-PROJECT_ROOT = CURRENT_DIR
-CODE_DIR = osp.join(PROJECT_ROOT, "src")
-sys.path.append(CODE_DIR)
+CURRENT_DIR = osp.dirname(osp.normpath(osp.abspath(__file__)))
+PROJECT_ROOT = osp.dirname(osp.normpath(CURRENT_DIR))
+sys.path.append(osp.join(PROJECT_ROOT, "src"))
 CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
-DATA_DIR = osp.join(PROJECT_ROOT, "data")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -29,7 +24,7 @@ from utils import Dict, read_pkl, read_yml, str2time, time_range
 from models.moisture_rnn import model_grid, optimization_grid, RNNData, RNN_Flexible
 import data_funcs
 
-forecast_config = Dict(read_yml(osp.join(CONFIG_DIR, "forecast_analysis.yaml")))
+forecast_config = Dict(read_yml(osp.join(CONFIG_DIR, "forecast_config.yaml")))
 
 if __name__ == '__main__':
 
@@ -41,9 +36,6 @@ if __name__ == '__main__':
 
     f_dir = sys.argv[1]
     ## Check output exists
-    #if osp.exists(osp.join(f_dir, 'forecast_errs.csv')) and osp.exists(osp.join(f_dir, 'forecast_summary.csv')):
-    #    print(f"Output already exists at {f_dir}, exiting")
-    #    sys.exit(0)
 
     # Read analysis config, used for QC checks that input actually matches target
     # Get analysis run configuration
