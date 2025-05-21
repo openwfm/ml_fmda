@@ -290,7 +290,7 @@ def remove_invalid_data(dict0, df_valid):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def cv_time_setup(forecast_start_time, train_hours = 8760, forecast_hours = 48, verbose=True):
+def cv_time_setup(forecast_start_time, train_hours = 8760, val_hours = 48, forecast_hours = 48, verbose=True):
     """
     Given forecast start time, calculate train/validation/test periods based on parameters.
     """
@@ -305,8 +305,8 @@ def cv_time_setup(forecast_start_time, train_hours = 8760, forecast_hours = 48, 
     # End time, number of forecast hours into future of forecast start time, default 48 hours
     tend = t+relativedelta(hours = forecast_hours-1)
 
-    train_times = time_range(tstart, t-relativedelta(hours = forecast_hours+1))
-    val_times = time_range(t-relativedelta(hours = forecast_hours), t-relativedelta(hours = 1))
+    train_times = time_range(tstart, t-relativedelta(hours = val_hours+1))
+    val_times = time_range(t-relativedelta(hours = val_hours), t-relativedelta(hours = 1))
     test_times = time_range(t, tend)
 
     if verbose:
