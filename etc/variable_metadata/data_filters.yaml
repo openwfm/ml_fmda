@@ -1,17 +1,3 @@
-# File used to store parameters associated with data dataset construction and data filters
-
-
-# Data Structuring Params
-# Used in data retrieval and build train/val/test
-features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'grid_x', 'grid_y', 'rain'] 
-# Path relative to root to manually constructed table for filtered invalid data
-valid_path: "data/fmc_valid_rocky24.csv"
-
-space_test_frac: 0.1 # Percentage of data based on location for val and test
-train_hours: 8760 # hours in a 365 day year
-forecast_hours: 48 # based on HRRR max forecast time
-
-
 # Filter Params
 # Assumed units: 
 ## FM: percent from 0-100 (or more)
