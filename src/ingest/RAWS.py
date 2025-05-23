@@ -33,8 +33,8 @@ from utils import read_yml, read_pkl, Dict, time_intp, str2time, rename_dict, ti
 # Read RAWS Metadata and Data Params for high/low bounds
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 raws_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "raws_metadata.yaml"))
-# Update stash path. We do this here so it works if module called from different locations
-raws_meta.update({'raws_stash_path': osp.join(PROJECT_ROOT, raws_meta['raws_stash_path'])})
+project_paths = read_yml(osp.join(CONFIG_DIR, "paths.yaml"))
+raws_stash_path = project_paths['raws_stash_path']
 
 params_data = Dict(read_yml(osp.join(CONFIG_DIR, "params_data.yaml")))
 
@@ -286,12 +286,12 @@ def get_file_paths(times):
         times: 1d numpy array of datetime
     """  
 
-    assert osp.exists(raws_meta["raws_stash_path"]), f"Stash path given in RAWS metadata file does not exist"
+    assert osp.exists(raws_stash_path), f"Stash path given in RAWS metadata file does not exist"
 
     # Create list of file paths based on needed hours
     paths = [
         osp.join(
-            raws_meta["raws_stash_path"],        
+            raws_stash_path,        
             str(time.year),     
             time.strftime('%j'),    #  Julian day of year, 001-366
             f"{str(time.year)}{time.strftime('%j')}{time.strftime('%H')}.pkl" )# Join with hour of day, 00-23

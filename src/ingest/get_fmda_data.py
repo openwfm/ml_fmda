@@ -43,7 +43,7 @@ import ingest.HRRR as ih
 
 def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None):
     """
-    Retrieve data for FMC models.
+    Retrieve data for FMC models. Combines RAWS observations with HRRR for given time period and bounding box
 
     Parameters
     ----------
@@ -63,7 +63,7 @@ def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None
     
     # Handle RAWS Source
     if raws_source == "stash":
-        raws_stash_path = rr.raws_meta["raws_stash_path"]
+        raws_stash_path = rr.raws_stash_path
         assert osp.exists(raws_stash_path), f"Config raws stash path not found: {raws_stash_path}"
         build_raws_dict = rr.build_raws_dict_stash
     elif raws_source == "api":
@@ -73,7 +73,7 @@ def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None
 
     # Retrieve Data
     raws_dict = build_raws_dict(start, end, bbox)
-    hrrr_ds = ih.retrieve_hrrr_api(start, end, bbox)
+    hrrr_ds = ih.retrieve_hrrr(start, end)
 
     # Handle HRRR data
     hrrr_pts = ih.subset_hrrr2raws(hrrr_ds, raws_dict)
@@ -85,8 +85,9 @@ def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None
     # Merge Dictionaries
     for st in raws_dict:
         # Comfirm times match. For HRRR data it should be the date_time which accounts for forecast hour
-        raws_timesi = raws_timesi = raws_dict[st]["times"]
-        assert np.all(raws_timesi == hrrr_pts.date_time.to_numpy()), "Times in RAWS dict don't match HRRR data date_time"
+        raws_timesi = raws_dict[st]["times"]
+        hrrr_timesi = pd.to_datetime(hrrr_pts.date_time.to_numpy(), utc=True)
+        assert np.all(raws_timesi == hrrr_timesi), "Times in RAWS dict don't match HRRR data date_time"
     
         # Extract dataframe of predictors, save in HRRR subdictionary
         df = hrrr_pts.where(hrrr_pts.point_stid == st, drop=True).to_dataframe()
