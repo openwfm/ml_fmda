@@ -33,9 +33,6 @@ import reproducibility
 # Read Metadata
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 params_models = read_yml(osp.join(CONFIG_DIR, "params_models.yaml"))
-params_data = read_yml(osp.join(CONFIG_DIR, "params_data.yaml"))
-
-
 
 # RNN Data Functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -85,7 +82,7 @@ def staircase(df, sequence_length=12, features_list=None, y_col="fm"):
     return X, y, t
 
 
-def staircase_dict(dict0, sequence_length = 12, features_list=params_data["features_list"], y_col="fm", verbose=True):
+def staircase_dict(dict0, sequence_length, feature_list, y_col="fm", verbose=True):
     """
     Wraps extract_sequences to apply to a dictionary and run for each case.
     Intended to be run on train dict only
@@ -168,7 +165,7 @@ class RNNData(MLData):
     Custom class to handle RNN data. Performs data scaling and stateful batch structuring.
     In this context, a single "sample" from RNNData is a timeseries with dimensionality (timesteps, n_features)
     """
-    def __init__(self, train, val=None, test=None, scaler="standard", features_list=params_data["features_list"], timesteps=48, method="random", random_state=None):   
+    def __init__(self, train, val=None, test=None, scaler="standard", features_list=["Ed", "Ew", "rain"], timesteps=48, method="random", random_state=None):   
         self.timesteps = timesteps
         super().__init__(train, val, test, scaler, features_list, random_state)
 
