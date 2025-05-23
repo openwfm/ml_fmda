@@ -28,12 +28,13 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import read_yml, read_pkl, time_range, str2time, is_consecutive_hours, time_intp
+from utils import Dict, read_yml, read_pkl, time_range, str2time, is_consecutive_hours, time_intp
 import reproducibility
 
 # Read Variable Metadata
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-hrrr_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "hrrr_metadata.yaml"))
+hrrr_meta = Dict(read_yml(osp.join(CONFIG_DIR, "variable_metadata", "hrrr_metadata.yaml")))
+data_filters = Dict(read_yml(osp.join(CONFIG_DIR, "variable_metadata", "data_filters.yaml")))
 
 
 
@@ -136,8 +137,8 @@ def sort_files_by_date(path, full_paths =True):
     
 
 def build_ml_data(dict0, 
-                  hours = 72, 
-                  max_linear_time = 10,
+                  hours = data_filters.hours, 
+                  max_linear_time = data_filters.max_linear_time,
                   atm_source="HRRR", 
                   dtype_mapping = {"float": np.float64, "int": np.int64},
                   save_path = None,
@@ -256,13 +257,13 @@ def remove_invalid_data(dict0, df_valid):
     df = df_valid[df_valid.valid == 0].reset_index(drop=True)
     dict1 = copy.deepcopy(dict0)
     st_remove = [] # Running list of stations to fully remove if no data left
-    
+
+    print(f"Removing invalid RAWS data")
     for i in range(0, df.shape[0]):
         di = df[df.index == i]
         st = di.stid.values[0]
         t0 = pd.Timestamp(str2time(di.start.values[0]))
         t1 = pd.Timestamp(str2time(di.end.values[0]))
-        print(f"Removing invalid data for station {st} from {t0} to {t1}")
         # Remove data within time range of invalid flag
         if st in dict1:
             dict1[st]['data'].drop(
@@ -348,12 +349,15 @@ def get_stids_in_timeperiod(dict0, times, all_times=True):
     # Sort return alphabetically, bc set operations non-reproducible
     return sorted(stids_output)
 
-def cv_space_setup(dict0, val_times, test_times, test_frac = 0.1, verbose=True, random_state=None):
+def cv_space_setup(dict0, val_times, test_times, test_frac = 0.1, verbose=True, all_test_times=True, random_state=None):
     """
     Split cv based on [train, val, test]. Checks for data availability in test and val sets before
     taking sample of size test_frac from total observations. Remaining stations used for train.
     This allows size of train set to vary, but forces consistency of test and val sets
-    
+
+    Args:
+        - all_test_times: whether to restrict random selection of test stations to those with full data availability in given test_times. Equivalent configuration is hard coded to False for training set, and True for validation set
+
     Returns: tuple of lists, train, test, val
     """
     
@@ -365,7 +369,7 @@ def cv_space_setup(dict0, val_times, test_times, test_frac = 0.1, verbose=True, 
 
     # Select stations from set with data availability
     # in the test time period
-    test_ids = get_stids_in_timeperiod(dict0, test_times, all_times=True)
+    test_ids = get_stids_in_timeperiod(dict0, test_times, all_times=all_test_times)
     random.shuffle(test_ids)
     test_locs = test_ids[:N_t]
 
@@ -429,7 +433,7 @@ def sort_train_dict(d):
 def filter_empty_data(input_dict):
     return {k: v for k, v in input_dict.items() if v["data"].shape[0] > 0}
 
-def cv_data_wrap(d, fstart, train_hours, forecast_hours, random_state=None):
+def cv_data_wrap(d, fstart, train_hours, forecast_hours, random_state=None, all_test_times=True):
     """
     Combines functions above to create train/val/test datasets from input data dictionary and params
     """
@@ -437,10 +441,11 @@ def cv_data_wrap(d, fstart, train_hours, forecast_hours, random_state=None):
     # Define CV time periods based on params
     train_times, val_times, test_times = cv_time_setup(fstart, train_hours=train_hours, forecast_hours=forecast_hours)
     # Get CV locations based on size of input data dictionary and calculated CV times
-    tr_sts, val_sts, te_sts = cv_space_setup(d, 
-                                                        val_times=val_times, 
-                                                        test_times=test_times, 
-                                                        random_state=random_state)
+    tr_sts, val_sts, te_sts = cv_space_setup(d,
+                                             val_times=val_times, 
+                                             test_times=test_times, 
+                                             random_state=random_state,
+                                             all_test_times=all_test_times)
     # Build train/val/test by getting data at needed locations and times
     train = get_sts_and_times(d, tr_sts, train_times)
     val = get_sts_and_times(d, val_sts, val_times)
