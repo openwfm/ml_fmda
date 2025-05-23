@@ -15,6 +15,6 @@ conda activate ml_fmda_models
 
 # Pass array number to python script and run
 
-python src/forecast_period.py $SLURM_ARRAY_TASK_ID $MODEL_DIRECTORY
+python src/forecast_analysis.py $SLURM_ARRAY_TASK_ID $MODEL_DIRECTORY
 
 

@@ -22,4 +22,4 @@ MODEL_DIRECTORY="$1"
 
 echo "Model directory: $MODEL_DIRECTORY"
 
-./forecast_period.sh "${SLURM_TASK_ARRAY_ID}" "$MODEL_DIRECTORY"
+./forecast_analysis.sh "${SLURM_TASK_ARRAY_ID}" "$MODEL_DIRECTORY"
