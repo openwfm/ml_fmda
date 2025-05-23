@@ -52,12 +52,14 @@ if __name__ == '__main__':
 
     # Set up forecast directory and config
     os.makedirs(f_dir, exist_ok=True)
-    fconf = Dict(read_yml(conf_path))
-    data_dir = fconf["data_dir"]
+    fconf = read_yml(conf_path)
     # Write copy of forecast config file to forecast directory
     # Do this so multiple tests can be run with different input config files
     with open(osp.join(f_dir, "forecast_config.yaml"), 'w') as f:
-        yaml.dump(fconf, f, default_flow_style=False)
+        yaml.dump(fconf, f, default_flow_style=False, sort_keys=False)
+    fconf = Dict(fconf)
+    data_dir = fconf["data_dir"]
+    
     # Write simplified copy of  config file as json, so shell files can use jq. (TODO: test with yq and no jsons)
     info = {
         'forecast_start': fconf.f_start,
