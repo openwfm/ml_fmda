@@ -7,6 +7,7 @@ forecast_hours: 48 # number of hours to run forecast before re-initializing (mat
 n_reps: 10 # Number of replications to train/forecast, used to estimate uncertainty in forecast accuracy metrics
 train_start: "2023-12-01T00:00:00Z" # first time for training
 train_end: "2023-12-31T23:00:00Z" # last time for training
+val_hours: 48 # number of hours to use at end of training window (tstart, tend) to use for validation data
 space_test_frac: 0.1 # Percentage of data based on location for val and test
 bbox: '[37,-111,46,-95]' # spatial bounding box
 features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'rain', 'hod', 'doy'] # inputs to ML models
