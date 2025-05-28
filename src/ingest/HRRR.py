@@ -186,9 +186,12 @@ def get_units_xr(ds):
     
     return units
 
-def retrieve_hrrr(start, end, all_features = True, forecast_step = 3):
+def retrieve_hrrr(start, end, all_features = True, forecast_step = 3, save_to_stash=True):
     """
     Function called by user to retrieve hrrr data. Checks for existence of data in HRRR stash from project paths. If exists, reads it, if not calls the API retrieval function
+    
+    Args:
+        - save_to_stash: whether to save formatted HRRR data to stash directory set by paths.yaml project. NOTE: only implemented to always save to stash as of May 26 2025
     """
     # Extract Time range as datetime objects 
     if type(start) is str:
@@ -206,8 +209,8 @@ def retrieve_hrrr(start, end, all_features = True, forecast_step = 3):
     stashed_days = []
     needed_days = []
     for d in days:
-        path = osp.join(hrrr_stash_path, f"{d.year}", f"{d.month}")
-        file_name=f"hrrr_prs03_{d.year}-{d.strftime('%m')}-{d.day}.nc" # formatted file name
+        path = osp.join(hrrr_stash_path, f"{d.year}", f"{d.strftime('%m')}")
+        file_name=f"hrrr_prs03_{d.year}-{d.strftime('%m')}-{d.strftime('%d')}.nc" # formatted file name
         if osp.exists(osp.join(path, file_name)):
             stashed_days.append(d)
         else:
@@ -216,7 +219,7 @@ def retrieve_hrrr(start, end, all_features = True, forecast_step = 3):
     # Run API retieval on days not stashed
     for d in needed_days:
         end_d = d.replace(hour=23)
-        retrieve_hrrr_api(d, end_d, all_features=True, forecast_step=3, save_to_stash=True)
+        retrieve_hrrr_api(d, end_d, all_features=True, forecast_step=3, save_to_stash=save_to_stash)
     # Read all HRRR days from stash, subset to exact times given
     if len(stashed_days+needed_days) < 1:
         print(f"No days of data remaining, check input times {start=}, {end=}")
@@ -224,7 +227,7 @@ def retrieve_hrrr(start, end, all_features = True, forecast_step = 3):
     datasets = []
     days = sorted(stashed_days+needed_days)
     for d in days:
-        file_path = osp.join(hrrr_stash_path, f"{d.year}", f"{d.month}", f"hrrr_prs03_{d.year}-{d.strftime('%m')}-{d.day}.nc")
+        file_path = osp.join(hrrr_stash_path, f"{d.year}", f"{d.strftime('%m')}", f"hrrr_prs03_{d.year}-{d.strftime('%m')}-{d.strftime('%d')}.nc")
         ds = xr.open_dataset(file_path)
         datasets.append(ds)
     if len(datasets)==1:
@@ -241,19 +244,14 @@ def retrieve_hrrr(start, end, all_features = True, forecast_step = 3):
 
 def retrieve_hrrr_api(start, end, all_features = True, forecast_step = 3, save_to_stash=True):
     """
-    Wrapper function to get HRRR data given config.
+    Wrapper function to get HRRR data 
 
     Parameters
     -------------
 
 
     all_features : bool
-        Logical argument whether to retrieve all possible features or not. If True, get all features in hrrr_metadata.yaml, if False use the config features list
 
-    Notes
-    --------------
-    The intended use of the all_features argument is to collect everything for training so different feature subsets can be tested. Then for forecasting a trained model, use the features from the config file which are probably a smaller set and quicker to work with
-    
     """
 
     # Extract Time range as datetime objects 
@@ -268,8 +266,8 @@ def retrieve_hrrr_api(start, end, all_features = True, forecast_step = 3, save_t
         # All top level keys from hrrr_meta file into a list
         features_list = [*hrrr_meta.keys()]
     else:
-        features_list = config.features_list
-    
+        raise NotImplementedError()
+   
     # Adjust times for forecast step, save input time for writing file to stash
     start0 = start
     end0 = end
@@ -320,9 +318,9 @@ def retrieve_hrrr_api(start, end, all_features = True, forecast_step = 3, save_t
     if any(s in features_list for s in ["hod", "doy"]):
         ds = calc_times(ds)
     # Add date_time col based on valid_time with UTC timezone
-    times = pd.to_datetime(ds["valid_time"].values).tz_localize("UTC").strftime('%Y-%m-%dT%H:%M:%SZ')
+    times = ds["valid_time"].values
     ds["date_time"] = ("time", times)
-   
+
     # Save to HRRR stash
     # Structure is subdirectories that specify year and month, file name specifies day
     # NOTE: usage assumes retrieval only run for 1 day at a time, code won't break otherwise just store data confusingly
@@ -338,9 +336,9 @@ def write_hrrr_ds(ds, start, end):
     """
     # Set up paths
     os.makedirs(hrrr_stash_path, exist_ok=True)
-    out_dir=osp.join(hrrr_stash_path, f"{start.year}", f"{start.month}")
+    out_dir=osp.join(hrrr_stash_path, f"{start.year}", f"{start.strftime('%m')}")
     os.makedirs(out_dir, exist_ok=True)
-    file_name=f"hrrr_prs03_{start.year}-{start.strftime('%m')}-{start.day}" # formatted file name
+    file_name=f"hrrr_prs03_{start.year}-{start.strftime('%m')}-{start.strftime('%d')}" # formatted file name
     print(f"Saving file {file_name} to {out_dir}")
     # Write
     ds.to_netcdf(osp.join(out_dir, f"{file_name}.nc"))

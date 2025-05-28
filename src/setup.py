@@ -37,57 +37,51 @@ if __name__ == '__main__':
     print()
     print("~"*75)
     print(f"Checking Paths from etc/paths.yaml")
-    if not osp.exists(project_paths['raws_stash_path']):
-        warnings.warn(f"RAWS stash path not found, {project_paths['raws_stash_path']=}")
+    
+    # Check for RAWS stash.
+    # If doesn't exist, need to unpack tar.gz file,
+    # Considering automating this, but too many paths so just returning a warning
+    # Process to run: tar -xvzf MesoDB.tar.gz
+    if not osp.exists(osp.dirname(project_paths['raws_stash_path'])):
+        warnings.warn(f"RAWS stash path not found, {osp.dirname(project_paths['raws_stash_path']=})")
+
+    # Check for csv file used to filter broken FMC sensors
+    # File created in git project fmc_data, planning to automate this and roll into the main ml_fmda project 
     if not osp.exists(project_paths["valid_path"]):
         warnings.warn(f"No csv found for data QC checks for RAWS stations, so there will be limited filtering of suspect sensor data")
+
+    # Check for HRRR stash path
+    if not osp.exists(project_paths["hrrr_stash_path"]):
+        print(f"Creating HRRR stash path at {project_paths['hrrr_stash_path']}")
+        print(f"NOTE: ensure that this directory can handle a lot of data")
+        print(f"NOTE: this isn't where Herbie will direct temporary files, just where processed files are saved")
+        os.mkdir(project_paths['hrrr_stash_path'])
 
     print()
     print("~"*75)
     print(f"Retrieving LandFire data to target directory: {DATA_DIR}")
     # Elevation Data
-    # Check that directory exists, if not retrieve from URL and unzip
-    if osp.exists(osp.join(DATA_DIR, "LF2020_Elev_220_CONUS")):
-        print(f"LandFire elevation data already exists at {osp.join(DATA_DIR, 'LF2020_Elev_220_CONUS')}")
+    # Check that needed tif file exists, if not retrieve from URL and unzip
+    if osp.exists(osp.join(project_paths['landfire_elev_dir'], "Tif", "LC20_Elev_220.tif")):
+        print(f"LandFire elevation data already exists at {project_paths['landfire_elev_dir']}")
     else:
         # Elevation Data URL and paths
         elev_url = "https://landfire.gov/data-downloads/US_Topo_2020/LF2020_Elev_220_CONUS.zip"
         elev_zipname = "LF2020_Elev_220_CONUS.zip"
-        elev_path = osp.join(DATA_DIR, "LF2020_Elev_220_CONUS", "Tif", "LC20_Elev_220.tif")
+        elev_path = osp.join(project_paths['landfire_elev_dir'], "Tif", "LC20_Elev_220.tif")
         # Get Elevation from URL
-        print()
-        print("~"*50)
-        print("Retrieving LandFire Elevation Data from URL")
+        print("    Retrieving LandFire Elevation Data from URL")
         retrieve_url(
             url = elev_url,
-            dest_path = osp.join(DATA_DIR, elev_zipname)
+            dest_path = osp.join(osp.dirname(project_paths['landfire_elev_dir']), elev_zipname)
         ) 
         if not osp.exists(elev_path):
             print("Unzipping file")
-            with zipfile.ZipFile(osp.join(DATA_DIR, elev_zipname), 'r') as zip_ref:
-                zip_ref.extractall(DATA_DIR)  
+            with zipfile.ZipFile(osp.join(osp.dirname(project_paths['landfire_elev_dir']), elev_zipname), 'r') as zip_ref:
+                zip_ref.extractall(osp.dirname(project_paths['landfire_elev_dir'])) 
         else:
             print(f"Unzipped Data Exists at: {elev_path}")
     
-#    # Canopy Cover (CC) Data
-#    canopy_url = "https://landfire.gov/data-downloads/US_230/LF2022_CC_230_CONUS.zip"
-#    canopy_zipname = "LF2022_CC_230_CONUS.zip"
-#    canopy_path = osp.join(DATA_DIR, "LF2022_CC_230_CONUS", "Tif", "LC22_CC_230.tif")
-#    # Get Canopy
-#    print()
-#    print("~"*50)
-#    print("Retrieving LandFire Canopy Cover Data")
-#    retrieve_url(
-#        url = canopy_url,
-#        dest_path = osp.join(DATA_DIR, canopy_zipname)
-#    ) 
-#    if not osp.exists(canopy_path):
-#        print("Unzipping file")
-#        with zipfile.ZipFile(osp.join(DATA_DIR, canopy_zipname), 'r') as zip_ref:
-#            zip_ref.extractall(DATA_DIR)      
-#    else:
-#        print(f"Unzipped Data Exists at: {canopy_path_path}")
-
 
     # Configure Synoptic Token with tokens.json
     print()
@@ -108,6 +102,7 @@ if __name__ == '__main__':
     os.makedirs(osp.join(DATA_DIR, "test_data"), exist_ok=True)
 
     # Generate a small test set of data
+    # Run retireve_fmda_data: gets HRRR data with Herbie and stashes, then retrieves RAWS from stash and joins to HRRR
     start = '2024-01-01T00:00:00Z'
     end = '2024-01-01T06:00:00Z'
     bbox = [40,-110,45,-100]

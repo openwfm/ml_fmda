@@ -36,7 +36,7 @@ raws_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "raws_metadata.ya
 project_paths = read_yml(osp.join(CONFIG_DIR, "paths.yaml"))
 raws_stash_path = project_paths['raws_stash_path']
 
-params_data = Dict(read_yml(osp.join(CONFIG_DIR, "params_data.yaml")))
+params_data = Dict(read_yml(osp.join(CONFIG_DIR, "variable_metadata", "data_filters.yaml")))
 
 
 

@@ -73,7 +73,7 @@ def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None
 
     # Retrieve Data
     raws_dict = build_raws_dict(start, end, bbox)
-    hrrr_ds = ih.retrieve_hrrr(start, end)
+    hrrr_ds = ih.retrieve_hrrr(start, end, save_to_stash=True)
 
     # Handle HRRR data
     hrrr_pts = ih.subset_hrrr2raws(hrrr_ds, raws_dict)
