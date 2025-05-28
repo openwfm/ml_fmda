@@ -291,35 +291,6 @@ def remove_invalid_data(dict0, df_valid):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def cv_time_setup(forecast_start_time, train_hours = 8760, val_hours = 48, forecast_hours = 48, verbose=True):
-    """
-    Given forecast start time, calculate train/validation/test periods based on parameters.
-    """
-    
-    # Time that forecast period starts
-    if type(forecast_start_time) is str:
-        t = str2time(forecast_start_time)
-    else:
-        t = forecast_start_time
-    # Start time, number of desired train hours previous to forecast start time, default 1 year (8760) hours
-    tstart = t-relativedelta(hours = train_hours)
-    # End time, number of forecast hours into future of forecast start time, default 48 hours
-    tend = t+relativedelta(hours = forecast_hours-1)
-
-    train_times = time_range(tstart, t-relativedelta(hours = val_hours+1))
-    val_times = time_range(t-relativedelta(hours = val_hours), t-relativedelta(hours = 1))
-    test_times = time_range(t, tend)
-
-    if verbose:
-        print(f"Start of forecast period: {t}")
-        print(f"Number of Training Hours: {len(train_times)}")
-        print(f"Train Period: {train_times.min()} to {train_times.max()}")
-        print(f"Number of Validation Hours: {len(val_times)}")
-        print(f"Val Period: {val_times.min()} to {val_times.max()}")        
-        print(f"Number of Forecast Hours: {len(test_times)}")
-        print(f"Forecast Period: {test_times.min()} to {test_times.max()}")
-    
-    return train_times, val_times, test_times
 
 
 def get_stids_in_timeperiod(dict0, times, all_times=True):
@@ -433,29 +404,32 @@ def sort_train_dict(d):
 def filter_empty_data(input_dict):
     return {k: v for k, v in input_dict.items() if v["data"].shape[0] > 0}
 
-def cv_data_wrap(d, fstart, train_hours, forecast_hours, random_state=None, all_test_times=True):
+def cv_data_wrap(d, fstart, fend, tstart, tend, test_frac=0.1, random_state=None, all_test_times=False):
     """
     Combines functions above to create train/val/test datasets from input data dictionary and params
+    
+    Args:
+        - all_test_times (Bool): whether to enforce that all test set of stations have observed FMC available for all requested forecast times. NOTE: if False, possible to get test sts with very few available time for calculating accuracy
     """
     
     # Define CV time periods based on params
-    train_times, val_times, test_times = cv_time_setup(fstart, train_hours=train_hours, forecast_hours=forecast_hours)
+    train_times = time_range(tstart, tend-relativedelta(hours=val_hours)) # Remove val_hours from train period
+    val_times = time_range(tend-relativedelta(hours=val_hours-1), tend) # Get val_hours number of hours from the end of train window
+    test_times = time_range(fstart, fend)
     # Get CV locations based on size of input data dictionary and calculated CV times
     tr_sts, val_sts, te_sts = cv_space_setup(d,
                                              val_times=val_times, 
                                              test_times=test_times, 
                                              random_state=random_state,
-                                             all_test_times=all_test_times)
+                                             all_test_times=all_test_times,
+                                             test_frac=test_frac)
     # Build train/val/test by getting data at needed locations and times
+    # NOTE: if all_test_times was set to False, the test data dictionary could have stations with no data in given time window
     train = get_sts_and_times(d, tr_sts, train_times)
     val = get_sts_and_times(d, val_sts, val_times)
     test = get_sts_and_times(d, te_sts, test_times)
-
-    # Drop stations with empty data
-    train = filter_empty_data(train)
-    val = filter_empty_data(val)
-    test = filter_empty_data(test)    
     
+
     return train, val, test
 
 
