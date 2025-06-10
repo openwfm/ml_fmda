@@ -82,7 +82,7 @@ def staircase(df, sequence_length=12, features_list=None, y_col="fm"):
     return X, y, t
 
 
-def staircase_dict(dict0, sequence_length, feature_list, y_col="fm", verbose=True):
+def staircase_dict(dict0, sequence_length, features_list, y_col="fm", verbose=True):
     """
     Wraps extract_sequences to apply to a dictionary and run for each case.
     Intended to be run on train dict only
@@ -195,11 +195,15 @@ class RNNData(MLData):
         if val:
             self.X_val = self._combine_data(val, self.features_list)
             self.y_val = self._combine_data(val, [y_col])
-         
+            self.val_locs = [*val.keys()]
+            assert len(self.val_locs) == self.X_val.shape[0], f"Mismatch number of unique stations in input val set and resulting X_val array, {len(self.val_locs)=}, {self.X_val.shape[0]=}"
+
         self.X_test, self.y_test = (None, None)
         if test:
             self.X_test = self._combine_data(test, self.features_list)
             self.y_test = self._combine_data(test, [y_col])
+            self.test_locs = [*test.keys()]
+            assert len(self.test_locs) == self.X_test.shape[0], f"Mismatch number of unique stations in input test set and resulting X_test array, {len(self.test_locs)=}, {self.X_test.shape[0]=}"
 
         if verbose:
             print(f"X_train shape: {self.X_train.shape}, y_train shape: {self.y_train.shape}")
