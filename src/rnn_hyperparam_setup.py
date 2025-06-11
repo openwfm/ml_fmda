@@ -32,12 +32,14 @@ from models.moisture_rnn import model_grid, optimization_grid
 import reproducibility
 import data_funcs
 
-params_data = Dict(read_yml(osp.join(CONFIG_DIR, "params_data.yaml")))
+# Configs and Params
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+params_data = Dict(read_yml(osp.join(CONFIG_DIR, "variable_metadata","data_filters.yaml")))
 params_rnn = Dict(read_yml(osp.join(CONFIG_DIR, "params_models.yaml"), subkey="rnn"))
+project_paths = Dict(read_yml(osp.join(CONFIG_DIR, "paths.yaml")))
 
-features_list = ['Ed', 'Ew', 'elev', 'wind', 'solar', 'grid_x', 'grid_y', 'rain']
-
-
+# Module Functions
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def write_txt(lst, outpath):
     """
     Write text file with list input, output text file number of lines should match list length
@@ -45,25 +47,31 @@ def write_txt(lst, outpath):
     with open(outpath, 'w') as f:
         f.write('\n'.join(map(str, lst))+'\n')
 
+
+
+# Executed Code
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 if __name__ == '__main__':
 
-    if len(sys.argv) != 4:
-        print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
-        print(('Usage: %s <model_dir> <data_dir> <config_file>' % sys.argv[0]))
+    if len(sys.argv) != 3:
+        print(f"Invalid arguments. {len(sys.argv)} was given but 2 expected")
+        print(('Usage: %s <model_dir> <config_file>' % sys.argv[0]))
         print("<model_dir> is where outputs from the hyperparam tuning are sent. <data_dir> is where data for analysis lives. <config_file> stores configurations to set up model search grids")
         print("Example: python src/rnn_hyperparam_setup.py models/rnn_hyperparam_tuning_test data/rocky_fmda etc/rnn_hyperparam_tuning_config_TEST.yaml ")
         sys.exit(-1)
 
     # Get input args
     model_dir = sys.argv[1]
-    data_dir = sys.argv[2]
-    config_file = sys.argv[3]
+    config_file = sys.argv[2]
     os.makedirs(model_dir, exist_ok=True)
 
     ## Read setup hyperparams and store a copy to model directory
-    hyper_params = read_yml(osp.join(CURRENT_DIR, config_file))
+    conf = Dict(read_yml(config_file))
+    data_dir = conf['data_dir']
+
     with open(osp.join(model_dir, "hyperparam_config.yaml"), "w") as file:
-        yaml.dump(hyper_params, file, default_flow_style=False) 
+        yaml.dump(conf, file, default_flow_style=False) 
 
     # Check if already run, exit if so
     # Allows for rerun of process
@@ -75,23 +83,22 @@ if __name__ == '__main__':
 
     
     # Time setup
-    forecast_periods = hyper_params["times"]["forecast_start_times"]
-    forecast_periods = np.array([str2time(t) for t in forecast_periods])
-    train_hours = hyper_params["times"]["train_hours"]
-    forecast_hours = hyper_params["times"]["forecast_hours"]
-
+    fstart = str2time(conf.f_start)
+    fend = str2time(conf.f_end)
+    tstart = str2time(conf.train_start)
+    tend = str2time(conf.train_end)
     print("~"*75)
-    print(f"Running Hyperparameter Selection on {len(forecast_periods)} dates")
-    print(f"    Forecast Times: {forecast_periods}")
-    print(f"Analysis Time Params: ")
-    print(f"    {forecast_hours=}")
-    print(f"    {train_hours=}")
-    print(f"Using Hyperparam grid from {osp.join(CONFIG_DIR, 'rnn_hyperparam_tuning_config.yaml')}")
-    print(f"Using other RNN params from {osp.join(CONFIG_DIR, 'params_models.yaml')}")
+    print(f"Running Hyperparameter Selection")
+    print(f"    Config File Path: {config_file}")
+    print(f"    Train Start: {tstart}")
+    print(f"    Train End: {tend}")
+    print(f"    Forecast Start: {fstart}")
+    print(f"    Forecast End: {fend}") 
+    
     # Setup Data
-    t0 = forecast_periods.min() - relativedelta(hours=train_hours)
-    t1 = forecast_periods.max() + relativedelta(hours=forecast_hours)
-    days = time_range(t0, t1, freq="1d")
+    tdays = time_range(tstart, tend, freq="1d")
+    fdays = time_range(fstart, fend, freq="1d")
+    days = np.concat((tdays, fdays))
     print(f"Days of Data Needed: {days.shape[0]}")
     print(f"Earliest Day of Data: {days.min()}")
     print(f"Latest Day of Data: {days.max()}")
@@ -112,15 +119,15 @@ if __name__ == '__main__':
     reproducibility.set_seed(123)
     data = data_funcs.combine_fmda_files(file_paths)
     ml_dict = data_funcs.build_ml_data(data, hours=params_data.hours, max_linear_time = params_data.max_linear_time, verbose=False)
-    df_valid = pd.read_csv(osp.join(PROJECT_ROOT, params_data.valid_path))
+    df_valid = pd.read_csv(osp.join(PROJECT_ROOT, project_paths.valid_path))
     ml_dict = data_funcs.remove_invalid_data(ml_dict, df_valid)
     data_file =  osp.join(PROJECT_ROOT, model_dir, "ml_data.pkl")
     with open(data_file, 'wb') as f:
         pickle.dump(ml_dict, f)
 
     # Param Grids    
-    model_params_grid = model_grid(hyper_params['model_architecture'])
-    opt_grid = optimization_grid(hyper_params['optimization'])
+    model_params_grid = model_grid(conf['model_architecture'])
+    opt_grid = optimization_grid(conf['optimization'])
 
     print(f"Model Architecture Hyperparam Grid: {len(model_params_grid)} models")
     # print(model_params_grid)
