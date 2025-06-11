@@ -179,11 +179,12 @@ def build_ml_data(dict0,
             atm.rename(columns={"max_10si": "wind", "sdswrf": "solar"}, inplace=True)
 
             # Check times match
-            assert np.all(raws.date_time.to_numpy() == atm.date_time.to_numpy()), f"date_time column doesn't match from RAWS and HRRR for station {st}"
+            times = pd.to_datetime(atm.date_time.to_numpy()).tz_localize('UTC')
+            assert np.all(raws.date_time.to_numpy() == times), f"date_time column doesn't match from RAWS and HRRR for station {st}"
+            atm.date_time = times
 
             # Interpolate any missing HRRR 
             # NOTE: I think there should be no NA, but including to be sure, investigate if this is the case
-            times = atm.date_time.to_numpy()
             for var in hrrr_meta:
                 if var in atm.columns:
                     v = time_intp(times, atm[var].to_numpy(), times)
@@ -404,9 +405,9 @@ def sort_train_dict(d):
 def filter_empty_data(input_dict):
     return {k: v for k, v in input_dict.items() if v["data"].shape[0] > 0}
 
-def cv_data_wrap(d, fstart, fend, tstart, tend, test_frac=0.1, random_state=None, all_test_times=False):
+def cv_data_wrap(d, fstart, fend, tstart, tend, val_hours=48, test_frac=0.1, random_state=None, all_test_times=False):
     """
-    Combines functions above to create train/val/test datasets from input data dictionary and params
+    Combines functions above to create train/val/test datasets from input data dictionary and params. Returns data dictionaries with top-level keys as the RAWS station IDs. NOTE: this process only returns HRRR data when there is RAWS availability, missing otherwise. 
     
     Args:
         - all_test_times (Bool): whether to enforce that all test set of stations have observed FMC available for all requested forecast times. NOTE: if False, possible to get test sts with very few available time for calculating accuracy
@@ -433,28 +434,6 @@ def cv_data_wrap(d, fstart, fend, tstart, tend, test_frac=0.1, random_state=None
     return train, val, test
 
 
-# Final data creation code
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-def get_ode_data(dict0, sts, test_times, spinup=24):
-    """
-    Wraps previous to include a spinup time in the data pulled for test period. Intended to use with ODE+KF model
-    """
-    d = copy.deepcopy(dict0)
-
-    # Define Spinup Period
-    spinup_times = time_range(
-        test_times.min()-relativedelta(hours=spinup),
-        test_times.min()-relativedelta(hours=1)
-    )
-
-    # Get data for spinup period plus test times
-    all_times = time_range(spinup_times.min(), test_times.max())
-    ode_data = get_sts_and_times(d, sts, all_times)
-
-    # Drop Stations with less than spinup + forecast hours
-    return {k: v for k, v in ode_data.items() if v["data"].shape[0] == 72}    
-    # return ode_data
 
 class MLData(ABC):
     """
@@ -597,6 +576,7 @@ class StaticMLData(MLData):
         
         X_train = self._combine_data(train)
         self.train_locs = X_train['stid'].to_numpy()
+        self.train_times = X_train['date_time'].to_numpy().astype(str)
         self.y_train = X_train[y_col].to_numpy()
         self.X_train = X_train[self.features_list].to_numpy()
 
@@ -604,12 +584,15 @@ class StaticMLData(MLData):
         if val:
             X_val = self._combine_data(val)
             self.val_locs = X_val['stid'].to_numpy()
+            self.val_times = X_val['date_time'].to_numpy().astype(str)
             self.y_val = X_val[y_col].to_numpy()
             self.X_val = X_val[self.features_list].to_numpy()
+        
         self.X_test, self.y_test = (None, None)
         if test:
             X_test = self._combine_data(test)
             self.test_locs = X_test['stid'].to_numpy()
+            self.test_times = X_test['date_time'].to_numpy().astype(str)
             self.y_test = X_test[y_col].to_numpy()
             self.X_test = X_test[self.features_list].to_numpy()
 

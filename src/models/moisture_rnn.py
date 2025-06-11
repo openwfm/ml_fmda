@@ -179,7 +179,6 @@ class RNNData(MLData):
         """
         
         self.train_locs = [*train.keys()]
-        
         train = data_funcs.sort_train_dict(train)
         # Get training samples with staircase, and construct batches
         # Subset features happens at this step
@@ -213,7 +212,9 @@ class RNNData(MLData):
                 print(f"X_test shape: {self.X_test.shape}, y_test shape: {self.y_test.shape}")        
                 
     def _combine_data(self, data_dict, features_list):
-        """Combines all DataFrames under 'data' keys into a single DataFrame, with dimesionality (n_locs, n_times, features)."""
+        """Combines all DataFrames under 'data' keys into a single DataFrame, with dimesionality (n_locs, n_times, features).
+        This only used on test and validation sets, train sets combined with staircase functions
+        """
         return np.array([v["data"][features_list] for v in data_dict.values()])
     
     def scale_data(self, verbose=True):
