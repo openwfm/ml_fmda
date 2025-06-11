@@ -27,7 +27,7 @@ conda activate ml_fmda_models
 
 # Run setup, specify <forecast_directory> and <data_directory>
 mkdir -p "$FORECAST_DIRECTORY"
-mkdir -p "$FORECAST_DIRECTORY/forecast_periods"
+mkdir -p "$FORECAST_DIRECTORY/forecast_outputs"
 mkdir -p "$FORECAST_DIRECTORY/logs"
 python src/forecast_analysis_setup.py "$FORECAST_DIRECTORY" "$CONFIG_PATH"
 

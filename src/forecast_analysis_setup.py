@@ -44,6 +44,7 @@ if __name__ == '__main__':
     # Get input args
     f_dir = sys.argv[1]
     conf_path = sys.argv[2]
+    os.makedirs(osp.join(f_dir, 'forecast_outputs'), exist_ok=True)
     
     # Check if already run, allows for easy rerun of process
     if osp.exists(osp.join(f_dir, 'ml_data.pkl')) and osp.exists(osp.join(f_dir, 'analysis_info.json')):

@@ -6,9 +6,11 @@ import os.path as osp
 import sys
 import ast
 import numpy as np
+import pandas as pd
 import pickle
 import gc
 import h5py
+from dateutil.relativedelta import relativedelta
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -24,50 +26,50 @@ from models.moisture_rnn import model_grid, optimization_grid, RNNData, RNN_Flex
 import data_funcs
 import reproducibility
 from models.moisture_static import XGB
-from models.moisture_ode import ODE_FMC
+from models.moisture_ode import ODEData, ODE_FMC
 from models.moisture_rnn import RNN_Flexible, RNNData
 
 
 # Config and metadata files
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-params_data = Dict(read_yml(osp.join(CONFIG_DIR, "params_data.yaml")))
 params_models = Dict(read_yml(osp.join(CONFIG_DIR, "params_models.yaml")))
-features_list = params_data['features_list']
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
         print(f"Invalid arguments. {len(sys.argv)} was given but 3 expected")
         print(f"Usage: {sys.argv[0]} <task_id> <directory>")
-        print("Example: python forecast_period.py 5 forecasts/fmc_forecast_test")
-        sys.exit(-1)
-
-    # Get model architecture from slurm task array
+        print("Example: python forecast_analysis.py 5 forecasts/fmc_forecast_test")
+        sys.exit(-1)    
+    
+    # Get replication number from slurm task array, forecast directory from user args
     task_id = int(sys.argv[1])
     f_dir = sys.argv[2]
-    print(f"Running task {task_id}")    
+    print(f"Running forecast analysis replication {task_id}")    
 
     # Read forecast config file, it is created during setup py script
-    forecast_config = Dict(read_yml(osp.join(f_dir, "forecast_config.yaml")))
+    fconf = Dict(read_yml(osp.join(f_dir, "forecast_config.yaml")))
 
     # Check if output already exists, exit if so.
     # Allows for running multiple times if process stops for any reason
     # Requires manual deletion of old files if you want to rerun
-    out_dir = osp.join(f_dir, 'forecast_periods')
+    out_dir = osp.join(f_dir, 'forecast_outputs')
     out_file = osp.join(out_dir, f"fperiod_output_{task_id}.h5")    
-
     if osp.exists(out_file):
         print(f"Output for task {task_id} already exists at: {out_file}, exiting")
         sys.exit(0)
 
-
-
     # Get analysis run configuration
-    fstart = str2time(forecast_config.start_time)
-    fend = str2time(forecast_config.end_time)
-    FORECAST_HOURS = params_data.forecast_hours
-    TRAIN_HOURS = params_data.train_hours
+    fstart = str2time(fconf.f_start)
+    fend = str2time(fconf.f_end)
+    tstart = str2time(fconf.train_start)
+    tend = str2time(fconf.train_end)
+    fhours = fconf.forecast_hours # Number of hours to run forecast starting from initial state (applies to RNN and ODE, doesn't matter for static XGB which has no memory and no path dependence)
 
+    # Get needed data
+    # Split train/val/test, use task_id for random seed
+    ml_data = read_pkl(osp.join(f_dir, 'ml_data.pkl'))
+    reproducibility.set_seed(task_id)
+    train, val, test = data_funcs.cv_data_wrap(ml_data, fstart, fend, tstart, tend, val_hours=fconf.val_hours, test_frac = fconf.space_test_frac, random_state=task_id, all_test_times=False)
 
     # Handle Forecast Periods
     # Define Forecast start times, 48hr spacing
@@ -77,33 +79,41 @@ if __name__ == '__main__':
         freq = "2d"
     )
 
-    ft = forecast_periods[task_id-1]
     print("~"*75)
-    print(f"Running Forecast Analysis for period {ft}")
+    print(f"Running Forecast Analysis replication number {task_id}")
     print(f"Forecast config file: {osp.join(CONFIG_DIR, 'forecast_analysis.yaml')}")
-    print(f"Analysis Params: ")
-    print(f"    {FORECAST_HOURS=}")
-    print(f"    {TRAIN_HOURS=}")
-
-    # Get needed data
-    # Split train/val/test, use task_id for repro seed
-    ml_data = read_pkl(osp.join(f_dir, 'ml_data.pkl'))
-    reproducibility.set_seed(task_id)
-    train, val, test = data_funcs.cv_data_wrap(ml_data, ft, train_hours=TRAIN_HOURS,forecast_hours=FORECAST_HOURS)
 
     # Run Models
+    te_sts = [*test.keys()]
+    test_times = test[te_sts[0]]["times"]
+    column_types = {
+        'preds': np.float64,
+        'stid': str,
+        'date_time': str,  # or use 'datetime64[ns, UTC]' if you're using timezone-aware datetimes
+        'fm': np.float64
+    } # Used to construct output dataframes
+
     # ODE
+    # Loop over forecast period, get spinup hours and forecast hours for each station
+    # might not be enough data for each test station each time
     print('~'*75)
     print("Running ODE")
     params = params_models['ode']
-    te_sts = [*test.keys()]
-    test_times = test[te_sts[0]]["times"]
-    ode_data = data_funcs.get_ode_data(ml_data, te_sts, test_times)
     ode = ODE_FMC(params=params)
-    m_ode, errs_ode = ode.run_model(ode_data, hours=72, h2=24)
-    # Clear up space
+    ode_output=pd.DataFrame({col: pd.Series(dtype=dt) for col, dt in column_types.items()}) # initialize empty dataframe
+    for ft in forecast_periods:
+        ts = time_range(ft, ft+relativedelta(hours = fconf.forecast_hours-1))
+        ode_data = ODEData(ml_data, te_sts, ts, spinup=params['spinup_hours'])
+        m_ode, fm = ode.run_model(ode_data, hours=ts.shape[0]+params['spinup_hours'], h2=params['spinup_hours'])
+        sts = [*ode_data.keys()]
+        df_temp = pd.DataFrame({'preds': m_ode.flatten(), 'stid': np.repeat(sts, m_ode.shape[1]), 'date_time':np.repeat(ts, m_ode.shape[0]).astype(str), 'fm': fm.flatten()})
+        ode_output = pd.concat([ode_output, df_temp], ignore_index=True)
+
     del ode_data
     gc.collect()
+
+    ## ML Models
+    features_list = fconf.features_list
 
     ## Static XGBoost
     print('~'*75)
@@ -113,23 +123,23 @@ if __name__ == '__main__':
     dat.scale_data()
     xgb_model = XGB(params=params)
     xgb_model.fit(dat.X_train, dat.y_train)
-    m_xgb = xgb_model.predict(dat.X_test)
-    # Turn into 3d array using location labels in data, NOTE: this assumes equal number of predictions per location
-    ## Check test locs are the same
-    _, idx = np.unique(dat.test_locs, return_index=True)
-    assert np.mean(dat.test_locs[np.sort(idx)] == te_sts) == 1
-    m_xgb = m_xgb.reshape(len(te_sts), FORECAST_HOURS, 1)
+    m_xgb = xgb_model.predict(dat.X_test) # Shape (n_loc*n_time, )
+    ## Format output with columns for time and STID
+    ## repeat test times for each unique station
+    xgb_output = pd.DataFrame({'preds': m_xgb, 'stid': dat.test_locs, 'date_time': dat.test_times.astype(str), 'fm': dat.y_test})
 
     # Clear up space
     del dat
     gc.collect()
 
     # RNN
+    # Train once, forecast separate times for each period too acount for initial state
+    # Loop over forecast periods and build test data
+    # Some stations might have missing data for given forecast test period, need to filter those out
     print('~'*75)
     print('Running RNN')
     params = params_models['rnn']
-    params.update({'timesteps': None}) # Allows for flexible sequence length
-    dat = RNNData(train, val, test, method="random", timesteps=FORECAST_HOURS, random_state=None, features_list = features_list)
+    dat = RNNData(train, val, test=None, method="random", timesteps=fhours, random_state=None, features_list = features_list)
     dat.scale_data()
     rnn = RNN_Flexible(n_features=dat.n_features,params=params)
     rnn.fit(dat.X_train, dat.y_train,
@@ -139,30 +149,29 @@ if __name__ == '__main__':
             verbose_fit = True,
             plot_history=False
            )
-    m_rnn = rnn.predict(dat.X_test)
-    # Save 3d array of observed data for output
-    y_test = dat.y_test
+    rnn_output=pd.DataFrame({col: pd.Series(dtype=dt) for col, dt in column_types.items()}) # initialize empty dataframe
+    for ft in forecast_periods:
+        ts = time_range(ft, ft+relativedelta(hours = fconf.forecast_hours-1))
+        # Extract needed times, remove stations with missing data
+        test2 = data_funcs.get_sts_and_times(test, te_sts, ts)
+        test2 = {k: v for k, v in test2.items() if v["data"].shape[0] == ts.shape[0]}
+        X_test = dat._combine_data(test2, features_list)
+        sts = dat._combine_data(test2, ['stid'])
+        y_test = dat._combine_data(test2, ['fm'])
+        assert (X_test.shape[0] == len(test2)) and (X_test.shape[1]==ts.shape[0]) and (X_test.shape[0:2]==y_test.shape[0:2])
+        # Run predictiona and format for output
+        m_rnn = rnn.predict(X_test)
+        df_temp = pd.DataFrame({'preds': m_rnn.flatten(), 'stid': sts.flatten(), 'date_time':np.tile(ts, m_rnn.shape[0]).astype(str), 'fm': y_test.flatten()})
+        rnn_output = pd.concat([rnn_output, df_temp], ignore_index=True)
 
-    # Clear up space
-    del dat
-    gc.collect()
 
-    # Write output for forecast period
-    output = {
-        'times': [t.strftime('%Y-%m-%d %H:%M:%S') for t in test_times],
-        'stids': te_sts,
-        'fmc_observed': y_test,
-        "ODE": m_ode, 
-        "XGB": m_xgb, 
-        "RNN": m_rnn
-    }
-    print(f"Writing Output: {out_file}")
-    # Write as h5 object, pickles are too unstable and version specific
-    with h5py.File(out_file, 'w') as h5f:
-        for key, value in output.items():
-            if np.isscalar(value):
-                h5f.attrs[key] = value
-            else:
-                h5f.create_dataset(key, data=value)
+    # Write output
+    # Use same h5 file, separate keys for different models (NOTE: mode w vs a for write/append)
+    print(f"Writing forecast output for RNN and baselines {fconf.baselines} to file {outfile}")
+    rnn_output.to_hdf(out_file, key="rnn", mode="w")
+    xgb_output.to_hdf(out_file, key="rnn", mode="a")
+    ode_output.to_hdf(out_file, key="ode", mode="a")
+
+
 
 
