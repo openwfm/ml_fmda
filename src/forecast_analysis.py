@@ -36,7 +36,7 @@ params_models = Dict(read_yml(osp.join(CONFIG_DIR, "params_models.yaml")))
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
-        print(f"Invalid arguments. {len(sys.argv)} was given but 3 expected")
+        print(f"Invalid arguments. {len(sys.argv)} was given but 2 expected")
         print(f"Usage: {sys.argv[0]} <task_id> <directory>")
         print("Example: python forecast_analysis.py 5 forecasts/fmc_forecast_test")
         sys.exit(-1)    
@@ -78,6 +78,7 @@ if __name__ == '__main__':
         end = fend,
         freq = "2d"
     )
+    test_times = time_range(fstart, fend)
 
     print("~"*75)
     print(f"Running Forecast Analysis replication number {task_id}")
@@ -85,7 +86,6 @@ if __name__ == '__main__':
 
     # Run Models
     te_sts = [*test.keys()]
-    test_times = test[te_sts[0]]["times"]
     column_types = {
         'preds': np.float64,
         'stid': str,
@@ -101,13 +101,18 @@ if __name__ == '__main__':
     params = params_models['ode']
     ode = ODE_FMC(params=params)
     ode_output=pd.DataFrame({col: pd.Series(dtype=dt) for col, dt in column_types.items()}) # initialize empty dataframe
+    
     for ft in forecast_periods:
+        print("~"*50)
+        print(f"{ft=}")
         ts = time_range(ft, ft+relativedelta(hours = fconf.forecast_hours-1))
         ode_data = ODEData(ml_data, te_sts, ts, spinup=params['spinup_hours'])
-        m_ode, fm = ode.run_model(ode_data, hours=ts.shape[0]+params['spinup_hours'], h2=params['spinup_hours'])
-        sts = [*ode_data.keys()]
-        df_temp = pd.DataFrame({'preds': m_ode.flatten(), 'stid': np.repeat(sts, m_ode.shape[1]), 'date_time':np.repeat(ts, m_ode.shape[0]).astype(str), 'fm': fm.flatten()})
-        ode_output = pd.concat([ode_output, df_temp], ignore_index=True)
+        # Small chance of insufficient data for all stations sampled for test set
+        if len(ode_data)>1:
+            m_ode, fm = ode.run_model(ode_data, hours=ts.shape[0]+params['spinup_hours'], h2=params['spinup_hours'])
+            sts = [*ode_data.keys()]
+            df_temp = pd.DataFrame({'preds': m_ode.flatten(), 'stid': np.repeat(sts, m_ode.shape[1]), 'date_time':np.repeat(ts, m_ode.shape[0]).astype(str), 'fm': fm.flatten()})
+            ode_output = pd.concat([ode_output, df_temp], ignore_index=True)
 
     del ode_data
     gc.collect()
@@ -167,7 +172,7 @@ if __name__ == '__main__':
 
     # Write output
     # Use same h5 file, separate keys for different models (NOTE: mode w vs a for write/append)
-    print(f"Writing forecast output for RNN and baselines {fconf.baselines} to file {outfile}")
+    print(f"Writing forecast output for RNN and baselines {fconf.baselines} to file {out_file}")
     rnn_output.to_hdf(out_file, key="rnn", mode="w")
     xgb_output.to_hdf(out_file, key="rnn", mode="a")
     ode_output.to_hdf(out_file, key="ode", mode="a")

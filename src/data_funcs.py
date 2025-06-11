@@ -160,7 +160,7 @@ def build_ml_data(dict0,
     # Setup
     d = copy.deepcopy(dict0)
     print(f"Building ML Data with params: ")
-    print(f"    {hours=}")
+    print(f"    filter_hours={hours}")
     print(f"    {max_linear_time=}")
     ml_dict = {}
     

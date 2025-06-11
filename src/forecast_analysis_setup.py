@@ -8,6 +8,7 @@ import os
 from dateutil.relativedelta import relativedelta
 import json
 import pandas as pd
+import numpy as np
 import yaml
 
 # Set up project paths
@@ -86,9 +87,9 @@ if __name__ == '__main__':
     print(f"Training from {tstart} to {tend}")
     print(f"Baseline methods: {fconf.baselines}")
     print()
-    t0 = tstart - relativedelta(hours=1) # Add buffer for data to ensure target times included
-    t1 = fend + relativedelta(hours=1)  # subtract one for count from zero
-    days = time_range(t0, t1, freq="1d")
+    tdays = time_range(tstart, tend, freq="1d")
+    fdays = time_range(fstart, fend, freq="1d")
+    days = np.concat((tdays, fdays))    
     print(f"Days of Data Needed: {days.shape[0]}")
     print(f"Earliest Day of Data: {days.min()}")
     print(f"Latest Day of Data: {days.max()}")
