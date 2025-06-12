@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=fcast_setup
+#SBATCH --job-name=fsetup
 #SBATCH --output=logs/forecast_analysis_%j.out
 #SBATCH --ntasks=1
 #SBATCH --partition=math-alderaan
