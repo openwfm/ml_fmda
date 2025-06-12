@@ -76,7 +76,7 @@ if __name__ == '__main__':
     forecast_periods = time_range(
         start = fstart,
         end = fend,
-        freq = "2d"
+        freq = f"{fhours}h"
     )
     test_times = time_range(fstart, fend)
 
@@ -89,7 +89,7 @@ if __name__ == '__main__':
     column_types = {
         'preds': np.float64,
         'stid': str,
-        'date_time': str,  # or use 'datetime64[ns, UTC]' if you're using timezone-aware datetimes
+        'date_time': str,
         'fm': np.float64
     } # Used to construct output dataframes
 
@@ -101,7 +101,7 @@ if __name__ == '__main__':
     params = params_models['ode']
     ode = ODE_FMC(params=params)
     ode_output=pd.DataFrame({col: pd.Series(dtype=dt) for col, dt in column_types.items()}) # initialize empty dataframe
-    
+   
     for ft in forecast_periods:
         print("~"*50)
         print(f"{ft=}")
@@ -113,7 +113,7 @@ if __name__ == '__main__':
             sts = [*ode_data.keys()]
             df_temp = pd.DataFrame({'preds': m_ode.flatten(), 'stid': np.repeat(sts, m_ode.shape[1]), 'date_time':np.repeat(ts, m_ode.shape[0]).astype(str), 'fm': fm.flatten()})
             ode_output = pd.concat([ode_output, df_temp], ignore_index=True)
-
+    
     del ode_data
     gc.collect()
 
@@ -160,21 +160,25 @@ if __name__ == '__main__':
         # Extract needed times, remove stations with missing data
         test2 = data_funcs.get_sts_and_times(test, te_sts, ts)
         test2 = {k: v for k, v in test2.items() if v["data"].shape[0] == ts.shape[0]}
-        X_test = dat._combine_data(test2, features_list)
-        sts = dat._combine_data(test2, ['stid'])
-        y_test = dat._combine_data(test2, ['fm'])
-        assert (X_test.shape[0] == len(test2)) and (X_test.shape[1]==ts.shape[0]) and (X_test.shape[0:2]==y_test.shape[0:2])
-        # Run predictiona and format for output
-        m_rnn = rnn.predict(X_test)
-        df_temp = pd.DataFrame({'preds': m_rnn.flatten(), 'stid': sts.flatten(), 'date_time':np.tile(ts, m_rnn.shape[0]).astype(str), 'fm': y_test.flatten()})
-        rnn_output = pd.concat([rnn_output, df_temp], ignore_index=True)
+        # Small chance of no data for all stations sampled for test set within given period. 
+        # NOTE: we get around this by running many replications, systematically searching for 
+        # data availability is too inefficient 
+        if len(test2) > 1:
+            X_test = dat._combine_data(test2, features_list)
+            sts = dat._combine_data(test2, ['stid'])
+            y_test = dat._combine_data(test2, ['fm'])
+            assert (X_test.shape[0] == len(test2)) and (X_test.shape[1]==ts.shape[0]) and (X_test.shape[0:2]==y_test.shape[0:2])
+            # Run predictiona and format for output
+            m_rnn = rnn.predict(X_test)
+            df_temp = pd.DataFrame({'preds': m_rnn.flatten(), 'stid': sts.flatten(), 'date_time':np.tile(ts, m_rnn.shape[0]).astype(str), 'fm': y_test.flatten()})
+            rnn_output = pd.concat([rnn_output, df_temp], ignore_index=True)
 
 
     # Write output
     # Use same h5 file, separate keys for different models (NOTE: mode w vs a for write/append)
     print(f"Writing forecast output for RNN and baselines {fconf.baselines} to file {out_file}")
     rnn_output.to_hdf(out_file, key="rnn", mode="w")
-    xgb_output.to_hdf(out_file, key="rnn", mode="a")
+    xgb_output.to_hdf(out_file, key="xgb", mode="a")
     ode_output.to_hdf(out_file, key="ode", mode="a")
 
 
