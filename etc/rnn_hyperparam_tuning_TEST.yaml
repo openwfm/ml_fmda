@@ -9,7 +9,7 @@ data_dir: "data/rocky_fmda" # Directory for formatted FMDA data dictionaries
 model_architecture:
     recurrent_layers: [["lstm"], ["lstm", "lstm"]]
     dense_layers: [[], ["dense"]]
-    units: [8, 16, 32, 64, 128]
+    units: [8, 16, 32]
 
 # Optimization parameters grid
 optimization:
