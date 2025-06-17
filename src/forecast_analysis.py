@@ -56,7 +56,7 @@ if __name__ == '__main__':
     out_file = osp.join(out_dir, f"fperiod_output_{task_id}.h5")    
     if osp.exists(out_file):
         print(f"Output for task {task_id} already exists at: {out_file}, exiting")
-        sys.exit(0)
+        #sys.exit(0)
 
     # Get analysis run configuration
     fstart = str2time(fconf.f_start)
@@ -111,9 +111,9 @@ if __name__ == '__main__':
         if len(ode_data)>1:
             m_ode, fm = ode.run_model(ode_data, hours=ts.shape[0]+params['spinup_hours'], h2=params['spinup_hours'])
             sts = [*ode_data.keys()]
-            df_temp = pd.DataFrame({'preds': m_ode.flatten(), 'stid': np.repeat(sts, m_ode.shape[1]), 'date_time':np.repeat(ts, m_ode.shape[0]).astype(str), 'fm': fm.flatten()})
+            df_temp = pd.DataFrame({'preds': m_ode.flatten(), 'stid': np.repeat(sts, m_ode.shape[1]), 'date_time':np.tile(ts, m_ode.shape[0]).astype(str), 'fm': fm.flatten()})
             ode_output = pd.concat([ode_output, df_temp], ignore_index=True)
-    
+   
     del ode_data
     gc.collect()
 
