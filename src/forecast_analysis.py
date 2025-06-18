@@ -56,7 +56,7 @@ if __name__ == '__main__':
     out_file = osp.join(out_dir, f"fperiod_output_{task_id}.h5")    
     if osp.exists(out_file):
         print(f"Output for task {task_id} already exists at: {out_file}, exiting")
-        #sys.exit(0)
+        sys.exit(0)
 
     # Get analysis run configuration
     fstart = str2time(fconf.f_start)
