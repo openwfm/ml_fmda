@@ -66,6 +66,7 @@ if __name__ == '__main__':
     config_file = sys.argv[2]
     os.makedirs(model_dir, exist_ok=True)
     os.makedirs(osp.join(model_dir, 'model_outputs'), exist_ok=True)
+    os.makedirs(osp.join(model_dir, 'opt_outputs'), exist_ok=True)
 
     # Read setup hyperparams and store a copy to model directory
     # Do this so config file can be changed externally without impacting a run that already started
@@ -74,7 +75,6 @@ if __name__ == '__main__':
     with open(osp.join(model_dir, "hyperparam_config.yaml"), "w") as file:
         yaml.dump(conf, file, default_flow_style=False, sort_keys=False) 
     conf=Dict(conf)
-
 
     # Check if already run, exit if so
     # Allows for rerun of process

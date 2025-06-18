@@ -14,6 +14,9 @@ import os.path as osp
 from dateutil.relativedelta import relativedelta
 import pickle
 import pandas as pd
+import re
+import ast
+import yaml
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -28,6 +31,50 @@ from utils import Dict, read_pkl, read_yml, str2time, time_range
 from models.moisture_rnn import model_grid, optimization_grid, RNNData, RNN_Flexible
 import data_funcs
 
+# Module Code
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+def read_hdf_list(file_list, key):
+    """
+    Given a list of hdf files and a dataset key, read all with pandas and merge
+    
+    NOTE: assumes certain naming structure for file names and  the line that adds the column "rep"
+    """
+    data = [pd.read_hdf(f, key=key).assign(model=int(re.search(r'_(\d+)\.h5$', f).group(1))) for f in files]
+    data = pd.concat(data, ignore_index=True)
+    return data
+
+def calc_errs(df, pred_col="preds", true_col="fm"):
+    """
+    Adds residual, absolute error, and squared error columns to a DataFrame.
+
+    Parameters:
+    - df (pd.DataFrame): The DataFrame containing prediction and true value columns.
+    - pred_col (str): Name of the column with predicted values. Default is "preds".
+    - true_col (str): Name of the column with true/observed values. Default is "fm".
+
+    Returns:
+    - pd.DataFrame: The same DataFrame with new error columns added:
+        'residual', 'abs_error', 'squared_error'
+    """
+    residual = df[true_col] - df[pred_col]
+    df["residual"] = residual
+    df["abs_error"] = residual.abs()
+    df["squared_error"] = residual ** 2
+    return df
+
+# Dictionary used to calculate error summary stats, based on given grouping
+agg_named = {
+    'mean_error': pd.NamedAgg(column='residual', aggfunc='mean'),
+    'median_error': pd.NamedAgg(column='residual', aggfunc='median'),
+    'mean_absolute_error': pd.NamedAgg(column='abs_error', aggfunc='mean'),
+    'mean_squared_error': pd.NamedAgg(column='squared_error', aggfunc='mean'),
+    'n_predictions': pd.NamedAgg(column='residual', aggfunc='count')
+}
+
+# Executed Code
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 if __name__ == '__main__':
 
     if len(sys.argv) != 2:
@@ -37,7 +84,6 @@ if __name__ == '__main__':
         sys.exit(-1)
 
     model_dir = sys.argv[1]
-    err_dir = osp.join(model_dir, 'model_errors')
 
     # Read model grid and opt grid
     # Read model grid and get task_id row
@@ -50,69 +96,32 @@ if __name__ == '__main__':
         opts = file.readlines()        
 
     # Get Model Architecture if not already run
-    out_file = osp.join(model_dir, "Final_Hyperparams.txt")
+    out_file = osp.join(model_dir, "Final_Architecture.txt")
+    
     if not osp.exists(out_file):
         print("Getting model architecture with min err")
+        # Read output files for forecast analysis run
+        ## Get all files in outputs
+        files = [osp.join(model_dir, 'model_outputs', fname) for fname in os.listdir(osp.join(model_dir, 'model_outputs'))]
+        files = sorted(files, key=lambda x: int(re.search(r'_(\d+)\.h5$', x).group(1))) # Sort by task number, shouldn't be necessary but for clarity        
+        df = read_hdf_list(files, key="rnn")
 
-        # Get minimum error model architecture 
-        # Read files, extract mse for each time period, write csv output, calc mean err, extract model from min err
-        files = [f for f in os.listdir(err_dir) if f.startswith('model_')]
-        # arrange by model number (shouldn't be necessary, but doing for clarity)
-        # files = sorted(files, key=lambda x: int(x.split('_')[1].split('.')[0]))
-        assert len(files) == len(models), "Number of model error files {len(files)} not equal to number of model architectures in model_grid.txt {len(models)}"
-        err_list = [read_pkl(osp.join(err_dir, f)) for f in files]
-        mse_dict = {
-            f"model_{model['id']}": {date: values["mse"] for date, values in model["errs"].items()}
-            for model in err_list
-        }        
-        df = pd.DataFrame(mse_dict).sort_index()
-        df.to_csv(osp.join(model_dir, 'model_err_df.csv'))
-        mean_errs = df.mean(axis = 0)
-        min_err_index = mean_errs.argmin()
-        min_err_model = err_list[min_err_index]['model'] 
-        min_err_model.update({'id': err_list[min_err_index]['id']})
-        print(f"Model Architecture Summary:")
-        print(f"    Minimum Error Model: {min_err_index}")
-        print(f"    Minimum Error: {mean_errs.min()}")
-
+        # Calculate overall model error, write output then select minimum error architecture
+        errs = calc_errs(df)    
+        summary = errs.groupby(["model"]).agg(**agg_named).reset_index() 
+        summary.to_csv(osp.join(model_dir, "model_errors.csv")) 
+   
+        print(f"Extracting Minimum Error")
+        ind = int(summary.mean_squared_error.argmin())
+        print(f"    Min Model MSE: {summary.mean_squared_error.min()}")
+        print(f"    Model ID Number: {ind}")
+        model_dict = ast.literal_eval(models[ind])
+        model_dict.update({'id': ind})
+        print(f"    Model Architecture: {model_dict}")
         # Write file of architecture
         with open(out_file, "w") as f:
-            f.write(str(min_err_model) + "\n")
-    
-    # Get Optimization params with min error, but check if outputs have been created first
+            f.write(str(model_dict) + "\n")
     else:
-        err_dir = osp.join(model_dir, 'opt_errors')
-        files = [f for f in os.listdir(err_dir) if f.startswith('opt_')]
-        # Arrange by number (shouldn't be necessary, but for clarity)
-        files = sorted(files, key=lambda x: int(x.split('_')[1].split('.')[0]))
-        if len(files) < len(opts):
-            print("Optmization param search not run yet, Exiting script")
-            sys.exit(0)
-        elif len(files) > len(opts):
-            print("More output files for optimziation params than configurations found in opt_grid.txt, exiting")
-            sys.exit(1)
-        else:
-            print("Getting optmization params with min err")
-            # Get minimum error optmization params
-            # Read files, extract mse for each time period, write csv output, calc mean err, extract opt from min err
-            # arrange by opt number
-            err_list = [read_pkl(osp.join(err_dir, f)) for f in files]            
-            mse_dict = {
-                f"opt_{opt['id']}": {date: values["mse"] for date, values in opt["errs"].items()}
-                for opt in err_list
-            }
+        print(f"Getting Optimization params with min err")
 
-            df = pd.DataFrame(mse_dict).sort_index()
-            df.to_csv(osp.join(model_dir, 'opt_err_df.csv'))
-            mean_errs = df.mean(axis = 0)
-            min_err_index = mean_errs.argmin()
-            min_err_opt = err_list[min_err_index]['opt']
-            min_err_opt.update({'id': err_list[min_err_index]['id']})
-            print(f"Optimization Params Summary:")
-            print(f"    Minimum Error Model: {min_err_index}")
-            print(f"    Minimum Error: {mean_errs.min()}")
-
-            # Write file of opt params, append to existing file
-            with open(out_file, "a") as f:
-                f.write(str(min_err_opt) + "\n")
 
