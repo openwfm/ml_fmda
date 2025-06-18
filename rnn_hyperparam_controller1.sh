@@ -31,6 +31,7 @@ conda activate ml_fmda_models
 echo "Running Hyperparam Tuning step 1, model architecture"
 mkdir -p "$MODEL_DIRECTORY"
 mkdir -p "$MODEL_DIRECTORY/model_outputs"
+mkdir -p "$MODEL_DIRECTORY/opt_outputs"
 python src/rnn_hyperparam_setup.py "$MODEL_DIRECTORY" "$CONFIG_FILE"
 
 # Run Model Architecture tuning
