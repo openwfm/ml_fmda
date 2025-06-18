@@ -7,7 +7,7 @@
 # Model architecture grids
 model_architecture:
     recurrent_layers: [["lstm"], ["lstm", "lstm"], ['lstm', 'lstm', 'lstm']]
-    dense_layers: [[], ["dense"], ["dense", "dense", "dense"]]
+    dense_layers: [[], ["dense"], ["dense", "dense"], ["dense", "dense", "dense"]]
     units: [8, 16, 32, 64, 128]
 
 # Optimization parameters grid
