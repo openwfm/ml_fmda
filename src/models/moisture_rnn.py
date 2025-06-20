@@ -160,6 +160,31 @@ def build_training_batches(X_list, y_list,
     
     return X, y, loc_indices
 
+
+def scale_3d(X, scaler, fit=False):
+    """
+    Apply an sklearn scaler to 3d numpy arrays
+    
+    Parameters:
+    -----------
+    X : ndarray of shape (n_locs, timesteps, features)
+    scaler : fitted scaler with .transform method
+    fit : bool, optional
+        If True, fit the scaler on X before transforming. Default is False.    
+
+    Returns:
+    --------
+    X_scaled : ndarray of same shape as X    
+    """
+    n_locs, timesteps, features = X.shape
+    X_flat = X.reshape(-1, features)
+    if fit:
+        scaler.fit(X_flat)
+    X_scaled_flat = scaler.transform(X_flat)
+    X_scaled = X_scaled_flat.reshape(n_locs, timesteps, features)
+
+    return X_scaled
+
 class RNNData(MLData):
     """
     Custom class to handle RNN data. Performs data scaling and stateful batch structuring.
@@ -216,7 +241,8 @@ class RNNData(MLData):
         This only used on test and validation sets, train sets combined with staircase functions
         """
         return np.array([v["data"][features_list] for v in data_dict.values()])
-    
+
+
     def scale_data(self, verbose=True):
         """
         Scales the training data using the set scaler. This requires
@@ -239,25 +265,14 @@ class RNNData(MLData):
         if verbose:
             print(f"Scaling training data with scaler {self.scaler}, fitting on X_train")
 
-        # Fit scaler on training data, need to reshape
-        n_samples, timesteps, features = self.X_train.shape
-        X_train2 = self.X_train.reshape(-1, features) 
-        self.scaler.fit(X_train2)
-        # Transform data using fitted scaler
-        X_train2 = self.scaler.transform(X_train2)
-        self.X_train = X_train2.reshape(n_samples, timesteps, features)
+        # Fit scaler on training data, Transform data using fitted scaler
+        self.X_train = scale_3d(self.X_train, self.scaler, fit=True)
         
         if hasattr(self, 'X_val'):
             if self.X_val is not None:
-                n_locs, timesteps, features = self.X_val.shape
-                X_val = self.X_val.reshape(-1, features)
-                X_val = self.scaler.transform(X_val)
-                self.X_val = X_val.reshape(n_locs, timesteps, features)
+                self.X_val = scale_3d(self.X_val, self.scaler, fit=False)
         if self.X_test is not None:
-            n_locs, timesteps, features = self.X_test.shape
-            X_test = self.X_test.reshape(-1, features)
-            X_test = self.scaler.transform(X_test)
-            self.X_test = X_test.reshape(n_locs, timesteps, features)
+            self.X_test = scale_3d(self.X_test, self.scaler, fit=False)
 
     def inverse_scale(self, save_changes=False, verbose=True):
         """

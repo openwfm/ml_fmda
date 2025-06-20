@@ -27,7 +27,7 @@ import data_funcs
 import reproducibility
 from models.moisture_static import XGB
 from models.moisture_ode import ODEData, ODE_FMC
-from models.moisture_rnn import RNN_Flexible, RNNData
+from models.moisture_rnn import RNN_Flexible, RNNData, scale_3d
 
 
 # Config and metadata files
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     out_file = osp.join(out_dir, f"fperiod_output_{task_id}.h5")    
     if osp.exists(out_file):
         print(f"Output for task {task_id} already exists at: {out_file}, exiting")
-        sys.exit(0)
+        #sys.exit(0)
 
     # Get analysis run configuration
     fstart = str2time(fconf.f_start)
@@ -165,6 +165,8 @@ if __name__ == '__main__':
         # data availability is too inefficient 
         if len(test2) > 1:
             X_test = dat._combine_data(test2, features_list)
+            # Apply fitted scaler from RNNData to test data
+            X_test = scale_3d(X_test, dat.scaler)
             sts = dat._combine_data(test2, ['stid'])
             y_test = dat._combine_data(test2, ['fm'])
             assert (X_test.shape[0] == len(test2)) and (X_test.shape[1]==ts.shape[0]) and (X_test.shape[0:2]==y_test.shape[0:2])

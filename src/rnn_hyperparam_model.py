@@ -23,7 +23,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import Dict, read_pkl, read_yml, str2time, time_range
-from models.moisture_rnn import model_grid, optimization_grid, RNNData, RNN_Flexible
+from models.moisture_rnn import model_grid, optimization_grid, RNNData, RNN_Flexible, scale_3d
 import data_funcs
 import reproducibility
 
@@ -130,6 +130,8 @@ if __name__ == '__main__':
         # data availability is too inefficient 
         if len(test2) > 1:
             X_test = dat._combine_data(test2, features_list)
+            # Apply fitted scaler from RNNData to test data
+            X_test = scale_3d(X_test, dat.scaler)
             sts = dat._combine_data(test2, ['stid'])
             y_test = dat._combine_data(test2, ['fm'])
             assert (X_test.shape[0] == len(test2)) and (X_test.shape[1]==ts.shape[0]) and (X_test.shape[0:2]==y_test.shape[0:2])
