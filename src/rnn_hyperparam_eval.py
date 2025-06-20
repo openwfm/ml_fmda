@@ -100,7 +100,7 @@ if __name__ == '__main__':
     
     if not osp.exists(out_file):
         print("Getting model architecture with min err")
-        # Read output files for forecast analysis run
+        # Read output files for model architecture tune run
         ## Get all files in outputs
         files = [osp.join(model_dir, 'model_outputs', fname) for fname in os.listdir(osp.join(model_dir, 'model_outputs'))]
         files = sorted(files, key=lambda x: int(re.search(r'_(\d+)\.h5$', x).group(1))) # Sort by task number, shouldn't be necessary but for clarity        
@@ -123,5 +123,26 @@ if __name__ == '__main__':
             f.write(str(model_dict) + "\n")
     else:
         print(f"Getting Optimization params with min err")
+        # Read output files for optmization tune run
+        ## Get all files in outputs
+        files = [osp.join(model_dir, 'opt_outputs', fname) for fname in os.listdir(osp.join(model_dir, 'opt_outputs'))]
+        files = sorted(files, key=lambda x: int(re.search(r'_(\d+)\.h5$', x).group(1))) # Sort by task number, shouldn't be necessary but for clarity        
+        df = read_hdf_list(files, key="rnn")
+        # Calculate overall model error, write output then select minimum error architecture
+        errs = calc_errs(df)
+        summary = errs.groupby(["model"]).agg(**agg_named).reset_index()
+        summary.to_csv(osp.join(model_dir, "opt_errors.csv"))
+
+        print(f"Extracting Minimum Error")
+        ind = int(summary.mean_squared_error.argmin())
+        print(f"    Min Model MSE: {summary.mean_squared_error.min()}")
+        print(f"    Opt ID Number: {ind}")
+        opt_dict = ast.literal_eval(opts[ind])
+        opt_dict.update({'id': ind})
+        print(f"    Opt Params: {opt_dict}")
+        # Append output file with optimization params
+        with open(out_file, "a") as f:
+            f.write(str(opt_dict) + "\n")
+
 
 
