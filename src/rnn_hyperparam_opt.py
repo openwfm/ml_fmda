@@ -23,7 +23,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import Dict, read_pkl, read_yml, str2time, time_range
-from models.moisture_rnn import model_grid, optimization_grid, RNNData, RNN_Flexible
+from models.moisture_rnn import model_grid, optimization_grid, RNNData, RNN_Flexible, scale_3d
 import data_funcs
 import reproducibility
 
@@ -65,7 +65,6 @@ if __name__ == '__main__':
 
     # Get model architecture from previous tuning step
     model_path = osp.join(model_dir, "Final_Architecture.txt")
-    breakpoint()
     with open(model_path, "r") as file:
         model = file.readlines()
     model = ast.literal_eval(model[0])
@@ -89,6 +88,7 @@ if __name__ == '__main__':
     except (SyntaxError, ValueError) as e:
         raise ValueError(f"Failed to parse row {task_id-1} as a dictionary: {e}")
     # Update RNN params with optimization parameters
+    print(f"Running RNN with optimization params: {opt_i}")
     params_rnn.update(opt_i)
 
     # Set up data
@@ -138,6 +138,8 @@ if __name__ == '__main__':
         # data availability is too inefficient 
         if len(test2) > 1:
             X_test = dat._combine_data(test2, features_list)
+            # Apply fitted scaler from RNNData to test data
+            X_test = scale_3d(X_test, dat.scaler)            
             sts = dat._combine_data(test2, ['stid'])
             y_test = dat._combine_data(test2, ['fm'])
             assert (X_test.shape[0] == len(test2)) and (X_test.shape[1]==ts.shape[0]) and (X_test.shape[0:2]==y_test.shape[0:2])
