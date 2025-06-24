@@ -137,6 +137,22 @@ if __name__ == '__main__':
     del dat
     gc.collect()
 
+    # Climatology
+    ## Was run once for all stations, not with a train/test split
+    ## Based on current random test set, get climatology predictions for whole year
+    ## Get FM from test data
+    clim_file = fconf.climatology_file
+    clim = read_pkl(osp.join(PROJECT_ROOT, clim_file))
+    clim = clim[clim.index.isin(te_sts)]
+    clim = clim.loc[:, clim.columns.isin(test_times)]
+    clim = clim.reset_index().melt(id_vars='stid', var_name='date_time', value_name='preds')
+    clim = clim.sort_values(by=["stid", "date_time"])
+    fm = pd.concat([subdict['data'][["stid", "date_time", "fm"]] for subdict in test.values()], ignore_index=True)
+    fm.date_time = fm.date_time.astype(str)
+    clim.date_time = clim.date_time.astype(str)
+    clim_output = clim.merge(fm, on=["stid", "date_time"], how="left")
+    clim_output = clim[(~clim_output.preds.isna()) & (~clim_output.fm.isna())]
+
     # RNN
     # Train once, forecast separate times for each period too acount for initial state
     # Loop over forecast periods and build test data
@@ -182,7 +198,7 @@ if __name__ == '__main__':
     rnn_output.to_hdf(out_file, key="rnn", mode="w")
     xgb_output.to_hdf(out_file, key="xgb", mode="a")
     ode_output.to_hdf(out_file, key="ode", mode="a")
-
+    clim_output.to_hdf(out_file, key="clim", mode="a")
 
 
 
