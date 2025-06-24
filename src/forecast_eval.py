@@ -21,7 +21,6 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import Dict, read_pkl, read_yml, str2time, time_range
-from models.moisture_rnn import model_grid, optimization_grid, RNNData, RNN_Flexible
 import data_funcs
 
 # Module Code
@@ -56,13 +55,36 @@ def calc_errs(df, pred_col="preds", true_col="fm"):
     df["squared_error"] = residual ** 2
     return df
 
+
+def summary_table(df, group_vars, bound_vars="rep"):
+    """
+    """
+    bias = (
+        df.groupby(group_vars, sort=False)["residual"]
+        .mean()
+        .reset_index(name="bias")
+    )
+    mse = (
+        df.groupby(group_vars, sort=False)["squared_error"]
+        .mean()
+        .reset_index(name="mse")
+    )
+    rep_metrics = pd.merge(bias, mse, on=group_vars)
+    group_vars.remove(bound_vars)
+    summary_stats = rep_metrics.groupby(group_vars, sort=False)[["bias", "mse"]].agg(["mean", "std"]).reset_index() 
+    if not type(bound_vars) is list:
+        bound_vars = [bound_vars]
+    summary_stats.columns = group_vars + ["bias_mean", "bias_std", "mse_mean", "mse_std"]
+    #summary_stats["Bias"] = summary_stats["bias_mean"].astype('float64').round(2).astype(str) + " +/- " + summary_stats["bias_std"].round(2).astype(str)
+    #summary_stats["MSE"] = summary_stats["mse_mean"].astype('float64').round(2).astype(str) + " +/- " + summary_stats["mse_std"].round(2).astype(str)
+    #summary_formatted = summary_stats[["Model", "Bias", "MSE"]]
+    #return summary_formatted
+    return summary_stats
+
 # Dictionary used to calculate error summary stats, based on given grouping
 agg_named = {
     'mean_error': pd.NamedAgg(column='residual', aggfunc='mean'),
-    'median_error': pd.NamedAgg(column='residual', aggfunc='median'),
-    'mean_absolute_error': pd.NamedAgg(column='abs_error', aggfunc='mean'),
     'mean_squared_error': pd.NamedAgg(column='squared_error', aggfunc='mean'),
-    'n_predictions': pd.NamedAgg(column='residual', aggfunc='count')
 }
 
 # Executed Code
@@ -81,35 +103,6 @@ if __name__ == '__main__':
     out_dir = osp.join(f_dir, "error_analysis")
     os.makedirs(out_dir, exist_ok=True)
 
-    # Read and format climatology outputs.
-    ## NOTE: climatology run separately from other models since so different, no train and test sets
-    ## Climatology, extract needed periods and stations, then calculate MSE
-    ## Climatology forecasts wont exist for certain stations, eg new stations without long climate history
-    clim_file = fconf.climatology_file
-    clim = read_pkl(osp.join(PROJECT_ROOT, clim_file))
-    raws_file = osp.join(PROJECT_ROOT, "data", "raws_rocky_2024.pkl")
-    raws = read_pkl(osp.join(PROJECT_ROOT, raws_file))
-
-    ## Filter by test times
-    test_times = pd.to_datetime(time_range(fconf.f_start, fconf.f_end))
-    assert all(pd.Timestamp(dt) in clim.columns for dt in test_times), "Climatology missing so    me target forecast periods, can't make comparison"
-    clim.columns = pd.to_datetime(clim.columns)
-    clim = clim.loc[:, clim.columns.isin(test_times)]
-    fm_list = []
-    for st in clim.index:
-        # Small change of station in climatology not in observed data for 2024, skip over
-        if st in raws:
-            dat = raws[st]['RAWS']
-            dat.date_time = pd.to_datetime(dat.date_time)
-            dat = dat[dat.date_time.isin(clim.columns)]
-            dat = dat[["stid", "date_time", "fm"]]
-            fm_list.append(dat)
-    fm = pd.concat(fm_list)
-    fm.date_time = fm.date_time.astype(str)
-    clim = clim.reset_index().melt(id_vars='stid', var_name='date_time', value_name='preds')
-    clim.date_time = clim.date_time.astype(str)
-    clim = clim.merge(fm, on=["stid", "date_time"], how="left")
-    clim = clim[(~clim.preds.isna()) & (~clim.fm.isna())]
 
     # Read output files for forecast analysis run
     ## Get all files in outputs
@@ -119,6 +112,8 @@ if __name__ == '__main__':
     rnn = read_hdf_list(files, key="rnn")
     ode = read_hdf_list(files, key="ode")
     xgb = read_hdf_list(files, key="xgb")
+    clim = read_hdf_list(files, key="clim")
+    clim = clim[(~clim.preds.isna()) & (~clim.fm.isna())]
 
     # Evaluate Accuracy
     ## First calculate errors (residuals)
@@ -133,41 +128,38 @@ if __name__ == '__main__':
     print(f"    {fconf.f_start=}")
     print(f"    {fconf.f_end=}")
 
-    df = pd.concat([rnn, xgb, ode], ignore_index=True)
+    df = pd.concat([rnn, xgb, ode, clim], ignore_index=True)
     ml_dict = read_pkl(osp.join(f_dir, "ml_data.pkl"))
     loc_df = pd.DataFrame.from_dict(
         {k: v["loc"] for k, v in ml_dict.items()},
         orient="index"
-    )     
-    df = df.merge(loc_df, on="stid", how="left") 
-    df["hod"] = pd.Series(str2time(df["date_time"].tolist())).dt.hour
-    print(f"Writing all forecast and errors to {osp.join(out_dir, 'all_errors.h5')}")
-    df.to_hdf(osp.join(out_dir, "all_errors.h5"), key="all_errors")
+    )
+    del ml_dict
 
-    ## Overall Error, averaged over every hour and location
-    summary = df.groupby(["Model"], sort=False).agg(**agg_named).reset_index()
-    print(f"Writing overall error summary to {osp.join(out_dir, 'overall.csv')}")
-    summary.to_csv(osp.join(out_dir, "overall.csv"))
 
-    ## Error by Station, averaged over all times
-    summary = df.groupby(["Model", "stid"], sort=False).agg(**agg_named).reset_index()
-    summary = summary.merge(loc_df, on="stid", how="left")
-    print(f"Writing by station error summary to {osp.join(out_dir, 'by_stid.csv')}")
-    summary.to_csv(osp.join(out_dir, "by_stid.csv"))
+    # Data very big to write as h5, and only done as external double check on calculations. 
+    # Use fperiod files directly for reproducing error calcs
+    #print(f"Writing all forecast and errors to {osp.join(out_dir, 'all_errors.h5')}")
+    #df.to_hdf(osp.join(out_dir, "all_errors.h5"), key="all_errors", mode="w", complib="blosc")
+    loc_df.to_csv(osp.join(out_dir, "stid_locs.csv"), index=False)
 
-    ## Error by hour of the day, averaged over all stations and days
-    summary = df.groupby(["Model", "hod"], sort=False).agg(**agg_named).reset_index()
-    print(f"Writing by hour of day error summary to {osp.join(out_dir, 'by_hod.csv')}")
-    summary.to_csv(osp.join(out_dir, "by_hod.csv"))
+    ## Overall Error, averaged over every hour, location, and replication
+    ## Bounds from +/- 1std for replications
+    table1 = summary_table(df, group_vars = ["Model", "rep"], bound_vars ="rep") 
+    table1.to_csv(osp.join(out_dir, "overall.csv"), index=False)
 
-    ## Error by hour & day, averaged over all stations
-    summary = df.groupby(["Model", "date_time"], sort=False).agg(**agg_named).reset_index()
-    print(f"Writing per date time error summary to {osp.join(out_dir, 'by_dt.csv')}")
-    summary.to_csv(osp.join(out_dir, "by_dt.csv"))
+    ## Error by Station, averaged over all times and replications. Bounds from reps
+    table_st = summary_table(df, group_vars = ["Model", "stid", "rep"], bound_vars ="rep")
+    table_st.to_csv(osp.join(out_dir, "by_stid.csv"), index=False)
+    ## Error by hour of day (0-23)
+    ## averaged over all stations and days and reps, fixed hour 0 at 00:00 UTC
+    df["hod"] = pd.to_datetime(df.date_time).dt.hour
+    table_hod = summary_table(df, group_vars = ["Model", "hod", "rep"], bound_vars ="rep")       
+    table_hod.to_csv(osp.join(out_dir, "by_hod.csv"), index=False)
 
-    ## Error by replication number, averaged over all stations and times
-    ## NOTE: climatology is excluded, generates a prediction for all stations in forecast period. No uncertainty that can be estimated from replication
-    summary = df.loc[df["Model"] != "CLIMATOLOGY"].groupby(["Model", "rep"], sort=False).agg(**agg_named).reset_index()
-    print(f"Writing by replication error summary to {osp.join(out_dir, 'by_rep.csv')}")
-    summary.to_csv(osp.join(out_dir, "by_rep.csv"))
-    
+    ## Error by hour & day, averaged over all stations and reps
+    table_t = summary_table(df, group_vars = ["Model", "date_time", "rep"], bound_vars ="rep")
+    table_t.to_csv(osp.join(out_dir, "by_dt.csv"), index=False)
+
+
+
