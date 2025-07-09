@@ -35,12 +35,12 @@ python src/forecast_analysis_setup.py "$FORECAST_DIRECTORY" "$CONFIG_PATH"
 # Run train/test for each forecast replication
 # Create slurm job array for each forecast replication
 N_REPS=$(jq '.nreps' "$FORECAST_DIRECTORY/analysis_info.json")
-job_id=$(sbatch --array=1-$N_REPS --mem=8G --output="$FORECAST_DIRECTORY/logs/frep_%j_%a.out" run_forecast_analysis.sh "$FORECAST_DIRECTORY")
+echo "Creating slurm array jobs for $N_REPS replications with command:"
+echo "sbatch --array=1-$N_REPS --mem=24G --output=\"$FORECAST_DIRECTORY/logs/frep_%j_%a.out\" run_forecast_analysis.sh \"$FORECAST_DIRECTORY\""
+job_id=$(sbatch --array=1-$N_REPS --mem=24G --output="$FORECAST_DIRECTORY/logs/frep_%j_%a.out" run_forecast_analysis.sh "$FORECAST_DIRECTORY")
 
 # Wait for job to finish and run eval
-#while squeue -j "$job_id" &>/dev/null; do
-#    sleep 120  # Check every 2 minutes
-#done
-
-# python src/forecast_eval.py "$FORECAST_DIRECTORY"
+# NOT working as of June17, get error: sbatch: error: Batch job submission failed: No partition specified or system default partition
+#echo "Evaluating Forecast Accuracy"
+# sbatch --dependency=afterok:$job_id forecast_eval.sh $MODEL_DIRECTORY
 
