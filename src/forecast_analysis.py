@@ -151,7 +151,7 @@ if __name__ == '__main__':
     fm.date_time = fm.date_time.astype(str)
     clim.date_time = clim.date_time.astype(str)
     clim_output = clim.merge(fm, on=["stid", "date_time"], how="left")
-    clim_output = clim[(~clim_output.preds.isna()) & (~clim_output.fm.isna())]
+    clim_output = clim_output[(~clim_output.preds.isna()) & (~clim_output.fm.isna())]
 
     # RNN
     # Train once, forecast separate times for each period too acount for initial state

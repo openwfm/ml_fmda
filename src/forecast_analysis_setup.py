@@ -23,20 +23,17 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 from utils import read_yml, Dict, str2time, time_range
 import data_funcs
 import reproducibility
-from models.moisture_static import XGB
-from models.moisture_ode import ODE_FMC
-from models.moisture_rnn import RNN_Flexible, RNNData
 
 
 # Config and Params
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-params_models = Dict(read_yml(osp.join(CONFIG_DIR, "params_models.yaml")))
+params_models = read_yml(osp.join(CONFIG_DIR, "params_models.yaml"))
 project_paths = Dict(read_yml(osp.join(CONFIG_DIR, "paths.yaml")))
 
 if __name__ == '__main__':
 
     if len(sys.argv) != 3:
-        print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
+        print(f"Invalid arguments. {len(sys.argv)} was given but 3 expected")
         print(('Usage: %s <forecast_dir> <config_path>' % sys.argv[0]))
         print("<forecast_dir> is where outputs from the forecasts are sent. <data_dir> is where data for analysis lives. <config_path> is path to yaml file setting up time frame and other analysis parameters")
         print("Example: python src/forecast_analysis_setup.py forecasts/fmc_forecast_test etc/forecast_config_TEST.yaml")
@@ -61,7 +58,10 @@ if __name__ == '__main__':
         yaml.dump(fconf, f, default_flow_style=False, sort_keys=False)
     fconf = Dict(fconf)
     data_dir = fconf["data_dir"]
-    
+    # Write copy of model params config file to forecast directory
+    with open(osp.join(f_dir, "params_models.yaml"), 'w') as f:
+        yaml.dump(params_models, f, default_flow_style=False, sort_keys=False)  
+
     # Write simplified copy of  config file as json, so shell files can use jq. (TODO: test with yq and no jsons)
     info = {
         'forecast_start': fconf.f_start,
@@ -105,7 +105,6 @@ if __name__ == '__main__':
         sys.exit(-1)
     else:
         print(f"All Needed Data exists in {data_dir}, proceeding...")
-
 
     # Read and Format Data, get set up for train and test
     print("~"*75)
