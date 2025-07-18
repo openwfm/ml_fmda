@@ -340,9 +340,12 @@ def cv_space_setup(dict0, val_times, test_times, test_frac = 0.1, verbose=True, 
 
     # Select stations from set with data availability
     # in the test time period
-    test_ids = get_stids_in_timeperiod(dict0, test_times, all_times=all_test_times)
-    random.shuffle(test_ids)
-    test_locs = test_ids[:N_t]
+    if test_times is None:
+        test_locs=[]
+    else:
+        test_ids = get_stids_in_timeperiod(dict0, test_times, all_times=all_test_times)
+        random.shuffle(test_ids)
+        test_locs = test_ids[:N_t]
 
     # Excluding test locs, select set with data availability
     # in the val time period
@@ -412,10 +415,12 @@ def cv_data_wrap(d, fstart, fend, tstart, tend, val_hours=48, test_frac=0.1, ran
         - all_test_times (Bool): whether to enforce that all test set of stations have observed FMC available for all requested forecast times. NOTE: if False, possible to get test sts with very few available time for calculating accuracy
     """
     
-    # Define CV time periods based on params
     train_times = time_range(tstart, tend-relativedelta(hours=val_hours)) # Remove val_hours from train period
     val_times = time_range(tend-relativedelta(hours=val_hours-1), tend) # Get val_hours number of hours from the end of train window
-    test_times = time_range(fstart, fend)
+    if (fstart is None) and (fend is None):
+        test_times = None
+    else:
+        test_times = time_range(fstart, fend)
     # Get CV locations based on size of input data dictionary and calculated CV times
     tr_sts, val_sts, te_sts = cv_space_setup(d,
                                              val_times=val_times, 
@@ -427,7 +432,10 @@ def cv_data_wrap(d, fstart, fend, tstart, tend, val_hours=48, test_frac=0.1, ran
     # NOTE: if all_test_times was set to False, the test data dictionary could have stations with no data in given time window
     train = get_sts_and_times(d, tr_sts, train_times)
     val = get_sts_and_times(d, val_sts, val_times)
-    test = get_sts_and_times(d, te_sts, test_times)
+    if test_times is None:
+        test=None
+    else:
+        test = get_sts_and_times(d, te_sts, test_times)
     
 
     return train, val, test
