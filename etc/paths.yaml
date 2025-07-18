@@ -6,4 +6,4 @@ raws_stash_path: "/storage/math/NSF1/hirschij/RAWS_stash/MesoDB" # formatted RAW
 hrrr_stash_path: "/storage/math/NSF1/hirschij/HRRR_retrievals" # formatted HRRR stash, prs model data retrieved with herbie, 3hr forecast and variables determined by the metadata file etc/variable_metadata/hrrr_metadata.yaml
 landfire_elev_dir: "/storage/math/NSF1/hirschij/LF2020_Elev_220_CONUS" # landfire elevation
 landfire_cc_dir: "/storage/math/NSF1/hirschij/LF2022_CC_230_CONUS" # landfire canopy cover
-
+forecast_output: "/storage/math/NSF1/hirschij/RNN_forecasts" # where operational forecasts are sent. NOTE: different from forecast analysis used to estimate forecast error 
