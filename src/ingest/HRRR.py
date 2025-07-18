@@ -186,12 +186,13 @@ def get_units_xr(ds):
     
     return units
 
-def retrieve_hrrr(start, end, all_features = True, forecast_step = 3, save_to_stash=True):
+def retrieve_hrrr(start, end, all_features = True, forecast_step = 3, save_to_stash=True, read_to_memory=True):
     """
     Function called by user to retrieve hrrr data. Checks for existence of data in HRRR stash from project paths. If exists, reads it, if not calls the API retrieval function
     
     Args:
         - save_to_stash: whether to save formatted HRRR data to stash directory set by paths.yaml project. NOTE: only implemented to always save to stash as of May 26 2025
+        - read_to_memory: if true, return xarray ds to env that called it. if false, just retrieve and save to stash. NOTE: only makes sense to use read_to_memory False if save_to_stash is True
     """
     # Extract Time range as datetime objects 
     if type(start) is str:
@@ -217,9 +218,15 @@ def retrieve_hrrr(start, end, all_features = True, forecast_step = 3, save_to_st
             needed_days.append(d)
 
     # Run API retieval on days not stashed
+    print(f"    Days already stashed: {stashed_days}")
+    print(f"    Days need to retrive: {needed_days}")
     for d in needed_days:
         end_d = d.replace(hour=23)
         retrieve_hrrr_api(d, end_d, all_features=True, forecast_step=3, save_to_stash=save_to_stash)
+    
+    if not read_to_memory:
+        print(f"    {read_to_memory=}, exiting function")
+        return
     # Read all HRRR days from stash, subset to exact times given
     if len(stashed_days+needed_days) < 1:
         print(f"No days of data remaining, check input times {start=}, {end=}")
