@@ -3,6 +3,7 @@
 # Constraints on model architecture, see paper description
 # Many params are fixed, eg layer activation type
 
+data_dir: "data/rocky_fmda" # Directory for formatted FMDA data dictionaries
 
 # Model architecture grids
 model_architecture:
@@ -19,11 +20,11 @@ optimization:
 
 # Time Period
 f_start: "2023-01-01T00:00:00Z" # first forecast time
-f_end: "2023-12-31T23:00:00Z" # last forecast time
+f_end: "2023-06-30T23:00:00Z" # last forecast time
 forecast_hours: 48 # number of hours to run forecast before re-initializing (matters for RNN and ODE baseline, has no effect on static ML models nor on climatology). Hours determined by max forecast window of HRRR
 n_reps: 10 # Number of replications to train/forecast, used to estimate uncertainty in forecast accuracy metrics
 train_start: "2022-01-01T00:00:00Z" # first time for training
-train_end: "2022-12-31T23:00:00Z" # last time for training
+train_end: "2022-06-30T23:00:00Z" # last time for training
 val_hours: 48 # number of hours to use at end of training window (tstart, tend) to use for validation data
 space_test_frac: 0.1 # Percentage of data based on location for val and test
 bbox: '[37,-111,46,-95]' # spatial bounding box
