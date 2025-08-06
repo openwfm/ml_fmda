@@ -1,22 +1,18 @@
-name: ml_fmda_models
+name: ml_fmda_models_TEST
 channels:
   - conda-forge
 dependencies:
-  - python>=3.11
+  - python=3.11
   - pip
-  - matplotlib
-  - numpy
+  - numpy>=1.24,<1.27
   - pandas
+  - matplotlib
   - scikit-learn
-  - tensorflow
   - jupyter
   - jupyterlab
   - xgboost
-    #  - pip:
-    #      # Borrow some tools from my garage
-    #      - git+https://github.com/blaylockbk/Carpenter_Workshop.git
-    #      - synoptic
-
+  - tables>=3.8
+  - tensorflow==2.16.1
 # =============================================================================
 #                              Conda Tips
 # =============================================================================
