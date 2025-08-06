@@ -13,6 +13,7 @@ import tensorflow as tf
 from tensorflow.keras import layers, Model
 from tensorflow.keras.layers import LSTM, SimpleRNN, Input, Dropout, Dense
 from tensorflow.keras.optimizers import Adam
+from keras.saving import register_keras_serializable
 import warnings
 from itertools import product
 
@@ -436,7 +437,7 @@ class RNNData(MLData):
 # RNN Model Class
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
+@register_keras_serializable()
 class RNN_Flexible(Model):
     """
     Custom Class for RNN with flexible batch size and timesteps. Training and prediction can be on arbitrary batches of arbitrary length sequences. 
@@ -444,11 +445,13 @@ class RNN_Flexible(Model):
     Based on params, forces batch_size and timesteps to be None, and forces return sequences. Will raise warning if otherwise in params
     """
     
-    def __init__(self, n_features, params: dict = None, random_state=None):
+    def __init__(self, params: dict = None, random_state=None, **kwargs):
+        super().__init__(**kwargs)
+
         if params is None:
             params = Dict(params_models["rnn"])
         self.params = Dict(params)
-        self.params.update({'n_features': n_features})
+        self.params.update({'n_features': len(params["features_list"])})
         
         if random_state is not None:
             reproducibility.set_seed(random_state)

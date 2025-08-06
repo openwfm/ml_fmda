@@ -64,9 +64,8 @@ wind:
     layer: "10m"
     hrrr_name: "WIND"
     herbie_str: "WIND:10 m"
-    xarray_name: "si10"
+    xarray_name: ["si10", "max_10si"]
     dtype: "float"
-    # NOTE: some versions software return max_10si which is the same, figuring out a way to rename these properly
     
 solar: 
     long_name: "Downward Short-Wave Radiation Flux"
@@ -76,9 +75,8 @@ solar:
     layer: "surface"
     hrrr_name: "DSWRF"
     herbie_str: "DSWRF:surface"
-    xarray_name: "dswrf"
+    xarray_name: ["dswrf", "sdswrf"]
     dtype: "float"
-    # NOTE: some versions software return sdswrf which is the same, figuring out a way to rename these properly    
 
 canopyw:
     long_name: "Plant Canopy Surface Water"

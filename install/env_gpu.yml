@@ -4,10 +4,12 @@ channels:
   - defaults
 dependencies:
   - python=3.10
-  - tensorflow
+  - tensorflow=2.11
   - pandas
   - numpy
   - scikit-learn
   - pyyaml
   - python-dateutil
-  - xarray
+  - herbie-data
+  - rioxarray
+  - netcdf4

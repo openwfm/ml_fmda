@@ -36,7 +36,7 @@ if __name__ == '__main__':
         print(f"Invalid arguments. {len(sys.argv)} was given but 3 expected")
         print(('Usage: %s <forecast_dir> <config_path>' % sys.argv[0]))
         print("<forecast_dir> is where outputs from the forecasts are sent.  <config_path> is path to yaml file setting up time frame and other analysis parameters")
-        print("Example: python src/forecast_analysis_setup.py forecasts/fmc_forecast_test etc/forecast_config_TEST.yaml")
+        print("Example: python src/forecast_analysis_setup.py forecasts/fmc_forecast_test etc/forecast_analysis_TEST.yaml")
         sys.exit(-1)
 
     # Get input args
