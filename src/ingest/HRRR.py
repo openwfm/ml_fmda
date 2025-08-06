@@ -148,7 +148,7 @@ def calc_times(ds):
 
 def rename_ds(ds):
     """
-    Renames variables in an xarray Dataset based on the hrrr_meta dictionary.
+    Renames variables in an xarray Dataset based on the hrrr_meta dictionary. 
     
     Parameters:
         ds (xr.Dataset): The input xarray Dataset.
@@ -157,12 +157,24 @@ def rename_ds(ds):
     Returns:
         xr.Dataset: Dataset with variables renamed.
     """
-    rename_dict = {
-        v['xarray_name']: key
-        for key, v in hrrr_meta.items()
-        if 'xarray_name' in v and v['xarray_name'] in ds
-    }
+    rename_dict = {}
+
+    for key, meta in hrrr_meta.items():
+        if 'xarray_name' not in meta:
+            continue
+
+        names = meta['xarray_name']
+        if isinstance(names, str):
+            if names in ds:
+                rename_dict[names] = key
+        elif isinstance(names, list):
+            for name in names:
+                if name in ds:
+                    rename_dict[name] = key
+                    break  # use the first matching name
+
     return ds.rename(rename_dict)
+
 
 def get_units_xr(ds):
     """

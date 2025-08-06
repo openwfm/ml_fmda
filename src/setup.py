@@ -126,13 +126,12 @@ if __name__ == '__main__':
         print(f"Getting HRRR orog height and lsm from latest Herbie")
         H = HerbieLatest(product="prs")
         ds = H.xarray("(?:HGT|LAND):surface")
-        ds.rio.to_raster(osp.join(paths.landfire_elev_dir, "hrrr_reference.tif")) # Write file with HRRR grid to use with gdalwarp in subprocess below
-        wkt = ds["gribfile_projection"].attrs["crs_wkt"] # Write projection file to use with gdalwarp
-        with open(osp.join(paths.landfire_elev_dir, "hrrr_projection.prj"), "w") as f:
-            f.write(wkt)
-        subprocess.run([osp.join(PROJECT_ROOT, "src", "setup_lf_elevation.sh"), paths.landfire_elev_dir])
-        breakpoint()
-        # Read LF at hrrr grid and join to HRRR object
-        ds2 = xr.open_dataset(osp.join(paths.landfire_elev_dir, "lf_elev_at_hrrr.tif"))
+        ds.to_netcdf(osp.join(paths.landfire_elev_dir, "hrrr_terrain.nc"))
+        # breakpoint()
+         
         
-        #ds.to_netcdf(osp.join(out_dir, f"hrrr_elev.nc"))
+        ## Read LF at hrrr grid and join to HRRR object
+        #ds2 = xr.open_dataset(osp.join(paths.landfire_elev_dir, "lf_elev_at_hrrr.tif"))
+        #ds2 = ds2.where(ds2 != -9999) # LF codes NA as -9999
+        #ds['elev'] = ds2.band_data.squeeze().sel(y=slice(None, None, -1))
+        ##ds.to_netcdf(osp.join(out_dir, f"hrrr_elev.nc"))
