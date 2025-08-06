@@ -18,7 +18,6 @@ import subprocess
 # import tensorflow as tf
 import shutil
 from itertools import islice
-from datetime import datetime
     
 
 class Dict(dict):
