@@ -29,13 +29,9 @@ import gc
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## We do this so the module can be imported from different locations
-CURRENT_DIR = osp.abspath(__file__)
-while osp.basename(CURRENT_DIR) != "ml_fmda":
-    CURRENT_DIR = osp.dirname(CURRENT_DIR)
-PROJECT_ROOT = CURRENT_DIR
-CODE_DIR = osp.join(PROJECT_ROOT, "src")
-sys.path.append(CODE_DIR)
+CURRENT_DIR = osp.dirname(osp.normpath(osp.abspath(__file__)))
+PROJECT_ROOT = osp.dirname(osp.dirname(osp.normpath(CURRENT_DIR)))
+sys.path.append(osp.join(PROJECT_ROOT, "src"))
 CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
@@ -47,7 +43,7 @@ import ingest.HRRR as ih
 
 def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None):
     """
-    Retrieve data for FMC models.
+    Retrieve data for FMC models. Combines RAWS observations with HRRR for given time period and bounding box
 
     Parameters
     ----------
@@ -67,7 +63,7 @@ def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None
     
     # Handle RAWS Source
     if raws_source == "stash":
-        raws_stash_path = rr.raws_meta["raws_stash_path"]
+        raws_stash_path = rr.raws_stash_path
         assert osp.exists(raws_stash_path), f"Config raws stash path not found: {raws_stash_path}"
         build_raws_dict = rr.build_raws_dict_stash
     elif raws_source == "api":
@@ -77,7 +73,7 @@ def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None
 
     # Retrieve Data
     raws_dict = build_raws_dict(start, end, bbox)
-    hrrr_ds = ih.retrieve_hrrr_api(start, end, bbox)
+    hrrr_ds = ih.retrieve_hrrr(start, end, save_to_stash=True)
 
     # Handle HRRR data
     hrrr_pts = ih.subset_hrrr2raws(hrrr_ds, raws_dict)
@@ -89,8 +85,9 @@ def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None
     # Merge Dictionaries
     for st in raws_dict:
         # Comfirm times match. For HRRR data it should be the date_time which accounts for forecast hour
-        raws_timesi = raws_timesi = raws_dict[st]["times"]
-        assert np.all(raws_timesi == hrrr_pts.date_time.to_numpy()), "Times in RAWS dict don't match HRRR data date_time"
+        raws_timesi = raws_dict[st]["times"]
+        hrrr_timesi = pd.to_datetime(hrrr_pts.date_time.to_numpy(), utc=True)
+        assert np.all(raws_timesi == hrrr_timesi), "Times in RAWS dict don't match HRRR data date_time"
     
         # Extract dataframe of predictors, save in HRRR subdictionary
         df = hrrr_pts.where(hrrr_pts.point_stid == st, drop=True).to_dataframe()
@@ -127,16 +124,11 @@ if __name__ == '__main__':
     if len(sys.argv) != 5:
         print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
         print(('Usage: %s <esmf_from_utc> <esmf_to_utc> <bbox> <output_dir>' % sys.argv[0]))
-        print("Example: python src/ingest/get_project_data.py '2024-01-01T00:00:00Z' '2025-01-01T00:00:00Z' '[37,-111,46,-95]' data/rocky_fmda")
+        print("Example: python src/ingest/get_project_data.py '2024-01-01T00:00:00Z' '2024-01-02T00:00:00Z' '[37,-111,46,-95]' data/rocky_fmda")
         print("bbox format should match rtma_cycler: [latmin, lonmin, latmax, lonmax]")
         print("Times should match format: 2023-06-01T00:00:00Z")
         sys.exit(-1)
 
-    print()
-    print("~"*75)
-    print("Setting up 48 hour forecast periods...")
-
-    
     start = sys.argv[1]
     end = sys.argv[2]
     bbox = parse_bbox(sys.argv[3])
@@ -146,31 +138,16 @@ if __name__ == '__main__':
         print(f"Creating output directory: {output_dir}")
         os.mkdir(output_dir)
 
-    # Define Forecast start times
-    forecast_periods = time_range(
-        start = start,
-        end = end,
-        freq = "2d"
-    )
-    print(f"Number of forecast periods: {len(forecast_periods)}")
-    print(f"Earliest forecast start: {forecast_periods.min()}")
-    print(f"Latest forecast start: {forecast_periods.max()}")
+    print(f"Data retrieval start: {start}")
+    print(f"Data retrieval end: {end}")
 
-    # Get earliest and latest times
-    # Earliest time will be start of training period for earliest forecast start time
-    # Latest time will be end of test forecast period for latest forecast start time
-    print()
-    print("Defining CV time periods based on earliest and latest forecast times")
-    t0 = forecast_periods.min() - relativedelta(hours=8760)
-    t1 = forecast_periods.max() + relativedelta(hours=48)
-    days = time_range(t0, t1, freq="1d")
-    
     # Retrieve Data
-    # For earliest and latest days in previous, retrieve one day of data at a time for computational limits
     # Organize files in Month directories and whole days for pkl files
     # Check if data exists and continue if not. Should allow for rerunning on crash or easily adding time periods
     # Note, default behavior of getting complete day of final period, even if not needed for analysis. Just makes code cleaner but will run a little longer
+    days = time_range(start, end, freq="1d") 
     print()
+    print(f"Retrieving {len(days)} days of data over area: {bbox}")
     print("~"*75)
     for t in days:
         print("~"*50)
@@ -178,7 +155,7 @@ if __name__ == '__main__':
         ym = t.strftime("%Y%m")
         d = t.strftime("%d")
         start_t = t
-        end_t = t.replace(hour=23, minute=0, second=0, microsecond=0) # Add 24 hours to start time
+        end_t = t.replace(hour=23, minute=0, second=0, microsecond=0) # Add 24 hours to given time
         ym_dir = osp.join(output_dir, ym)
         os.makedirs(ym_dir, exist_ok=True)
         filepath = osp.join(ym_dir, f"fmda_{ym}{d}.pkl")
@@ -189,5 +166,5 @@ if __name__ == '__main__':
         else:
             print(f"Data for day {t} already exists in {output_dir}/{ym_dir}, skipping to next period")
 
-    
-    
+
+

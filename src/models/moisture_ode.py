@@ -3,6 +3,7 @@
 import numpy as np
 from sklearn.metrics import mean_squared_error
 import os
+import copy
 import os.path as osp
 import sys
 import warnings
@@ -10,13 +11,9 @@ from dateutil.relativedelta import relativedelta
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## We do this so the module can be imported from different locations
-CURRENT_DIR = osp.abspath(__file__)
-while osp.basename(CURRENT_DIR) != "ml_fmda":
-    CURRENT_DIR = osp.dirname(CURRENT_DIR)
-PROJECT_ROOT = CURRENT_DIR
-CODE_DIR = osp.join(PROJECT_ROOT, "src")
-sys.path.append(CODE_DIR)
+CURRENT_DIR = osp.dirname(osp.normpath(osp.abspath(__file__)))
+PROJECT_ROOT = osp.dirname(osp.dirname(osp.normpath(CURRENT_DIR)))
+sys.path.append(osp.join(PROJECT_ROOT, "src"))
 CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
@@ -174,6 +171,29 @@ def model_augmented(u0,Ed,Ew,r,t):
     return u1, J
 
 
+def ODEData(dict0, sts, test_times, spinup=24):
+    """
+    Wraps previous to include a spinup time in the data pulled for test period. Intended to use with ODE+KF model
+    """
+    from data_funcs import get_sts_and_times
+
+    d = copy.deepcopy(dict0)
+
+    # Define Spinup Period
+    spinup_times = time_range(
+        test_times.min()-relativedelta(hours=spinup),
+        test_times.min()-relativedelta(hours=1)
+    )
+
+    # Get data for spinup period plus test times
+    all_times = time_range(spinup_times.min(), test_times.max())
+    ode_data = get_sts_and_times(d, sts, all_times)
+
+    # Drop Stations with less than spinup + forecast hours
+    return {k: v for k, v in ode_data.items() if v["data"].shape[0] == len(all_times)}
+    # return ode_data
+
+
 class ODE_FMC:
     def __init__(self, params=ode_params):
             
@@ -314,7 +334,10 @@ class ODE_FMC:
         preds = self.run_dict(dict0, hours=hours, h2=h2)
         m = self.slice_fm_forecasts(preds, h2 = h2)
 
-        errs = self.eval(m, fm)
+        # errs = self.eval(m, fm)
 
-        return m, errs
+        return m, fm
 
+if __name__ == '__main__':
+
+    print("Imports successful, no executable code")

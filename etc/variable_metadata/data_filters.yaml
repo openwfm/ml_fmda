@@ -1,17 +1,3 @@
-# File used to store parameters associated with data dataset construction and data filters
-
-
-# Data Structuring Params
-# Used in data retrieval and build train/val/test
-features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'grid_x', 'grid_y', 'rain'] 
-# Path relative to root to manually constructed table for filtered invalid data
-valid_path: "data/fmc_valid_rocky24.csv"
-
-space_test_frac: 0.1 # Percentage of data based on location for val and test
-train_hours: 8760 # hours in a 365 day year
-forecast_hours: 48 # based on HRRR max forecast time
-
-
 # Filter Params
 # Assumed units: 
 ## FM: percent from 0-100 (or more)
@@ -19,8 +5,8 @@ forecast_hours: 48 # based on HRRR max forecast time
 ## Wind: m/s, see https://www.metoffice.gov.uk/weather/guides/coast-and-sea/beaufort-scale
 ## Solar Rad: W/m^2, see https://viirsland.gsfc.nasa.gov/PDF/VIIRS_DSRPAR_UserGuide_v1.2.pdf
 ## Soil Moisture: % (fraction)
-max_linear_time: 10 # maximum number of hours that can be perfectly linear, controls interpolation length
-max_const_time: 10 # number of hours where flagged if zero change in a variable
+max_linear_time: 3 # maximum number of hours that can be perfectly linear, controls interpolation length
+max_const_time: 3 # number of hours where flagged if zero change in a variable
 hours: 72 # total hours to build timeseries, break up longer into this length. Used to help with filters related to over-interpolation
 min_fm: 1 # minimum FMC value allowed (assumes scaled 0-100)
 max_fm: 90 # maximum FMC value allowed (assumes scaled 0-100), see VanderKamp 2016 Table 1

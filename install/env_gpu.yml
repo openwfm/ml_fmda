@@ -1,0 +1,13 @@
+name: ml_gpu
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - tensorflow
+  - pandas
+  - numpy
+  - scikit-learn
+  - pyyaml
+  - python-dateutil
+  - xarray

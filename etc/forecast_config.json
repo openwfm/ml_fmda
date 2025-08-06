@@ -1,9 +1,0 @@
-{
-    "start_time": "2024-06-01T00:00:00Z",
-    "end_time": "2024-06-01T05:00:00Z",
-    "bbox": [40,-105,45,-100],
-    "forecast_step": 3,
-    "model_path": ".../model.keras",
-    "raws_weather_vars": "fuel_moisture",
-    "time_code": true
-}

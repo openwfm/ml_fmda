@@ -20,13 +20,9 @@ import ast
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## We do this so the module can be imported from different locations
-CURRENT_DIR = osp.abspath(__file__)
-while osp.basename(CURRENT_DIR) != "ml_fmda":
-    CURRENT_DIR = osp.dirname(CURRENT_DIR)
-PROJECT_ROOT = CURRENT_DIR
-CODE_DIR = osp.join(PROJECT_ROOT, "src")
-sys.path.append(CODE_DIR)
+CURRENT_DIR = osp.dirname(osp.normpath(osp.abspath(__file__)))
+PROJECT_ROOT = osp.dirname(osp.dirname(osp.normpath(CURRENT_DIR)))
+sys.path.append(osp.join(PROJECT_ROOT, "src"))
 CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
@@ -37,10 +33,10 @@ from utils import read_yml, read_pkl, Dict, time_intp, str2time, rename_dict, ti
 # Read RAWS Metadata and Data Params for high/low bounds
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 raws_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "raws_metadata.yaml"))
-# Update stash path. We do this here so it works if module called from different locations
-raws_meta.update({'raws_stash_path': osp.join(PROJECT_ROOT, raws_meta['raws_stash_path'])})
+project_paths = read_yml(osp.join(CONFIG_DIR, "paths.yaml"))
+raws_stash_path = project_paths['raws_stash_path']
 
-params_data = Dict(read_yml(osp.join(CONFIG_DIR, "params_data.yaml")))
+params_data = Dict(read_yml(osp.join(CONFIG_DIR, "variable_metadata", "data_filters.yaml")))
 
 
 
@@ -290,12 +286,12 @@ def get_file_paths(times):
         times: 1d numpy array of datetime
     """  
 
-    assert osp.exists(raws_meta["raws_stash_path"]), f"Stash path given in RAWS metadata file does not exist"
+    assert osp.exists(raws_stash_path), f"Stash path given in RAWS metadata file does not exist"
 
     # Create list of file paths based on needed hours
     paths = [
         osp.join(
-            raws_meta["raws_stash_path"],        
+            raws_stash_path,        
             str(time.year),     
             time.strftime('%j'),    #  Julian day of year, 001-366
             f"{str(time.year)}{time.strftime('%j')}{time.strftime('%H')}.pkl" )# Join with hour of day, 00-23
@@ -343,7 +339,9 @@ def build_raws_dict_stash(start, end, bbox, rename=True, verbose = True, save_pa
     # Loop through file paths and extract info from need STID
     for path in paths:
         try:
-            dat = read_pkl(path)           
+            #dat = read_pkl(path)           
+            print(f"loading file {path}")
+            dat = pd.read_pickle(path)
             for st in sts["stid"]:
                 # Filter the data for the current station and append
                 filtered = dat[dat['STID'] == st]
@@ -352,27 +350,18 @@ def build_raws_dict_stash(start, end, bbox, rename=True, verbose = True, save_pa
         except Exception as e:
             print(f"An error occured: {e}") 
             
-# Combine the lists of DataFrames for each station into a single DataFrame, rename, and interpolate
-for st in raws_dict:
-    if raws_dict[st]["RAWS"]:  # Check if the list is not empty
-        raws_dict[st]["RAWS"] = pd.concat(raws_dict[st]["RAWS"], ignore_index=True)
-        # Add a few static vars
-        raws_dict[st]["RAWS"]["lat"] = raws_dict[st]["loc"]["lat"]
-        raws_dict[st]["RAWS"]["lon"] = raws_dict[st]["loc"]["lon"]
-        raws_dict[st]["RAWS"]["elev"] = raws_dict[st]["loc"]["elev"]      
-    else:
-        raws_dict[st]["RAWS"] = pd.DataFrame()  # Set an empty DataFrame if no data was found
-    if rename:
-        raws_dict[st]["RAWS"].rename(columns=raws_meta["rename_stash"], inplace=True)
-
-    # Remove Stations with missing data
-    # no_data = []
-    # for st in list(raws_dict.keys()):
-    #     if raws_dict[st]["RAWS"].shape[0] == 0:
-    #         no_data.append(st)
-    #         raws_dict.pop(st)
-    # print(f"No data found for stations {no_data}, removing")
-    # print(f"Retrieved data for {len(raws_dict.keys())} stations")
+    # Combine the lists of DataFrames for each station into a single DataFrame, rename, and interpolate
+    for st in raws_dict:
+        if raws_dict[st]["RAWS"]:  # Check if the list is not empty
+            raws_dict[st]["RAWS"] = pd.concat(raws_dict[st]["RAWS"], ignore_index=True)
+            # Add a few static vars
+            raws_dict[st]["RAWS"]["lat"] = raws_dict[st]["loc"]["lat"]
+            raws_dict[st]["RAWS"]["lon"] = raws_dict[st]["loc"]["lon"]
+            raws_dict[st]["RAWS"]["elev"] = raws_dict[st]["loc"]["elev"]      
+        else:
+            raws_dict[st]["RAWS"] = pd.DataFrame()  # Set an empty DataFrame if no data was found
+        if rename:
+            raws_dict[st]["RAWS"].rename(columns=raws_meta["rename_stash"], inplace=True)
 
     # Interpolate
     # No start time offset here
@@ -416,7 +405,7 @@ for st in raws_dict:
     return raws_dict
 
 
-    def parse_bbox(box_str):
+def parse_bbox(box_str):
     try:
         # Use ast.literal_eval to safely parse the string representation
         # This will only evaluate literals and avoids security risks associated with eval
@@ -431,23 +420,25 @@ for st in raws_dict:
         sys.exit(-1)
         return None
 
-    if __name__ == '__main__':
-    if len(sys.argv) != 5:
-        print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
-        print(('Usage: %s <esmf_from_utc> <esmf_to_utc> <bbox> <output_dir>' % sys.argv[0]))
-        print("Example: python src/ingest/RAWS.py '2024-01-01T00:00:00Z' '2024-03-01T00:00:00Z' '[40,-111,45,-110]' data/raws_test.pkl")
-        print("bbox format should match rtma_cycler: [latmin, lonmin, latmax, lonmax]")
-        print("Times should match format: 2023-06-01T00:00:00Z")
-        sys.exit(-1)
-
-    start = sys.argv[1]
-    end = sys.argv[2]
-    bbox = parse_bbox(sys.argv[3])
-    output_file = sys.argv[4]
-
-    print(f"Retrieving data from RAWS stash")
-    raws_dict = build_raws_dict_stash(start, end, bbox, save_path = output_file)
-
-
+#if __name__ == '__main__':
+#    if len(sys.argv) != 5:
+#        print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
+#        print(('Usage: %s <esmf_from_utc> <esmf_to_utc> <bbox> <output_dir>' % sys.argv[0]))
+#        print("Example: python src/ingest/RAWS.py '2024-01-01T00:00:00Z' '2024-03-01T00:00:00Z' '[40,-111,45,-110]' data/raws_test.pkl")
+#        print("bbox format should match rtma_cycler: [latmin, lonmin, latmax, lonmax]")
+#        print("Times should match format: 2023-06-01T00:00:00Z")
+#        sys.exit(-1)
+#
+#    start = sys.argv[1]
+#    end = sys.argv[2]
+#    bbox = parse_bbox(sys.argv[3])
+#    output_file = sys.argv[4]
+#
+#    print(f"Retrieving data from RAWS stash")
+#    raws_dict = build_raws_dict_stash(start, end, bbox, save_path = output_file)
 
 
+
+if __name__ == '__main__':
+
+    print("Imports successful, no executable code")
