@@ -5,7 +5,7 @@
 
 # #SBATCH --output=logs/rmodels_%a.out
 
-#SBATCH --partition=math-alderaan-short
+#SBATCH --partition=math-alderaan
 
 #SBATCH --ntasks=1
 
