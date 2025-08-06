@@ -124,6 +124,7 @@ if __name__ == '__main__':
     print('~'*75)
     print("Running XGB")
     params = params_models['xgb']
+    params.update({'features_list': features_list})
     dat = data_funcs.StaticMLData(train, val, test, features_list = features_list)
     dat.scale_data()
     xgb_model = XGB(params=params)
@@ -160,9 +161,10 @@ if __name__ == '__main__':
     print('~'*75)
     print('Running RNN')
     params = params_models['rnn']
-    dat = RNNData(train, val, test=None, method="random", timesteps=fhours, random_state=None, features_list = features_list)
+    params.update({'features_list': features_list})
+    dat = RNNData(train, val, test=None, method="random", timesteps=fhours, random_state=None, features_list = params["features_list"])
     dat.scale_data()
-    rnn = RNN_Flexible(n_features=dat.n_features,params=params)
+    rnn = RNN_Flexible(params=params)
     rnn.fit(dat.X_train, dat.y_train,
             validation_data=(dat.X_val, dat.y_val),
             batch_size = params["batch_size"],
@@ -180,7 +182,7 @@ if __name__ == '__main__':
         # NOTE: we get around this by running many replications, systematically searching for 
         # data availability is too inefficient 
         if len(test2) > 1:
-            X_test = dat._combine_data(test2, features_list)
+            X_test = dat._combine_data(test2, params["features_list"])
             # Apply fitted scaler from RNNData to test data
             X_test = scale_3d(X_test, dat.scaler)
             sts = dat._combine_data(test2, ['stid'])
