@@ -1,0 +1,18 @@
+# Recipe to built conda environment with GPU compatible tensorflow
+# Building from yaml file has been too unstable
+
+conda create -n ml_gpu python=3.12 -y
+conda activate ml_gpu
+pip install "tensorflow[and-cuda]==2.18.0"
+
+# Start python session and check that it worked
+# Listing GPU devices will only work on GPU nodes in cluster
+python
+
+import tensorflow as tf, json
+info = tf.sysconfig.get_build_info()
+print("TF:", tf.__version__)
+print("CUDA:", info.get("cuda_version"))
+print("cuDNN:", info.get("cudnn_version"))
+print("GPUs:", tf.config.list_physical_devices("GPU"))
+
