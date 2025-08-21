@@ -153,8 +153,12 @@ def format_raws(df,
 def get_static(df, st, static_vars=raws_meta["raws_static_vars"], name_mapping = raws_meta["rename_synoptic"]):
     loc = {col: values[0] for col, values in df.filter(df["stid"] == st).select(static_vars).to_dict(as_series=False).items()}
     loc = rename_dict(loc, name_mapping)
-    loc["elev"] = loc["elev"] * 0.3048 # Convert ft to M
-    
+    # NOTE: checking if elevation is null and setting to NA if not, can't confirm as of Aug 15 2025 whether to fully filter these stations out or now
+    if loc["elev"]:
+        loc["elev"] = loc["elev"] * 0.3048 # Convert ft to M
+    else:
+        loc["elev"] = np.nan
+
     return loc
 
 
@@ -217,7 +221,6 @@ def build_raws_dict_api(start, end, bbox, rename=True, verbose = True, save_path
     ## Shifting the start time by 1 hour since most stations return data some minutes after requested time, we do this for time interpolation to have endpoints
     raws_weather_vars = raws_meta["raws_weather_vars"]
     raws_dict = {}
-    
     for st in sts["stid"]:
         print("~"*50)
         print(f"Attempting retrival of station {st}")
@@ -335,8 +338,7 @@ def build_raws_dict_stash(start, end, bbox, rename=True, verbose = True, save_pa
             } 
         for st in sts["stid"]}
     
-    
-    # Loop through file paths and extract info from need STID
+    # Loop through file paths and extract info from needed STID
     for path in paths:
         try:
             #dat = read_pkl(path)           
