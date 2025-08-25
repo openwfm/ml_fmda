@@ -38,6 +38,7 @@ echo "Target Data Directory: $DIR"
 source ~/.bashrc
 conda activate ml_fmda_data
 
-python src/ingest/get_fmda_data.py "$START_TIME" "$END_TIME" "$BBOX" "$DIR"
+export PYTHONUNBUFFERED=1
+python -u src/ingest/get_fmda_data.py "$START_TIME" "$END_TIME" "$BBOX" "$DIR"
 
 
