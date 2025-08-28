@@ -5,7 +5,6 @@ from abc import ABC, abstractmethod
 from sklearn.metrics import mean_squared_error
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-import reproducibility
 import os.path as osp
 import sys
 from dateutil.relativedelta import relativedelta
@@ -14,20 +13,15 @@ import tensorflow as tf
 from tensorflow.keras import layers, Model
 from tensorflow.keras.layers import LSTM, SimpleRNN, Input, Dropout, Dense
 from tensorflow.keras.optimizers import Adam
+from keras.saving import register_keras_serializable
 import warnings
 from itertools import product
 
-
-
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## We do this so the module can be imported from different locations
-CURRENT_DIR = osp.abspath(__file__)
-while osp.basename(CURRENT_DIR) != "ml_fmda":
-    CURRENT_DIR = osp.dirname(CURRENT_DIR)
-PROJECT_ROOT = CURRENT_DIR
-CODE_DIR = osp.join(PROJECT_ROOT, "src")
-sys.path.append(CODE_DIR)
+CURRENT_DIR = osp.dirname(osp.normpath(osp.abspath(__file__)))
+PROJECT_ROOT = osp.dirname(osp.dirname(osp.normpath(CURRENT_DIR)))
+sys.path.append(osp.join(PROJECT_ROOT, "src"))
 CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
@@ -40,9 +34,6 @@ import reproducibility
 # Read Metadata
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 params_models = read_yml(osp.join(CONFIG_DIR, "params_models.yaml"))
-params_data = read_yml(osp.join(CONFIG_DIR, "params_data.yaml"))
-
-
 
 # RNN Data Functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -92,7 +83,7 @@ def staircase(df, sequence_length=12, features_list=None, y_col="fm"):
     return X, y, t
 
 
-def staircase_dict(dict0, sequence_length = 12, features_list=params_data["features_list"], y_col="fm", verbose=True):
+def staircase_dict(dict0, sequence_length, features_list, y_col="fm", verbose=True):
     """
     Wraps extract_sequences to apply to a dictionary and run for each case.
     Intended to be run on train dict only
@@ -170,12 +161,37 @@ def build_training_batches(X_list, y_list,
     
     return X, y, loc_indices
 
+
+def scale_3d(X, scaler, fit=False):
+    """
+    Apply an sklearn scaler to 3d numpy arrays
+    
+    Parameters:
+    -----------
+    X : ndarray of shape (n_locs, timesteps, features)
+    scaler : fitted scaler with .transform method
+    fit : bool, optional
+        If True, fit the scaler on X before transforming. Default is False.    
+
+    Returns:
+    --------
+    X_scaled : ndarray of same shape as X    
+    """
+    n_locs, timesteps, features = X.shape
+    X_flat = X.reshape(-1, features)
+    if fit:
+        scaler.fit(X_flat)
+    X_scaled_flat = scaler.transform(X_flat)
+    X_scaled = X_scaled_flat.reshape(n_locs, timesteps, features)
+
+    return X_scaled
+
 class RNNData(MLData):
     """
     Custom class to handle RNN data. Performs data scaling and stateful batch structuring.
     In this context, a single "sample" from RNNData is a timeseries with dimensionality (timesteps, n_features)
     """
-    def __init__(self, train, val=None, test=None, scaler="standard", features_list=params_data["features_list"], timesteps=48, method="random", random_state=None):   
+    def __init__(self, train, val=None, test=None, scaler="standard", features_list=["Ed", "Ew", "rain"], timesteps=48, method="random", random_state=None):   
         self.timesteps = timesteps
         super().__init__(train, val, test, scaler, features_list, random_state)
 
@@ -189,7 +205,6 @@ class RNNData(MLData):
         """
         
         self.train_locs = [*train.keys()]
-        
         train = data_funcs.sort_train_dict(train)
         # Get training samples with staircase, and construct batches
         # Subset features happens at this step
@@ -205,11 +220,15 @@ class RNNData(MLData):
         if val:
             self.X_val = self._combine_data(val, self.features_list)
             self.y_val = self._combine_data(val, [y_col])
-         
+            self.val_locs = [*val.keys()]
+            assert len(self.val_locs) == self.X_val.shape[0], f"Mismatch number of unique stations in input val set and resulting X_val array, {len(self.val_locs)=}, {self.X_val.shape[0]=}"
+
         self.X_test, self.y_test = (None, None)
         if test:
             self.X_test = self._combine_data(test, self.features_list)
             self.y_test = self._combine_data(test, [y_col])
+            self.test_locs = [*test.keys()]
+            assert len(self.test_locs) == self.X_test.shape[0], f"Mismatch number of unique stations in input test set and resulting X_test array, {len(self.test_locs)=}, {self.X_test.shape[0]=}"
 
         if verbose:
             print(f"X_train shape: {self.X_train.shape}, y_train shape: {self.y_train.shape}")
@@ -219,9 +238,12 @@ class RNNData(MLData):
                 print(f"X_test shape: {self.X_test.shape}, y_test shape: {self.y_test.shape}")        
                 
     def _combine_data(self, data_dict, features_list):
-        """Combines all DataFrames under 'data' keys into a single DataFrame, with dimesionality (n_locs, n_times, features)."""
+        """Combines all DataFrames under 'data' keys into a single DataFrame, with dimesionality (n_locs, n_times, features).
+        This only used on test and validation sets, train sets combined with staircase functions
+        """
         return np.array([v["data"][features_list] for v in data_dict.values()])
-    
+
+
     def scale_data(self, verbose=True):
         """
         Scales the training data using the set scaler. This requires
@@ -244,25 +266,14 @@ class RNNData(MLData):
         if verbose:
             print(f"Scaling training data with scaler {self.scaler}, fitting on X_train")
 
-        # Fit scaler on training data, need to reshape
-        n_samples, timesteps, features = self.X_train.shape
-        X_train2 = self.X_train.reshape(-1, features) 
-        self.scaler.fit(X_train2)
-        # Transform data using fitted scaler
-        X_train2 = self.scaler.transform(X_train2)
-        self.X_train = X_train2.reshape(n_samples, timesteps, features)
+        # Fit scaler on training data, Transform data using fitted scaler
+        self.X_train = scale_3d(self.X_train, self.scaler, fit=True)
         
         if hasattr(self, 'X_val'):
             if self.X_val is not None:
-                n_locs, timesteps, features = self.X_val.shape
-                X_val = self.X_val.reshape(-1, features)
-                X_val = self.scaler.transform(X_val)
-                self.X_val = X_val.reshape(n_locs, timesteps, features)
+                self.X_val = scale_3d(self.X_val, self.scaler, fit=False)
         if self.X_test is not None:
-            n_locs, timesteps, features = self.X_test.shape
-            X_test = self.X_test.reshape(-1, features)
-            X_test = self.scaler.transform(X_test)
-            self.X_test = X_test.reshape(n_locs, timesteps, features)
+            self.X_test = scale_3d(self.X_test, self.scaler, fit=False)
 
     def inverse_scale(self, save_changes=False, verbose=True):
         """
@@ -426,7 +437,7 @@ class RNNData(MLData):
 # RNN Model Class
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
+@register_keras_serializable()
 class RNN_Flexible(Model):
     """
     Custom Class for RNN with flexible batch size and timesteps. Training and prediction can be on arbitrary batches of arbitrary length sequences. 
@@ -434,11 +445,13 @@ class RNN_Flexible(Model):
     Based on params, forces batch_size and timesteps to be None, and forces return sequences. Will raise warning if otherwise in params
     """
     
-    def __init__(self, n_features, params: dict = None, random_state=None):
+    def __init__(self, params: dict = None, random_state=None, **kwargs):
+        super().__init__(**kwargs)
+
         if params is None:
             params = Dict(params_models["rnn"])
         self.params = Dict(params)
-        self.params.update({'n_features': n_features})
+        self.params.update({'n_features': len(params["features_list"])})
         
         if random_state is not None:
             reproducibility.set_seed(random_state)
@@ -649,8 +662,7 @@ class RNN_Flexible(Model):
             if val:
                 fit_args["validation_data"] = validation_data
             else:
-                warnings.warn("Running fit with no validation data, setting epochs to smaller number to avoid overfitting")
-                fit_args.update({'epochs': 10})
+                warnings.warn("Running fit with no validation data, consider setting epochs to smaller number to avoid overfitting")
 
             history = super().fit(X_train, y_train, **fit_args)      
             
@@ -685,7 +697,7 @@ class RNN_Flexible(Model):
             'mse': mse,
             'loc_mse': batch_mse
         }
-        return errs
+        return preds, errs
         
 
 
@@ -1127,4 +1139,9 @@ def optimization_grid(opt_dict):
     grid = [dict(zip(keys, combo)) for combo in product(*values)]
     
     return grid
+
+
+if __name__ == '__main__':
+
+    print("Imports successful, no executable code")
 

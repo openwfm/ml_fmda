@@ -18,7 +18,6 @@ import subprocess
 # import tensorflow as tf
 import shutil
 from itertools import islice
-from datetime import datetime
     
 
 class Dict(dict):
@@ -332,14 +331,31 @@ def hash_weights(model):
 
 def str2time(input):
     """
-    Convert a single string timestamp or a list of string timestamps to corresponding datetime object(s).
+    Convert string or list of strings to datetime, supporting multiple formats.
     """
+    formats = [
+        '%Y-%m-%dT%H:%M:%S%z',      # ISO 8601 with 'T'
+        '%Y-%m-%d %H:%M:%S%z',      # ISO 8601 with space instead of 'T'
+        '%Y-%m-%dT%H:%M:%S',        # No timezone
+        '%Y-%m-%d %H:%M:%S',        # No timezone, space separator
+    ]
+
+    def parse(s):
+        s = s.replace('Z', '+00:00')
+        for fmt in formats:
+            try:
+                return datetime.strptime(s, fmt)
+            except ValueError:
+                continue
+        raise ValueError(f"Unsupported datetime format: {s}")
+
     if isinstance(input, str):
-        return datetime.strptime(input.replace('Z', '+00:00'), '%Y-%m-%dT%H:%M:%S%z')
+        return parse(input)
     elif isinstance(input, list):
-        return [str2time(s) for s in input]
+        return [parse(s) for s in input]
     else:
         raise ValueError("Input must be a string or a list of strings")
+
 
 def time_range(start, end, freq="1h"):
     """
@@ -422,3 +438,8 @@ def parse_bbox(box_str):
         print("Error parsing bounding box:", e)
         sys.exit(-1)
         return None
+
+
+if __name__ == '__main__':
+
+    print("Imports successful, no executable code")

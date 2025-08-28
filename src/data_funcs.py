@@ -11,35 +11,29 @@ import os.path as osp
 import sys
 import pickle
 import pandas as pd
-import reproducibility
 import random
 import copy
 from abc import ABC, abstractmethod
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import warnings
 
-
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## We do this so the module can be imported from different locations
-CURRENT_DIR = osp.abspath(__file__)
-while osp.basename(CURRENT_DIR) != "ml_fmda":
-    CURRENT_DIR = osp.dirname(CURRENT_DIR)
-PROJECT_ROOT = CURRENT_DIR
-CODE_DIR = osp.join(PROJECT_ROOT, "src")
-sys.path.append(CODE_DIR)
+CURRENT_DIR = osp.dirname(osp.normpath(osp.abspath(__file__)))
+PROJECT_ROOT = osp.dirname(osp.normpath(CURRENT_DIR))
+sys.path.append(osp.join(PROJECT_ROOT, "src"))
 CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
+
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import read_yml, read_pkl, time_range, str2time, is_consecutive_hours, time_intp
+from utils import Dict, read_yml, read_pkl, time_range, str2time, is_consecutive_hours, time_intp
 import reproducibility
-# import ingest.RAWS as rr
-# import ingest.HRRR as ih
 
 # Read Variable Metadata
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-hrrr_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "hrrr_metadata.yaml"))
+hrrr_meta = Dict(read_yml(osp.join(CONFIG_DIR, "variable_metadata", "hrrr_metadata.yaml")))
+data_filters = Dict(read_yml(osp.join(CONFIG_DIR, "variable_metadata", "data_filters.yaml")))
 
 
 
@@ -142,8 +136,8 @@ def sort_files_by_date(path, full_paths =True):
     
 
 def build_ml_data(dict0, 
-                  hours = 72, 
-                  max_linear_time = 10,
+                  hours = data_filters.hours, 
+                  max_linear_time = data_filters.max_linear_time,
                   atm_source="HRRR", 
                   dtype_mapping = {"float": np.float64, "int": np.int64},
                   save_path = None,
@@ -165,7 +159,7 @@ def build_ml_data(dict0,
     # Setup
     d = copy.deepcopy(dict0)
     print(f"Building ML Data with params: ")
-    print(f"    {hours=}")
+    print(f"    filter_hours={hours}")
     print(f"    {max_linear_time=}")
     ml_dict = {}
     
@@ -184,15 +178,17 @@ def build_ml_data(dict0,
             atm.rename(columns={"max_10si": "wind", "sdswrf": "solar"}, inplace=True)
 
             # Check times match
-            assert np.all(raws.date_time.to_numpy() == atm.date_time.to_numpy()), f"date_time column doesn't match from RAWS and HRRR for station {st}"
+            times = pd.to_datetime(atm.date_time.to_numpy()).tz_localize('UTC')
+            assert np.all(raws.date_time.to_numpy() == times), f"date_time column doesn't match from RAWS and HRRR for station {st}"
+            atm.date_time = times
 
             # Interpolate any missing HRRR 
             # NOTE: I think there should be no NA, but including to be sure, investigate if this is the case
-            times = atm.date_time.to_numpy()
             for var in hrrr_meta:
                 if var in atm.columns:
                     v = time_intp(times, atm[var].to_numpy(), times)
-                    atm.loc[:, var] = v
+                    atm[var] = v
+                    #atm.loc[:, var] = v
            
 
             # Merge, if repeated names add 
@@ -261,26 +257,28 @@ def remove_invalid_data(dict0, df_valid):
     df = df_valid[df_valid.valid == 0].reset_index(drop=True)
     dict1 = copy.deepcopy(dict0)
     st_remove = [] # Running list of stations to fully remove if no data left
-    
+
+    print(f"Removing invalid RAWS data")
     for i in range(0, df.shape[0]):
         di = df[df.index == i]
         st = di.stid.values[0]
         t0 = pd.Timestamp(str2time(di.start.values[0]))
         t1 = pd.Timestamp(str2time(di.end.values[0]))
-        print(f"Removing invalid data for station {st} from {t0} to {t1}")
         # Remove data within time range of invalid flag
-        dict1[st]['data'].drop(
-            dict1[st]['data'][(dict1[st]['data']["date_time"] >= t0) & 
-                                 (dict1[st]['data']["date_time"] <= t1)].index, 
-            inplace=True        
-        )
-        dict1[st]['times'] = dict1[st]['data'].date_time.to_numpy()
-        if dict1[st]['data'].empty:
-            st_remove.append(st)
+        if st in dict1:
+            dict1[st]['data'].drop(
+                dict1[st]['data'][(dict1[st]['data']["date_time"] >= t0) & 
+                                     (dict1[st]['data']["date_time"] <= t1)].index, 
+                inplace=True        
+            )
+            dict1[st]['times'] = dict1[st]['data'].date_time.to_numpy()
+            if dict1[st]['data'].empty:
+                st_remove.append(st)
     
     # Remove empty stations
     print("~"*50)
     print(f"No remaining data for {len(st_remove)} stations, removing {st_remove}")
+    st_remove = set(st_remove) # get unique
     for st in st_remove:
         dict1.pop(st)
 
@@ -293,35 +291,6 @@ def remove_invalid_data(dict0, df_valid):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def cv_time_setup(forecast_start_time, train_hours = 8760, forecast_hours = 48, verbose=True):
-    """
-    Given forecast start time, calculate train/validation/test periods based on parameters.
-    """
-    
-    # Time that forecast period starts
-    if type(forecast_start_time) is str:
-        t = str2time(forecast_start_time)
-    else:
-        t = forecast_start_time
-    # Start time, number of desired train hours previous to forecast start time, default 1 year (8760) hours
-    tstart = t-relativedelta(hours = train_hours)
-    # End time, number of forecast hours into future of forecast start time, default 48 hours
-    tend = t+relativedelta(hours = forecast_hours-1)
-
-    train_times = time_range(tstart, t-relativedelta(hours = forecast_hours+1))
-    val_times = time_range(t-relativedelta(hours = forecast_hours), t-relativedelta(hours = 1))
-    test_times = time_range(t, tend)
-
-    if verbose:
-        print(f"Start of forecast period: {t}")
-        print(f"Number of Training Hours: {len(train_times)}")
-        print(f"Train Period: {train_times.min()} to {train_times.max()}")
-        print(f"Number of Validation Hours: {len(val_times)}")
-        print(f"Val Period: {val_times.min()} to {val_times.max()}")        
-        print(f"Number of Forecast Hours: {len(test_times)}")
-        print(f"Forecast Period: {test_times.min()} to {test_times.max()}")
-    
-    return train_times, val_times, test_times
 
 
 def get_stids_in_timeperiod(dict0, times, all_times=True):
@@ -351,12 +320,15 @@ def get_stids_in_timeperiod(dict0, times, all_times=True):
     # Sort return alphabetically, bc set operations non-reproducible
     return sorted(stids_output)
 
-def cv_space_setup(dict0, val_times, test_times, test_frac = 0.1, verbose=True, random_state=None):
+def cv_space_setup(dict0, val_times, test_times, test_frac = 0.1, verbose=True, all_test_times=True, random_state=None):
     """
     Split cv based on [train, val, test]. Checks for data availability in test and val sets before
     taking sample of size test_frac from total observations. Remaining stations used for train.
     This allows size of train set to vary, but forces consistency of test and val sets
-    
+
+    Args:
+        - all_test_times: whether to restrict random selection of test stations to those with full data availability in given test_times. Equivalent configuration is hard coded to False for training set, and True for validation set
+
     Returns: tuple of lists, train, test, val
     """
     
@@ -368,9 +340,12 @@ def cv_space_setup(dict0, val_times, test_times, test_frac = 0.1, verbose=True, 
 
     # Select stations from set with data availability
     # in the test time period
-    test_ids = get_stids_in_timeperiod(dict0, test_times, all_times=True)
-    random.shuffle(test_ids)
-    test_locs = test_ids[:N_t]
+    if test_times is None:
+        test_locs=[]
+    else:
+        test_ids = get_stids_in_timeperiod(dict0, test_times, all_times=all_test_times)
+        random.shuffle(test_ids)
+        test_locs = test_ids[:N_t]
 
     # Excluding test locs, select set with data availability
     # in the val time period
@@ -432,53 +407,40 @@ def sort_train_dict(d):
 def filter_empty_data(input_dict):
     return {k: v for k, v in input_dict.items() if v["data"].shape[0] > 0}
 
-def cv_data_wrap(d, fstart, train_hours, forecast_hours, random_state=None):
+def cv_data_wrap(d, fstart, fend, tstart, tend, val_hours=48, test_frac=0.1, random_state=None, all_test_times=False):
     """
-    Combines functions above to create train/val/test datasets from input data dictionary and params
+    Combines functions above to create train/val/test datasets from input data dictionary and params. Returns data dictionaries with top-level keys as the RAWS station IDs. NOTE: this process only returns HRRR data when there is RAWS availability, missing otherwise. 
+    
+    Args:
+        - all_test_times (Bool): whether to enforce that all test set of stations have observed FMC available for all requested forecast times. NOTE: if False, possible to get test sts with very few available time for calculating accuracy
     """
     
-    # Define CV time periods based on params
-    train_times, val_times, test_times = cv_time_setup(fstart, train_hours=train_hours, forecast_hours=forecast_hours)
+    train_times = time_range(tstart, tend-relativedelta(hours=val_hours)) # Remove val_hours from train period
+    val_times = time_range(tend-relativedelta(hours=val_hours-1), tend) # Get val_hours number of hours from the end of train window
+    if (fstart is None) and (fend is None):
+        test_times = None
+    else:
+        test_times = time_range(fstart, fend)
     # Get CV locations based on size of input data dictionary and calculated CV times
-    tr_sts, val_sts, te_sts = cv_space_setup(d, 
-                                                        val_times=val_times, 
-                                                        test_times=test_times, 
-                                                        random_state=random_state)
+    tr_sts, val_sts, te_sts = cv_space_setup(d,
+                                             val_times=val_times, 
+                                             test_times=test_times, 
+                                             random_state=random_state,
+                                             all_test_times=all_test_times,
+                                             test_frac=test_frac)
     # Build train/val/test by getting data at needed locations and times
+    # NOTE: if all_test_times was set to False, the test data dictionary could have stations with no data in given time window
     train = get_sts_and_times(d, tr_sts, train_times)
     val = get_sts_and_times(d, val_sts, val_times)
-    test = get_sts_and_times(d, te_sts, test_times)
-
-    # Drop stations with empty data
-    train = filter_empty_data(train)
-    val = filter_empty_data(val)
-    test = filter_empty_data(test)    
+    if test_times is None:
+        test=None
+    else:
+        test = get_sts_and_times(d, te_sts, test_times)
     
+
     return train, val, test
 
 
-# Final data creation code
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-def get_ode_data(dict0, sts, test_times, spinup=24):
-    """
-    Wraps previous to include a spinup time in the data pulled for test period. Intended to use with ODE+KF model
-    """
-    d = copy.deepcopy(dict0)
-
-    # Define Spinup Period
-    spinup_times = time_range(
-        test_times.min()-relativedelta(hours=spinup),
-        test_times.min()-relativedelta(hours=1)
-    )
-
-    # Get data for spinup period plus test times
-    all_times = time_range(spinup_times.min(), test_times.max())
-    ode_data = get_sts_and_times(d, sts, all_times)
-
-    # Drop Stations with less than spinup + forecast hours
-    return {k: v for k, v in ode_data.items() if v["data"].shape[0] == 72}    
-    # return ode_data
 
 class MLData(ABC):
     """
@@ -620,18 +582,24 @@ class StaticMLData(MLData):
 
         
         X_train = self._combine_data(train)
+        self.train_locs = X_train['stid'].to_numpy()
+        self.train_times = X_train['date_time'].to_numpy().astype(str)
         self.y_train = X_train[y_col].to_numpy()
         self.X_train = X_train[self.features_list].to_numpy()
 
         self.X_val, self.y_val = (None, None)
         if val:
             X_val = self._combine_data(val)
+            self.val_locs = X_val['stid'].to_numpy()
+            self.val_times = X_val['date_time'].to_numpy().astype(str)
             self.y_val = X_val[y_col].to_numpy()
             self.X_val = X_val[self.features_list].to_numpy()
-    
+        
         self.X_test, self.y_test = (None, None)
         if test:
             X_test = self._combine_data(test)
+            self.test_locs = X_test['stid'].to_numpy()
+            self.test_times = X_test['date_time'].to_numpy().astype(str)
             self.y_test = X_test[y_col].to_numpy()
             self.X_test = X_test[self.features_list].to_numpy()
 
@@ -643,6 +611,8 @@ class StaticMLData(MLData):
                 print(f"X_test shape: {self.X_test.shape}, y_test shape: {self.y_test.shape}")
             
   
- 
+if __name__ == '__main__':
+
+    print("Imports successful, no executable code") 
 
     
