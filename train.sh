@@ -2,7 +2,8 @@
 
 
 #SBATCH --job-name=train
-#SBATCH --partition=math-alderaan
+#SBATCH --partition=math-alderaan-gpu-cuda12
+#SBATCH --gres=gpu:a100:1
 #SBATCH --output=logs/train_%j.out
 #SBATCH --ntasks=1
 #SBATCH --mem=16G
@@ -23,6 +24,6 @@ echo "Config path: $CONFIG_PATH"
 
 # Set up environment
 source ~/.bashrc
-conda activate ml_gpu2
+conda activate gpu_TEST
 
 python src/train.py "$MODEL_DIRECTORY" "$CONFIG_PATH"
