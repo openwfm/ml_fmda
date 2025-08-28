@@ -1,0 +1,6 @@
+# Config file used to set up forecast analysis
+#
+
+f_start: "2025-06-01T00:00:00Z" # first forecast time
+f_end: "2025-06-02T23:00:00Z" # last forecast time
+bbox: '[37,-111,46,-95]' # spatial bounding box
