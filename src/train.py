@@ -1,6 +1,7 @@
 # Script used to train an RNN and save to a directory
 # Intended for operational use, not for forecast analysis which
 # has it's own set of scripts
+# NOTE: the fastest GPU training relies on non-deterministic code, to make the code deterministic and reproducibile you can import the module reproducibility.py, but that will slow down training
 
 import sys
 import pickle
@@ -109,8 +110,12 @@ if __name__ == '__main__':
 
 
     # Train RNN 
+    # Check if running deterministic, that should only be for testing as it is slower
     print('~'*75)
     print('Training RNN')
+    deterministic = os.environ.get("TF_DETERMINISTIC_OPS", "0")
+    if deterministic: print("    Tensorflow running in deterministic mode for reproduciblity"); print("    Warning: this is slower and should only be for testing")
+    else: print("    Tensorflow running in non-deterministic mode for better performance, but won't be exactly reproducible")
 
     dat = RNNData(train, val, test=None, method="random", timesteps=params.timesteps, random_state=None, features_list = params.features_list)
     dat.scale_data()
