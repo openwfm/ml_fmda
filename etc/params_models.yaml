@@ -5,19 +5,20 @@
 
 # Stateless RNN, batch_size declared at fit step
 rnn:
+    features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'rain', 'hod', 'doy'] 
     timesteps: 48 # number of time steps that constistutes one single input sample, matches HRRR max forecast cycle and max time this model is intended to be extrapolated into the future
-    batch_size: 32 # number of sequences of length `timesteps` that are processed independently in an iteration of weight updates
-    hidden_layers: [lstm, dense, dropout] # Sequential order of neural network hidden layers, one of 'dense', 'rnn', 'lstm', 'attention', 'dropout'
-    hidden_units: [32, 16, null] # Corresponding number of units for layers, attention & dropout layers should have None for this
-    hidden_activation: [tanh, relu, null] # Corresponding activation func for layers, attention & dropout layers should have None for this
-    dropout: 0.2 # Used automatically internally in LSTM and RNN layers, used for value if entire dropout layer is specified (typically after a dense)
+    batch_size: 64 # number of sequences of length `timesteps` that are processed independently in an iteration of weight updates
+    hidden_layers: [lstm, dense, dense, dropout] # Sequential order of neural network hidden layers, one of 'dense', 'rnn', 'lstm', 'attention', 'dropout'
+    hidden_units: [64, 32, 16, null] # Corresponding number of units for layers, attention & dropout layers should have None for this
+    hidden_activation: [tanh, relu, relu, null] # Corresponding activation func for layers, attention & dropout layers should have None for this
+    dropout: 0.15 # Used automatically internally in LSTM and RNN layers, used for value if entire dropout layer is specified (typically after a dense)
     recurrent_dropout: 0.2 # Used internally in recurrent layers
     output_layer: dense # Output specifications should not be changed unless input data is restructured. Currently outputing single scalar at each input time step
     output_activation: linear # continuous output, could also possibly use ReLU or another function
     output_dimension: 1 # One-dim output (FMC)
     learning_rate: 0.001
     early_stopping_patience: 5 # Number of epochs with no improvement after which training will be stopped.
-    epochs: 100
+    epochs: 100 # NOTE: early stopping controls this, so epochs intended to be set to some large number greater than reached in practice
     scaler: standard # One of standard, MinMax. NOTE: MinMax more strongly depends on test data being within range of train data, otherwise scales certain data outside of 0,1 range and then you get nonsense
     stateful: false
     verbose_fit: true # If True, prints loss metrics on each epoch of training
@@ -32,15 +33,16 @@ rnn:
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 xgb:
-  max_depth: 3
-  eta: 0.1
-  min_child_weight: 1
-  subsample: 0.8
-  colsample_bytree: 0.9
-  scale_pos_weight: 1
-  n_estimators: 100
-  gamma: .1
-  scaler: 'standard'
+  features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'rain', 'hod', 'doy'] 
+  max_depth: 3            # maximum tree depth
+  eta: 0.1                # Learning rate
+  min_child_weight: 1     # minimum sum of Hessian of samples needed to make a partition
+  subsample: 0.8          # Percent of training data to be randomly selected in each boosting iteration
+  colsample_bytree: 0.9   # Percent of features to be randomly selected in each boosting iteration
+  scale_pos_weight: 1     
+  n_estimators: 100       # number of trees in ensemble
+  gamma: .1               # minimum loss reduction required to make a tree partition
+  scaler: 'standard'      # for consistency with RNN, but XGB doesn't require scaling 
 
 
   ### Params sent by Schreck that use VIIRS and other inputs, slower and less accurate for this dataset
@@ -83,20 +85,22 @@ climatology:
     nyears: 10 # Number of years to look for historical data
     ndays: 15 # Number of days to bracket target time, t +/- ndays
     min_years: 6 # Minimum number of years of observations, less set to NA
+    aggregation_metric: "mean" # metric used to combine historical values into forecasted value
+
 
 # Physics-based ODE plus Kalman Filter data assim Params
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ode:
     hours: 72                # Number of hours to run sim, forecast period will be hours-spinup_hours
-    spinup_hours: 24         # number of timesteps to spinup model before validation metrics calculated
+    spinup_hours: 24         # number of timesteps to spinup model before validation metrics calculated (24 is conservative)
     process_variance: 1e-3   # used to build diagonal Q matrix 
     data_variance: 1e-3 
     r0: 0.05                 # threshold rainfall [mm/h]
     rs: 8.0                  # saturation rain intensity [mm/h]
     Tr: 14.0                 # time constant for rain wetting model [h]
-    S: 250                   # saturation intensity [dimensionless]
-    T: 10.0                  # time constant for wetting/drying
+    S: 250                   # saturation intensity [dimensionless, or % fmc]
+    T: 10.0                  # time constant for wetting/drying (dead fuel class)
 
 
 

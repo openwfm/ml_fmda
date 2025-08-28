@@ -10,13 +10,9 @@ import numpy as np
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## We do this so the module can be imported from different locations
-CURRENT_DIR = osp.abspath(__file__)
-while osp.basename(CURRENT_DIR) != "ml_fmda":
-    CURRENT_DIR = osp.dirname(CURRENT_DIR)
-PROJECT_ROOT = CURRENT_DIR
-CODE_DIR = osp.join(PROJECT_ROOT, "src")
-sys.path.append(CODE_DIR)
+CURRENT_DIR = osp.dirname(osp.normpath(osp.abspath(__file__)))
+PROJECT_ROOT = osp.dirname(osp.normpath(CURRENT_DIR))
+sys.path.append(osp.join(PROJECT_ROOT, "src"))
 CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
@@ -50,13 +46,16 @@ if __name__ == '__main__':
     params.update({
         'stateful': False,
         'return_sequences': True,
+        'hidden_layers': ['lstm', 'dense', 'dropout'],
         'hidden_units': [3, 3, None], 
+        'hidden_activation': ['tanh', 'relu', None],
         'batch_size': 4,
+        'features_list': ['Ed', 'Ew', 'rain'],
         'timesteps': None,
         'epochs':2,
         'random_state': 42
     })
-    
+
     # Run Model
     rnn = mrnn.RNN_Flexible(n_features = n_features, params = params)
     rnn.fit(X_train, y_train, 
@@ -66,9 +65,9 @@ if __name__ == '__main__':
             verbose_fit = True, plot_history=False
            )
     rnn.test_eval(X_test, y_test)
-    
+
     print(f"Trained Model Weights Hash: {hash_weights(rnn)}")
-    
+
     if hash_weights(rnn) == "6efbc3225d68acdcb4065101a61f0879":
         print("TEST PASSED")
     else:

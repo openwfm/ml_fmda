@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#SBATCH --mem=8G
+
+
 # Shell script to run a single iteration of model train and predict for Optimization parameter tuning (as opposed to model architecture)
 # Used by shell file that assigns a CPU for each array task to allow for parallelization of hyperparam tuning
 # Credit to user lorellis for aspects structure of the code

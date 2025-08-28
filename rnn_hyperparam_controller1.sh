@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=tune_model
+#SBATCH --job-name=htune
 #SBATCH --output=logs/rnn_hyperparam_%j.out
 #SBATCH --ntasks=1
 #SBATCH --partition=math-alderaan
@@ -15,24 +15,24 @@
 
 
 # Setup input arg, directory where model and outputs live
-if [ "$#" -ne 3 ]; then
+if [ "$#" -ne 2 ]; then
     echo "Error: Expected exactly 2 arguments, but got $#."
-    echo "Usage: $0 <model_directory> <data_directory> <config_file>"
+    echo "Usage: $0 <model_directory> <config_file>"
     exit 1
 fi
 MODEL_DIRECTORY="$1"
-DATA_DIRECTORY="$2"
-CONFIG_FILE="$3"
+CONFIG_FILE="$2"
 
 # Set up environment
 source ~/.bashrc
 conda activate ml_fmda_models
 
-# Run setup, specify <model_directory> and <data_directory>
+# Run setup, specify <model_directory>
 echo "Running Hyperparam Tuning step 1, model architecture"
 mkdir -p "$MODEL_DIRECTORY"
-mkdir -p "$MODEL_DIRECTORY/model_errors"
-python src/rnn_hyperparam_setup.py "$MODEL_DIRECTORY" "$DATA_DIRECTORY" "$CONFIG_FILE"
+mkdir -p "$MODEL_DIRECTORY/model_outputs"
+mkdir -p "$MODEL_DIRECTORY/opt_outputs"
+python src/rnn_hyperparam_setup.py "$MODEL_DIRECTORY" "$CONFIG_FILE"
 
 # Run Model Architecture tuning
 # Extract number of models from previous step to setup array
@@ -40,7 +40,7 @@ python src/rnn_hyperparam_setup.py "$MODEL_DIRECTORY" "$DATA_DIRECTORY" "$CONFIG
 # Extract the jobid to use with waiting for the next things to run
 mkdir -p "$MODEL_DIRECTORY/logs"
 N_MODELS=$(wc -l < "$MODEL_DIRECTORY/model_grid.txt")
-job1_id=$(sbatch --array=1-$N_MODELS --output="$MODEL_DIRECTORY/logs/model_%j_%a.out" run_rnn_hyperparam_model.sh "$MODEL_DIRECTORY" |  awk '{print $NF}')
+job1_id=$(sbatch --array=1-$N_MODELS --mem=8G --output="$MODEL_DIRECTORY/logs/model_%j_%a.out" run_rnn_hyperparam_model.sh "$MODEL_DIRECTORY" |  awk '{print $NF}')
 
 
 

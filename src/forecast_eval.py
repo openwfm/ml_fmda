@@ -13,23 +13,79 @@ import re
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## We do this so the module can be imported from different locations
-CURRENT_DIR = osp.abspath(__file__)
-while osp.basename(CURRENT_DIR) != "ml_fmda":
-    CURRENT_DIR = osp.dirname(CURRENT_DIR)
-PROJECT_ROOT = CURRENT_DIR
-CODE_DIR = osp.join(PROJECT_ROOT, "src")
-sys.path.append(CODE_DIR)
+CURRENT_DIR = osp.dirname(osp.normpath(osp.abspath(__file__)))
+PROJECT_ROOT = osp.dirname(osp.normpath(CURRENT_DIR))
+sys.path.append(osp.join(PROJECT_ROOT, "src"))
 CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
-DATA_DIR = osp.join(PROJECT_ROOT, "data")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import Dict, read_pkl, read_yml, str2time, time_range
-from models.moisture_rnn import model_grid, optimization_grid, RNNData, RNN_Flexible
-import data_funcs
 
-forecast_config = Dict(read_yml(osp.join(CONFIG_DIR, "forecast_analysis.yaml")))
+
+# Module Code
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+def read_hdf_list(file_list, key):
+    all_data = []
+    for f in files:
+        f_path = osp.join(f_dir, "forecast_outputs", f)
+        rep = int(re.search(r'_(\d+)\.h5$', f).group(1))
+        for key in key_list:
+            df = pd.read_hdf(f_path, key=key)
+            df = df.assign(rep=rep, Model=key)
+            df = calc_errs(df) # add residuals 
+            all_data.append(df)
+    return pd.concat(all_data, ignore_index=True)
+
+def calc_errs(df, pred_col="preds", true_col="fm"):
+    """
+    Adds residual, absolute error, and squared error columns to a DataFrame.
+
+    Parameters:
+    - df (pd.DataFrame): The DataFrame containing prediction and true value columns.
+    - pred_col (str): Name of the column with predicted values. Default is "preds".
+    - true_col (str): Name of the column with true/observed values. Default is "fm".
+
+    Returns:
+    - pd.DataFrame: The same DataFrame with new error columns added:
+        'residual', 'abs_error', 'squared_error'
+    """
+    residual = df[true_col] - df[pred_col]
+    df["residual"] = residual
+    df["abs_error"] = residual.abs()
+    df["squared_error"] = residual ** 2
+    return df
+
+
+def summary_table(df, group_vars, bound_vars="rep"):
+    """
+    """
+    bias = (
+        df.groupby(group_vars, sort=False)["residual"]
+        .mean()
+        .reset_index(name="bias")
+    )
+    mse = (
+        df.groupby(group_vars, sort=False)["squared_error"]
+        .mean()
+        .reset_index(name="mse")
+    )
+    rep_metrics = pd.merge(bias, mse, on=group_vars)
+    group_vars.remove(bound_vars)
+    summary_stats = rep_metrics.groupby(group_vars, sort=False)[["bias", "mse"]].agg(["mean", "std"]).reset_index() 
+    if not type(bound_vars) is list:
+        bound_vars = [bound_vars]
+    summary_stats.columns = group_vars + ["bias_mean", "bias_std", "mse_mean", "mse_std"]
+    #summary_stats["Bias"] = summary_stats["bias_mean"].astype('float64').round(2).astype(str) + " +/- " + summary_stats["bias_std"].round(2).astype(str)
+    #summary_stats["MSE"] = summary_stats["mse_mean"].astype('float64').round(2).astype(str) + " +/- " + summary_stats["mse_std"].round(2).astype(str)
+    #summary_formatted = summary_stats[["Model", "Bias", "MSE"]]
+    #return summary_formatted
+    return summary_stats
+
+
+# Executed Code
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if __name__ == '__main__':
 
@@ -40,107 +96,95 @@ if __name__ == '__main__':
         sys.exit(-1)
 
     f_dir = sys.argv[1]
-    # Check output exists
-    if osp.exists(osp.join(f_dir, 'forecast_errs.csv')) and osp.exists(osp.join(f_dir, 'forecast_summary.csv')):
-        print(f"Output already exists at {f_dir}, exiting")
-        sys.exit(0)
-
-    # Read analysis config, used for QC checks that input actually matches target
-    # Get analysis run configuration
-    fstart = str2time(forecast_config.start_time)
-    fend = str2time(forecast_config.end_time)
-    # Define Forecast start times, 48hr spacing
-    forecast_periods = time_range(
-        start = fstart,
-        end = fend,
-        freq = "2d"
-    )    
-    print("~"*75)
-    print(f"Evaluating Forecast Analysis from {fstart} to {fend}")
-    print(f"Total Forecast Periods: {forecast_periods.shape[0]}")
-
-    # Read output files for analysis run
-    ## FMC models
-    files = os.listdir(osp.join(f_dir, 'forecast_periods'))
-    files = sorted(files, key=lambda x: int(re.search(r'_(\d+)\.pkl', x).group(1))) # Sort by task number, shouldn't be necessary but for clarity
-    results = [read_pkl(osp.join(f_dir, 'forecast_periods', f)) for f in files]
-    assert len(results) == len(forecast_periods), "Mismatch number of results files {len(results)} vs target forecast periods {len(forecast_periods)}"
-
-    # Write output of error for RNN by location for mapping
-    # Store ftime as first time of forecst period
-    dfs = [
-        pd.DataFrame({'stid': np.array(result_i['stids']), 'ftime': result_i['times'][0], 'loc_error': result_i['RNN']['loc_mse'] }) for result_i in results
-    ]
-    df = pd.concat(dfs, ignore_index=True)
-    df.to_csv(osp.join(f_dir, 'rnn_loc_errors.csv'))
+    print(f"Evaluating forecast accuracy for forecast run in directory: {f_dir}")
+    fconf = Dict(read_yml(osp.join(f_dir, "forecast_config.yaml")))
+    out_dir = osp.join(f_dir, "error_analysis")
+    os.makedirs(out_dir, exist_ok=True)
 
 
-    ## Climatology, extract needed periods and stations, then calculate MSE
-    ## Climatology forecasts wont exist for certain stations, eg new stations without long climate history
-    ## Test stations chosen by ones with data availability, so there should be minimal missing data for raws in the forecast periods
-    clim_file = forecast_config.climatology_file
-    clim = read_pkl(osp.join(PROJECT_ROOT, clim_file))
-    raws_file = forecast_config.raws_file
-    raws = read_pkl(osp.join(PROJECT_ROOT, raws_file))
-    assert all(pd.Timestamp(dt) in clim.columns for dt in forecast_periods), "Climatology missing some target forecast periods, can't make comparison"
-    for i in range(0, len(results)):
-        dat = results[i]
-        clim_i = clim.loc[clim.index.isin(dat['stids']), clim.columns.isin(dat['times'])]
-        clim_i = clim_i.reindex(dat['stids'])
-        raws_i = data_funcs.get_sts_and_times(raws, dat['stids'], dat['times'], data_dict = 'RAWS')
-        raws_i = pd.DataFrame({k: v["RAWS"]["fm"] for k, v in raws_i.items()}).T
-        raws_i.columns = dat['times']
-        raws_i = raws_i.reindex(dat['stids'])
-        raws_i = raws_i.astype(np.float64) # ensure type match
-        assert clim_i.shape[1] == raws_i.shape[1], "Column mismatch between raws and climatology for forecast period {i}, {forecast_period[i]}"
-        sts = clim_i.index.intersection(raws_i.index) # get common row indices, corresponding to stations, these should be the same in most cases except brand new stations without clim history
-        clim_i = clim_i.loc[sts]
-        raws_i = raws_i.loc[sts]
-        diff_i = raws_i.sub(clim_i) # calc residual
-        diff_i = diff_i ** 2         # square difference
-        # Add to results dict
-        results[i]['CLIMATOLOGY'] = {
-            'mse': diff_i.mean().mean(),
-            'loc_mse': diff_i.mean(axis=1).to_numpy()
-        }
+    # Read output files for forecast analysis run
+    ## Get all files in outputs
+    files = os.listdir(osp.join(f_dir, 'forecast_outputs'))
+    files = sorted(files, key=lambda x: int(re.search(r'_(\d+)\.h5$', x).group(1))) # Sort by task number, shouldn't be necessary but for clarity
+    ## Read and combine into dataframe, add indicator column for replication number from file name
+    key_list =["rnn", "ode", "xgb", "clim"]
+    df = read_hdf_list(files, key_list)
+    #rnn = read_hdf_list(files, key="rnn")
+    #ode = read_hdf_list(files, key="ode")
+    #xgb = read_hdf_list(files, key="xgb")
+    #clim = read_hdf_list(files, key="clim")
+    #clim = clim[(~clim.preds.isna()) & (~clim.fm.isna())]
+
+    # Evaluate Accuracy
+    ## First calculate errors (residuals)
+    #rnn = calc_errs(rnn); rnn["Model"] = "RNN"
+    #ode = calc_errs(ode); ode["Model"] = "ODE"
+    #xgb = calc_errs(xgb); xgb["Model"] = "XGB"
+    #clim = calc_errs(clim); clim["Model"] = "CLIMATOLOGY"
+
+    ## Combine all individual predictions so someone can easily reproduce summary tables that aggregate
+    ## Add spatial info and calculate hour of dayi
+    print(f"Combining and evaluating errors for forecast period:")
+    print(f"    {fconf.f_start=}")
+    print(f"    {fconf.f_end=}")
+
+    # df = pd.concat([rnn, xgb, ode, clim], ignore_index=True)
+    
+    # df.to_hdf(osp.join(f_dir, "all_errors.h5"), key="all_errors") # too large to write with hdf
+
+    
+    ml_dict = read_pkl(osp.join(f_dir, "ml_data.pkl"))
+    loc_df = pd.DataFrame.from_dict(
+        {k: v["loc"] for k, v in ml_dict.items()},
+        orient="index"
+    )
+    # Add overall predictor metrics
+    df2 = pd.concat(
+        [v["data"][fconf.features_list] for k, v in ml_dict.items()],
+        ignore_index=True        
+    )
+    psummary = pd.DataFrame({
+        "Variable": df2.columns,
+        "Mean": df2.mean().values,
+        "Low": df2.min().values,
+        "High": df2.max().values
+    })   
+    print(f"Writing summary of all variables to: {osp.join(out_dir, 'all_variables_summary.csv')}")
+    psummary.to_csv(osp.join(out_dir, "all_variables_summary.csv"), index=False)
+    del ml_dict; del df2
 
 
-    # Compare Models
-    # Run some checks on time and location, combine results into a df
-    ode_errs = []
-    xgb_errs = []
-    rnn_errs = []
-    clim_errs = []
-    for i, fperiod in enumerate(results):
-        stids = fperiod['stids']
-        times = fperiod['times']
-        times.sort()
-        # Check times match, num stations matches
-        assert pd.Timestamp(forecast_periods[i]) == times[0], "Time array from ML output dict doesn't match target file time"
-        for mod in ['RNN']:
-            assert len(fperiod[mod]['loc_mse']) == len(stids), "Mismatch between number of stations and number of MSE per station"
-        ode_errs.append(fperiod['ODE']['mse'])
-        xgb_errs.append(fperiod['XGB']['mse'])
-        rnn_errs.append(fperiod['RNN']['mse'])
-        clim_errs.append(fperiod['CLIMATOLOGY']['mse'])
+    # Write df of RNN errors for more granular analysis
+    df[df.Model == "rnn"].to_csv(osp.join(out_dir, "rnn_preds.csv"), index=False)
 
-    df = pd.DataFrame({
-        'ODE': ode_errs,
-        'XGB': xgb_errs,
-        'RNN': rnn_errs,
-        'CLIMATOLOGY': clim_errs
-    })
-    df.index = forecast_periods
-    print('~'*75)
-    print(f"Writing Forecast Errors table to: {osp.join(f_dir, 'forecast_errs.csv')}")
-    df.to_csv(osp.join(f_dir, 'forecast_errs.csv')) 
-    # Mean Error for Model
-    means = df.mean(axis=0)
-    stds = df.std(axis=0)
+    # Data very big to write as h5, and only done as external double check on calculations. 
+    # Use fperiod files directly for reproducing error calcs
+    #print(f"Writing all forecast and errors to {osp.join(out_dir, 'all_errors.h5')}")
+    #df.to_hdf(osp.join(out_dir, "all_errors.h5"), key="all_errors", mode="w", complib="blosc")
+    loc_df.to_csv(osp.join(out_dir, "stid_locs.csv"), index=False)
 
-    print(f"Writing Forecast Error Summary table to: {osp.join(f_dir, 'forecast_summary.csv')}")
-    overall_errs_df = pd.DataFrame({"Mean MSE": means, "(Std)": stds})
-    overall_errs_df.to_csv(osp.join(f_dir, 'forecast_summary.csv'))
-    print(overall_errs_df)
+    ## Overall Error, averaged over every hour, location, and replication
+    ## Bounds from +/- 1std for replications
+    table1 = summary_table(df, group_vars = ["Model", "rep"], bound_vars ="rep") 
+    print(f"Writing overall error summary to {osp.join(out_dir, 'overall.csv')}")
+    table1.to_csv(osp.join(out_dir, "overall.csv"), index=False)
+
+    ## Error by Station, averaged over all times and replications. Bounds from reps
+    table_st = summary_table(df, group_vars = ["Model", "stid", "rep"], bound_vars ="rep")
+    print(f"Writing by station error summary to {osp.join(out_dir, 'by_stid.csv')}")
+    table_st.to_csv(osp.join(out_dir, "by_stid.csv"), index=False)
+    ## Error by hour of day (0-23)
+    ## averaged over all stations and days and reps, fixed hour 0 at 00:00 UTC
+    df["hod"] = pd.to_datetime(df.date_time).dt.hour
+    table_hod = summary_table(df, group_vars = ["Model", "hod", "rep"], bound_vars ="rep")       
+    print(f"Writing by hour of day error summary to {osp.join(out_dir, 'by_hod.csv')}")
+    table_hod.to_csv(osp.join(out_dir, "by_hod.csv"), index=False)
+
+    ## Error by hour & day, averaged over all stations and reps
+    table_t = summary_table(df, group_vars = ["Model", "date_time", "rep"], bound_vars ="rep")
+    print(f"Writing per date time error summary to {osp.join(out_dir, 'by_dt.csv')}")
+    table_t.to_csv(osp.join(out_dir, "by_dt.csv"), index=False)
+
+
 
 

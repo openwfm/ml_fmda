@@ -7,26 +7,26 @@ data_dir: "data/rocky_fmda" # Directory for formatted FMDA data dictionaries
 
 # Model architecture grids
 model_architecture:
-    recurrent_layers: [["lstm"], ["lstm", "lstm"], ['lstm', 'lstm', 'lstm']]
-    dense_layers: [[], ["dense"], ["dense", "dense"], ["dense", "dense", "dense"]]
-    units: [8, 16, 32, 64, 128]
+    recurrent_layers: [["lstm"], ["lstm", "lstm"]]
+    dense_layers: [[], ["dense"]]
+    units: [8, 16, 32]
 
 # Optimization parameters grid
 optimization:
-    learning_rate: [0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
-    batch_size: [16, 32, 64, 128, 256]
-    dropout: [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
-
+    learning_rate: [0.01, 0.005, 0.001, 0.0005]
+    batch_size: [16, 32, 64]
+    dropout: [0.1, 0.2, 0.3]
 
 # Time Period
 f_start: "2023-01-01T00:00:00Z" # first forecast time
-f_end: "2023-06-30T23:00:00Z" # last forecast time
+f_end: "2023-01-04T23:00:00Z" # last forecast time
 forecast_hours: 48 # number of hours to run forecast before re-initializing (matters for RNN and ODE baseline, has no effect on static ML models nor on climatology). Hours determined by max forecast window of HRRR
 n_reps: 10 # Number of replications to train/forecast, used to estimate uncertainty in forecast accuracy metrics
 train_start: "2022-01-01T00:00:00Z" # first time for training
-train_end: "2022-06-30T23:00:00Z" # last time for training
+train_end: "2022-01-11T23:00:00Z" # last time for training
 val_hours: 48 # number of hours to use at end of training window (tstart, tend) to use for validation data
 space_test_frac: 0.1 # Percentage of data based on location for val and test
 bbox: '[37,-111,46,-95]' # spatial bounding box
 features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'rain', 'hod', 'doy'] # inputs to ML models
+
 

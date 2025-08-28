@@ -100,7 +100,7 @@ For running the corecast analysis, it is recommened to run on Aleraan or another
 1. Run setup and analysis with controller shell file
 
 ```
-sbatch forecast_analysis_controller.sh forecasts/fmc_forecast_test/ data/rocky_fmda
+sbatch forecast_analysis_controller.sh forecasts/fmc_forecast_test/ data/rocky_fmda etc/forecast_config.yaml
 ```
 
 
