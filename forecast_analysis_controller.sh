@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=fsetup
 #SBATCH --output=logs/forecast_analysis_%j.out
-#SBATCH --ntasks=1
+#SBATCH --ntasks=2
 #SBATCH --partition=math-alderaan
 
 # Script to run forecast analysis for RNN and baseline models
