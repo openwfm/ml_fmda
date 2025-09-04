@@ -13,6 +13,7 @@ import pandas as pd
 import numpy as np
 import yaml
 from sklearn.metrics import mean_squared_error
+import time
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -25,7 +26,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import read_yml, read_pkl, Dict, str2time, time_range
 import data_funcs
-import reproducibility
+#import reproducibility
 from models.moisture_rnn import RNN_Flexible, RNNData, scale_3d
 
 # Config and Params
@@ -106,20 +107,22 @@ if __name__ == '__main__':
             pickle.dump(ml_data, f)
 
     # Extract a validation period for controlling early stopping, no test period
-    train, val, test = data_funcs.cv_data_wrap(ml_data, fstart=None, fend=None, tstart=tstart, tend=tend, val_hours=conf.val_hours, test_frac = conf.space_test_frac, random_state=42)    
+    # NOTE: if random_state set to anything besides None, determinstic TF triggered
+    train, val, test = data_funcs.cv_data_wrap(ml_data, fstart=None, fend=None, tstart=tstart, tend=tend, val_hours=conf.val_hours, test_frac = conf.space_test_frac, random_state=None)    
 
 
     # Train RNN 
     # Check if running deterministic, that should only be for testing as it is slower
     print('~'*75)
     print('Training RNN')
-    deterministic = os.environ.get("TF_DETERMINISTIC_OPS", "0")
+    deterministic = os.environ.get("TF_DETERMINISTIC_OPS", "0") == '1'
     if deterministic: print("    Tensorflow running in deterministic mode for reproduciblity"); print("    Warning: this is slower and should only be for testing")
     else: print("    Tensorflow running in non-deterministic mode for better performance, but won't be exactly reproducible")
 
     dat = RNNData(train, val, test=None, method="random", timesteps=params.timesteps, random_state=None, features_list = params.features_list)
     dat.scale_data()
     rnn = RNN_Flexible(params=params)
+    code_start = time.time() # time fitting to print out
     rnn.fit(dat.X_train, dat.y_train,
             validation_data=(dat.X_val, dat.y_val),
             batch_size = params["batch_size"],
@@ -130,6 +133,7 @@ if __name__ == '__main__':
 
     # Fitted and Val Metrics
     fitted = rnn.predict(dat.X_train)
+    code_end = time.time()
     mse_fit = mean_squared_error(fitted.flatten(), dat.y_train.flatten())
     valpreds = rnn.predict(dat.X_val)
     mse_val = mean_squared_error(valpreds.flatten(), dat.y_val.flatten())
@@ -141,6 +145,7 @@ if __name__ == '__main__':
     rnn.save_weights(osp.join(t_dir, "rnn.weights.h5"), overwrite=True)
     print(f"Saving model object to: {osp.join(t_dir, 'rnn.keras')}")
     rnn.save(osp.join(t_dir, "rnn.keras"))
-
+    elapsed = code_end - code_start
+    print(f"Code Runtime (seconds): {elapsed:.2f}")
 
 
