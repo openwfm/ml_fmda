@@ -4,7 +4,7 @@
 #SBATCH --job-name=train
 #SBATCH --partition=math-alderaan
 #SBATCH --output=logs/train_%j.out
-#SBATCH --ntasks=1
+#SBATCH --ntasks=2
 #SBATCH --mem=16G
 
 # NOTE: different scripts than forecast analysis which is used to estimate forecast error with spatiotemporal CV

@@ -5,7 +5,7 @@
 #SBATCH --partition=math-alderaan-gpu-cuda12
 #SBATCH --gres=gpu:a100:1
 #SBATCH --output=logs/train_%j.out
-#SBATCH --ntasks=1
+#SBATCH --ntasks=2
 #SBATCH --mem=16G
 
 # Credit to user lorellis for aspects of this code structure

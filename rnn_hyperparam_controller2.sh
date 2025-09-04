@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=tune_opt
 #SBATCH --output=logs/rnn_hyperparam_%j.out
-#SBATCH --ntasks=1
+#SBATCH --ntasks=2
 #SBATCH --partition=math-alderaan
 
 
