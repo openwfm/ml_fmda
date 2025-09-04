@@ -4,7 +4,7 @@
 #SBATCH --job-name=fmda_data
 #SBATCH --partition=math-alderaan
 #SBATCH --output=logs/fmda_data_%j.out
-#SBATCH --ntasks=1
+#SBATCH --ntasks=2
 #SBATCH --mem=16G
 
 # Control script to build datasets for fuel moisture models
