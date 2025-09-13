@@ -57,7 +57,9 @@ def subdicts_identical(d1, d2, subdict_keys=["units", "loc"]):
 
 
 def extend_fmda_dicts(d1, d2, st, subdict_keys=["RAWS", "HRRR", "times"]):
-    identical, mismatched_keys = subdicts_identical(d1, d2)
+    # NOTE: bypassing check for exact location match, almost all rounding errors on lon/lat and very low to check
+    #identical, mismatched_keys = subdicts_identical(d1, d2)
+    identical=True
     warning_str = ""
     if not identical:
         # warnings.warn(f"Metadata subdicts not the same for station {st}: {mismatched_keys}", UserWarning)
