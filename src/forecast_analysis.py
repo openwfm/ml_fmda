@@ -85,6 +85,7 @@ if __name__ == '__main__':
     print(f"Forecast config file: {osp.join(CONFIG_DIR, 'forecast_analysis.yaml')}")
 
     # Run Models
+    baselines = fconf.baselines
     te_sts = [*test.keys()]
     column_types = {
         'preds': np.float64,
@@ -96,63 +97,66 @@ if __name__ == '__main__':
     # ODE
     # Loop over forecast period, get spinup hours and forecast hours for each station
     # might not be enough data for each test station each time
-    print('~'*75)
-    print("Running ODE")
-    params = params_models['ode']
-    ode = ODE_FMC(params=params)
-    ode_output=pd.DataFrame({col: pd.Series(dtype=dt) for col, dt in column_types.items()}) # initialize empty dataframe
-   
-    for ft in forecast_periods:
-        print("~"*50)
-        print(f"{ft=}")
-        ts = time_range(ft, ft+relativedelta(hours = fconf.forecast_hours-1))
-        ode_data = ODEData(ml_data, te_sts, ts, spinup=params['spinup_hours'])
-        # Small chance of insufficient data for all stations sampled for test set
-        if len(ode_data)>1:
-            m_ode, fm = ode.run_model(ode_data, hours=ts.shape[0]+params['spinup_hours'], h2=params['spinup_hours'])
-            sts = [*ode_data.keys()]
-            df_temp = pd.DataFrame({'preds': m_ode.flatten(), 'stid': np.repeat(sts, m_ode.shape[1]), 'date_time':np.tile(ts, m_ode.shape[0]).astype(str), 'fm': fm.flatten()})
-            ode_output = pd.concat([ode_output, df_temp], ignore_index=True)
-   
-    del ode_data
-    gc.collect()
+    if 'ode' in baselines:
+        print('~'*75)
+        print("Running ODE")
+        params = params_models['ode']
+        ode = ODE_FMC(params=params)
+        ode_output=pd.DataFrame({col: pd.Series(dtype=dt) for col, dt in column_types.items()}) # initialize empty dataframe
+       
+        for ft in forecast_periods:
+            print("~"*50)
+            print(f"{ft=}")
+            ts = time_range(ft, ft+relativedelta(hours = fconf.forecast_hours-1))
+            ode_data = ODEData(ml_data, te_sts, ts, spinup=params['spinup_hours'])
+            # Small chance of insufficient data for all stations sampled for test set
+            if len(ode_data)>1:
+                m_ode, fm = ode.run_model(ode_data, hours=ts.shape[0]+params['spinup_hours'], h2=params['spinup_hours'])
+                sts = [*ode_data.keys()]
+                df_temp = pd.DataFrame({'preds': m_ode.flatten(), 'stid': np.repeat(sts, m_ode.shape[1]), 'date_time':np.tile(ts, m_ode.shape[0]).astype(str), 'fm': fm.flatten()})
+                ode_output = pd.concat([ode_output, df_temp], ignore_index=True)
+       
+        del ode_data
+        gc.collect()
 
     ## ML Models
     features_list = fconf.features_list
 
     ## Static XGBoost
-    print('~'*75)
-    print("Running XGB")
-    params = params_models['xgb']
-    params.update({'features_list': features_list})
-    dat = data_funcs.StaticMLData(train, val, test, features_list = features_list)
-    dat.scale_data()
-    xgb_model = XGB(params=params)
-    xgb_model.fit(dat.X_train, dat.y_train)
-    m_xgb = xgb_model.predict(dat.X_test) # Shape (n_loc*n_time, )
-    ## Format output with columns for time and STID
-    ## repeat test times for each unique station
-    xgb_output = pd.DataFrame({'preds': m_xgb, 'stid': dat.test_locs, 'date_time': dat.test_times.astype(str), 'fm': dat.y_test})
+    if 'xgb' in baselines:
+        print('~'*75)
+        print("Running XGB")
+        params = params_models['xgb']
+        params.update({'features_list': features_list})
+        dat = data_funcs.StaticMLData(train, val, test, features_list = features_list)
+        dat.scale_data()
+        xgb_model = XGB(params=params)
+        xgb_model.fit(dat.X_train, dat.y_train)
+        m_xgb = xgb_model.predict(dat.X_test) # Shape (n_loc*n_time, )
+        ## Format output with columns for time and STID
+        ## repeat test times for each unique station
+        xgb_output = pd.DataFrame({'preds': m_xgb, 'stid': dat.test_locs, 'date_time': dat.test_times.astype(str), 'fm': dat.y_test})
 
-    # Clear up space
-    del dat
-    gc.collect()
+        # Clear up space
+        del dat
+        gc.collect()
 
     # Climatology
     ## Was run once for all stations, not with a train/test split
     ## Based on current random test set, get climatology predictions for whole year
     ## Get FM from test data
-    clim_file = fconf.climatology_file
-    clim = read_pkl(osp.join(PROJECT_ROOT, clim_file))
-    clim = clim[clim.index.isin(te_sts)]
-    clim = clim.loc[:, clim.columns.isin(test_times)]
-    clim = clim.reset_index().melt(id_vars='stid', var_name='date_time', value_name='preds')
-    clim = clim.sort_values(by=["stid", "date_time"])
-    fm = pd.concat([subdict['data'][["stid", "date_time", "fm"]] for subdict in test.values()], ignore_index=True)
-    fm.date_time = fm.date_time.astype(str)
-    clim.date_time = clim.date_time.astype(str)
-    clim_output = clim.merge(fm, on=["stid", "date_time"], how="left")
-    clim_output = clim_output[(~clim_output.preds.isna()) & (~clim_output.fm.isna())]
+    if 'clim' in baselines:
+        clim_file = fconf.climatology_file
+        clim = read_pkl(osp.join(PROJECT_ROOT, clim_file))
+        clim = clim[clim.index.isin(te_sts)]
+        clim = clim.loc[:, clim.columns.isin(test_times)]
+        clim = clim.reset_index().melt(id_vars='stid', var_name='date_time', value_name='preds')
+        clim = clim.sort_values(by=["stid", "date_time"])
+        fm = pd.concat([subdict['data'][["stid", "date_time", "fm"]] for subdict in test.values()], ignore_index=True)
+        fm.date_time = fm.date_time.astype(str)
+        clim.date_time = clim.date_time.astype(str)
+        clim_output = clim.merge(fm, on=["stid", "date_time"], how="left")
+        clim_output = clim_output[(~clim_output.preds.isna()) & (~clim_output.fm.isna())]
 
     # RNN
     # Train once, forecast separate times for each period too acount for initial state
@@ -198,9 +202,10 @@ if __name__ == '__main__':
     # Use same h5 file, separate keys for different models (NOTE: mode w vs a for write/append)
     print(f"Writing forecast output for RNN and baselines {fconf.baselines} to file {out_file}")
     rnn_output.to_hdf(out_file, key="rnn", mode="w")
-    xgb_output.to_hdf(out_file, key="xgb", mode="a")
-    ode_output.to_hdf(out_file, key="ode", mode="a")
-    clim_output.to_hdf(out_file, key="clim", mode="a")
+    
+    if 'ode' in baselines: xgb_output.to_hdf(out_file, key="xgb", mode="a")
+    if 'xgb' in baselines: xgb_output.to_hdf(out_file, key="xgb", mode="a")
+    if 'clim' in baselines: clim_output.to_hdf(out_file, key="clim", mode="a")
 
 
 

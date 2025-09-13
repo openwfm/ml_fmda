@@ -107,7 +107,9 @@ if __name__ == '__main__':
     files = os.listdir(osp.join(f_dir, 'forecast_outputs'))
     files = sorted(files, key=lambda x: int(re.search(r'_(\d+)\.h5$', x).group(1))) # Sort by task number, shouldn't be necessary but for clarity
     ## Read and combine into dataframe, add indicator column for replication number from file name
-    key_list =["rnn", "ode", "xgb", "clim"]
+    baselines = fconf.baselines
+    key_list = ["rnn"] + baselines
+    # key_list =["rnn", "ode", "xgb", "clim"]
     df = read_hdf_list(files, key_list)
     #rnn = read_hdf_list(files, key="rnn")
     #ode = read_hdf_list(files, key="ode")
