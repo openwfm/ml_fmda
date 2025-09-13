@@ -110,7 +110,7 @@ if __name__ == '__main__':
     print("~"*75)
     data = data_funcs.combine_fmda_files(file_paths)
     ml_dict = data_funcs.build_ml_data(data, verbose=False)
-    df_valid = pd.read_csv(osp.join(PROJECT_ROOT, project_paths.valid_path))
+    df_valid = pd.read_csv(osp.join(PROJECT_ROOT, fconf.valid_path))
     ml_dict = data_funcs.remove_invalid_data(ml_dict, df_valid)
     data_file =  osp.join(PROJECT_ROOT, f_dir, "ml_data.pkl")
     with open(data_file, 'wb') as f:
