@@ -203,7 +203,7 @@ if __name__ == '__main__':
     print(f"Writing forecast output for RNN and baselines {fconf.baselines} to file {out_file}")
     rnn_output.to_hdf(out_file, key="rnn", mode="w")
     
-    if 'ode' in baselines: xgb_output.to_hdf(out_file, key="xgb", mode="a")
+    if 'ode' in baselines: xgb_output.to_hdf(out_file, key="ode", mode="a")
     if 'xgb' in baselines: xgb_output.to_hdf(out_file, key="xgb", mode="a")
     if 'clim' in baselines: clim_output.to_hdf(out_file, key="clim", mode="a")
 
