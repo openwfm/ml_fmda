@@ -43,7 +43,7 @@ params_data = Dict(read_yml(osp.join(CONFIG_DIR, "variable_metadata", "data_filt
 # API Module Functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def get_stations(bbox):
+def get_stations(bbox, source="api"):
     """
     Get list of RAWS station ID strings given input spatial domain bbox. Return a polars dataframe of RAWS sensor data and associated units. Shift the start time by 1 hour since most stations return data some minutes after requested time, we do this for time interpolation to have endpoints
     
@@ -52,23 +52,44 @@ def get_stations(bbox):
     bounding_box : list of numeric
         Format [min_lat, min_lon, max_lat, max_lon] to match wrfxpy
         NOTE different format used by Synoptic, this function will convert internally
-
+    source: str, one of "api" or "stash"
         
     Returns:
     --------
-    st : list
-        List of RAWS STIDs
+    st : DF
+        dataframe of RAWS STIDs
 
     """ 
+    if source == "api":
+        sts = _get_stations_api(bbox)
+    elif source == "stash":
+        sts = _get_stations_stash(bbox)
+    else:
+        raise ValueError(f"Input source not one of api/stash, {source=}")
+
+    return sts
+
+def _get_stations_api(bbox):
+    """
+    Get list of RAWS inside bbox from synoptic API
+    """
     bbox_reordered = [bbox[1], bbox[0], bbox[3], bbox[2]]
     sts = synoptic.Metadata(
         bbox=bbox_reordered,
         vars=["fuel_moisture"], # We only want to include stations with FMC. Other "raws_vars" are bonus later
     ).df()
-
     return sts
 
-
+def _get_stations_stash(bbox):
+    """
+    Get list of RAWS inside bbox from RAWS stash, path found in global paths etc/paths.yaml
+    """
+    print(f"Getting list of stations inside {bbox} from: {raws_stash_path}/stations.pkl")
+    sts = pd.read_pickle(osp.join(raws_stash_path, "stations.pkl"))
+    sts["LATITUDE"] = pd.to_numeric(sts["LATITUDE"], errors="coerce")
+    sts["LONGITUDE"] = pd.to_numeric(sts["LONGITUDE"], errors="coerce")
+    sts = sts[(sts.LATITUDE>=bbox[0]) & (sts.LONGITUDE>=bbox[1]) & (sts.LATITUDE<=bbox[2]) & (sts.LONGITUDE <= bbox[3])]
+    return sts
 
     
 def vals_to_na(df, col, verbose=True):
