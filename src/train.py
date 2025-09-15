@@ -32,7 +32,6 @@ from models.moisture_rnn import RNN_Flexible, RNNData, scale_3d
 # Config and Params
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 params_models = read_yml(osp.join(CONFIG_DIR, "params_models.yaml"))
-project_paths = Dict(read_yml(osp.join(CONFIG_DIR, "paths.yaml")))
 
 
 def build_training_dict(days, data_dir):
@@ -54,7 +53,7 @@ def build_training_dict(days, data_dir):
     # Read and Format Data
     data = data_funcs.combine_fmda_files(file_paths)
     ml_dict = data_funcs.build_ml_data(data, verbose=False)
-    df_valid = pd.read_csv(osp.join(PROJECT_ROOT, project_paths.valid_path))
+    df_valid = pd.read_csv(osp.join(PROJECT_ROOT, conf.valid_path))
     ml_dict = data_funcs.remove_invalid_data(ml_dict, df_valid)
     return ml_dict
 
