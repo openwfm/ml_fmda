@@ -1,5 +1,5 @@
 # Module to test read/write of HRRR data
-
+# NOTE: as of Sept 18, 2025 there are extra stations in the query: SDSS2. TODO: update test to be robust to station changes. Also, print whether the query was successful at all to just check package install
 
 import os.path as osp
 import os
@@ -32,12 +32,12 @@ if __name__ == '__main__':
     raws_dict = rr.build_raws_dict_stash(start, end, bbox)
     x = np.array(raws_dict["BRLW4"]["RAWS"]["fm"].to_numpy(), dtype=float)
     x = np.round(x, 8)
-
-
     if [*raws_dict.keys()] != stids:
         warnings.warn("Returned STIDs don't match expected")
     if hash_ndarray(x) != BRLW4_hash:
         warnings.warn("Returned RAWS data for st BRLW4 doesn't match expected")
+        print(f"{hash_ndarray(x)=}")
+        print(f"{BRLW4_hash=}")
 
     if [*raws_dict.keys()] == stids and hash_ndarray(x) == BRLW4_hash:
         print()
