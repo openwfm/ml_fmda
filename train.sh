@@ -6,7 +6,7 @@
 #SBATCH --gres=gpu:a100:1
 #SBATCH --output=logs/train_%j.out
 #SBATCH --ntasks=2
-#SBATCH --mem=16G
+#SBATCH --mem=32G
 
 # Credit to user lorellis for aspects of this code structure
 
