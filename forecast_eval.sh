@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name=feval
 #SBATCH --output=logs/forecast_eval_%j.out
-#SBATCH --ntasks=1
+#SBATCH --ntasks=2
 #SBATCH --partition=math-alderaan
-#SBATCH --mem=8G
+#SBATCH --mem=64G
 
 # Shell script to combine model outputs and calculate errors for each replication in input model directory
 # Credit to user lorellis for structure of the code
