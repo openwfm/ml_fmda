@@ -43,5 +43,5 @@ job_id=$(sbatch --array=1-$N_REPS --mem=32G --output="$FORECAST_DIRECTORY/logs/f
 # Wait for job to finish and run eval
 # NOT working as of June17, get error: sbatch: error: Batch job submission failed: No partition specified or system default partition
 echo "Evaluating Forecast Accuracy"
-sbatch --dependency=afterok:$job_id forecast_eval.sh $MODEL_DIRECTORY
+sbatch --partition=math-alderaan-short --mem=64G  --dependency=afterok:$job_id forecast_eval.sh $MODEL_DIRECTORY
 
