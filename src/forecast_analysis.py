@@ -86,6 +86,7 @@ if __name__ == '__main__':
 
     # Run Models
     baselines = fconf.baselines
+    if baselines is None: baselines = []
     te_sts = [*test.keys()]
     column_types = {
         'preds': np.float64,
