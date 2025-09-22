@@ -4,6 +4,7 @@
 ## Stashed RAWS data retrieved from MesoDB, maintained by Angel Farguell, ask him for access
 ## Credit to Brian Blaylock for SynopticPy package
 ## NOTE: Polars dataframes are used in SynopticPy instead of pandas. We use polars for the code here but convert to pandas to allow for pickle save which is listed as not implemented in polars as of Dec 17 2024
+## Metadata files for RAWS in etc/variable_metadata/raws_metadata.yaml, and filters for identifying bad RAWS data at etc/variable_metadata/data_params.yaml 
 
 import sys
 import synoptic
@@ -343,7 +344,6 @@ def build_raws_dict_stash(start, end, bbox, rename=True, verbose = True, save_pa
     if type(end) is str:
         end = str2time(end)
     sts = get_stations(bbox)
-
     # Based on time arguments, get list of needed file paths in stash
     # Offset by 1 hr for data retrieval, so interpolation has endpoints
     times = time_range(start-relativedelta(hours=1), end+relativedelta(hours=1))
