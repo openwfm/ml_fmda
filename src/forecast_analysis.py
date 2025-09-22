@@ -147,7 +147,7 @@ if __name__ == '__main__':
     ## Get FM from test data
     if 'clim' in baselines:
         clim_file = fconf.climatology_file
-        clim = read_pkl(osp.join(PROJECT_ROOT, clim_file))
+        clim = read_pkl(clim_file)
         clim = clim[clim.index.isin(te_sts)]
         clim = clim.loc[:, clim.columns.isin(test_times)]
         clim = clim.reset_index().melt(id_vars='stid', var_name='date_time', value_name='preds')
