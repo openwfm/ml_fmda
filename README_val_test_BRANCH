@@ -1,3 +1,19 @@
 The branch val_test is to compare how to construct validation data used to control early stopping
 - Default: Validation data constructed by taking random sample of stations and extracting final 48 hours of training period. Potential flaws: very small dataset. Strengths: time and space independent of training set
-- New for testing: just use simple random sample, mix up time and space. Potential flaws: now mixing up time and space for train/val. Strengths: larger dataset, it might not matter to have the val set meticulously indeppendent of train, it's just to stop epochs 
+- New for testing: just use simple random sample, mix up time and space. Potential flaws: now mixing up time and space for train/val. Strengths: larger dataset, it might not matter to have the val set meticulously indeppendent of train, it's just to stop epochs
+
+Results and conclusions:
+Ran rocky 2024 forecast with two different configs, bias and MSE went down for RNN, but by relatively small amount within the original 1-standard error. Considering this weak to moderate evidence for an improvement in accuracy, but not statistically robust enough to motivate a theoretical result.
+
+Old Val:
+Model,bias_mean,bias_std,mse_mean,mse_std
+rnn,-0.20836744722582345,0.32350390394485984,9.275022173057948,1.2472146577419616
+ode,-0.35246370146198225,0.3428719943644666,17.537595795535065,1.6199477285113835
+xgb,-0.35246370146198225,0.3428719943644666,17.537595795535065,1.6199477285113835
+clim,-0.6268943320750295,0.45272128701201525,24.769109827671404,1.8157774613705742
+
+New Val:
+Model,bias_mean,bias_std,mse_mean,mse_std
+rnn,-0.11873827862581067,0.2972606649366566,9.069820844949795,1.3849311460508797
+xgb,-0.34170017415899634,0.3008878695566412,17.616682171531817,1.8247080129477566
+clim,-0.6268943320750295,0.45272128701201525,24.769109827671404,1.8157774613705742 
