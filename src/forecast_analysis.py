@@ -95,6 +95,69 @@ if __name__ == '__main__':
         'fm': np.float64
     } # Used to construct output dataframes
 
+    ## ML Models
+    features_list = fconf.features_list
+
+    # RNN
+    # Train once, forecast separate times for each period too acount for initial state
+    # Loop over forecast periods and build test data
+    # Some stations might have missing data for given forecast test period, need to filter those out
+    print('~'*75)
+    print('Running RNN')
+    params = params_models['rnn']
+    params.update({'features_list': features_list})
+    dat = RNNData(train, val, test=None, method="random", timesteps=fhours, random_state=None, features_list = params["features_list"]) 
+    dat.scale_data()
+    rnn = RNN_Flexible(params=params)
+    rnn.fit(dat.X_train, dat.y_train,
+            validation_data=(dat.X_val, dat.y_val),
+            batch_size = params["batch_size"],
+            epochs = params["epochs"],
+            #epochs = 1, 
+            verbose_fit = True,
+            plot_history=False
+           ) 
+    rnn_output=pd.DataFrame({col: pd.Series(dtype=dt) for col, dt in column_types.items()}) # initialize empty dataframe
+    for ft in forecast_periods:
+        ts = time_range(ft, ft+relativedelta(hours = fconf.forecast_hours-1))
+        # Extract needed times, remove stations with missing data
+        test2 = data_funcs.get_sts_and_times(test, te_sts, ts)
+        test2 = {k: v for k, v in test2.items() if v["data"].shape[0] == ts.shape[0]}
+        # Small chance of no data for all stations sampled for test set within given period. 
+        # NOTE: we get around this by running many replications, systematically searching for 
+        # data availability is too inefficient 
+        if len(test2) > 1:
+            X_test = dat._combine_data(test2, params["features_list"])
+            # Apply fitted scaler from RNNData to test data
+            X_test = scale_3d(X_test, dat.scaler)
+            sts = dat._combine_data(test2, ['stid'])
+            y_test = dat._combine_data(test2, ['fm'])
+            assert (X_test.shape[0] == len(test2)) and (X_test.shape[1]==ts.shape[0]) and (X_test.shape[0:2]==y_test.shape[0:2])
+            # Run predictiona and format for output
+            m_rnn = rnn.predict(X_test)
+            df_temp = pd.DataFrame({'preds': m_rnn.flatten(), 'stid': sts.flatten(), 'date_time':np.tile(ts, m_rnn.shape[0]).astype(str), 'fm': y_test.flatten()})
+            rnn_output = pd.concat([rnn_output, df_temp], ignore_index=True)
+
+
+    ## Static XGBoost
+    if 'xgb' in baselines:
+        print('~'*75)
+        print("Running XGB")
+        params = params_models['xgb']
+        params.update({'features_list': features_list})
+        dat = data_funcs.StaticMLData(train, val, test, features_list = features_list)
+        dat.scale_data()
+        xgb_model = XGB(params=params)
+        xgb_model.fit(dat.X_train, dat.y_train)
+        m_xgb = xgb_model.predict(dat.X_test) # Shape (n_loc*n_time, )
+        ## Format output with columns for time and STID
+        ## repeat test times for each unique station
+        xgb_output = pd.DataFrame({'preds': m_xgb, 'stid': dat.test_locs, 'date_time': dat.test_times.astype(str), 'fm': dat.y_test})
+
+        # Clear up space
+        del dat
+        gc.collect()
+
     # ODE
     # Loop over forecast period, get spinup hours and forecast hours for each station
     # might not be enough data for each test station each time
@@ -120,27 +183,6 @@ if __name__ == '__main__':
         del ode_data
         gc.collect()
 
-    ## ML Models
-    features_list = fconf.features_list
-
-    ## Static XGBoost
-    if 'xgb' in baselines:
-        print('~'*75)
-        print("Running XGB")
-        params = params_models['xgb']
-        params.update({'features_list': features_list})
-        dat = data_funcs.StaticMLData(train, val, test, features_list = features_list)
-        dat.scale_data()
-        xgb_model = XGB(params=params)
-        xgb_model.fit(dat.X_train, dat.y_train)
-        m_xgb = xgb_model.predict(dat.X_test) # Shape (n_loc*n_time, )
-        ## Format output with columns for time and STID
-        ## repeat test times for each unique station
-        xgb_output = pd.DataFrame({'preds': m_xgb, 'stid': dat.test_locs, 'date_time': dat.test_times.astype(str), 'fm': dat.y_test})
-
-        # Clear up space
-        del dat
-        gc.collect()
 
     # Climatology
     ## Was run once for all stations, not with a train/test split
@@ -158,46 +200,6 @@ if __name__ == '__main__':
         clim.date_time = clim.date_time.astype(str)
         clim_output = clim.merge(fm, on=["stid", "date_time"], how="left")
         clim_output = clim_output[(~clim_output.preds.isna()) & (~clim_output.fm.isna())]
-
-    # RNN
-    # Train once, forecast separate times for each period too acount for initial state
-    # Loop over forecast periods and build test data
-    # Some stations might have missing data for given forecast test period, need to filter those out
-    print('~'*75)
-    print('Running RNN')
-    params = params_models['rnn']
-    params.update({'features_list': features_list})
-    dat = RNNData(train, val, test=None, method="random", timesteps=fhours, random_state=None, features_list = params["features_list"])
-    dat.scale_data()
-    rnn = RNN_Flexible(params=params)
-    rnn.fit(dat.X_train, dat.y_train,
-            validation_data=(dat.X_val, dat.y_val),
-            batch_size = params["batch_size"],
-            epochs = params["epochs"],
-            verbose_fit = True,
-            plot_history=False
-           )
-    rnn_output=pd.DataFrame({col: pd.Series(dtype=dt) for col, dt in column_types.items()}) # initialize empty dataframe
-    for ft in forecast_periods:
-        ts = time_range(ft, ft+relativedelta(hours = fconf.forecast_hours-1))
-        # Extract needed times, remove stations with missing data
-        test2 = data_funcs.get_sts_and_times(test, te_sts, ts)
-        test2 = {k: v for k, v in test2.items() if v["data"].shape[0] == ts.shape[0]}
-        # Small chance of no data for all stations sampled for test set within given period. 
-        # NOTE: we get around this by running many replications, systematically searching for 
-        # data availability is too inefficient 
-        if len(test2) > 1:
-            X_test = dat._combine_data(test2, params["features_list"])
-            # Apply fitted scaler from RNNData to test data
-            X_test = scale_3d(X_test, dat.scaler)
-            sts = dat._combine_data(test2, ['stid'])
-            y_test = dat._combine_data(test2, ['fm'])
-            assert (X_test.shape[0] == len(test2)) and (X_test.shape[1]==ts.shape[0]) and (X_test.shape[0:2]==y_test.shape[0:2])
-            # Run predictiona and format for output
-            m_rnn = rnn.predict(X_test)
-            df_temp = pd.DataFrame({'preds': m_rnn.flatten(), 'stid': sts.flatten(), 'date_time':np.tile(ts, m_rnn.shape[0]).astype(str), 'fm': y_test.flatten()})
-            rnn_output = pd.concat([rnn_output, df_temp], ignore_index=True)
-
 
     # Write output
     # Use same h5 file, separate keys for different models (NOTE: mode w vs a for write/append)
