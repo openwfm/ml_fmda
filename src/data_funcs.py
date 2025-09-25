@@ -351,7 +351,7 @@ def cv_space_setup(dict0, val_times, test_times, test_frac = 0.1, verbose=True, 
 
     # Excluding test locs, select set with data availability
     # in the val time period
-    val_ids = get_stids_in_timeperiod(dict0, val_times, all_times=True)
+    val_ids = get_stids_in_timeperiod(dict0, val_times, all_times=False)
     val_ids = list(set(val_ids) - set(test_locs))
     val_ids.sort() # Sort alphabetically since set operations don't guarantee reproducibility
     random.shuffle(val_ids)
@@ -417,8 +417,10 @@ def cv_data_wrap(d, fstart, fend, tstart, tend, val_hours=48, test_frac=0.1, ran
         - all_test_times (Bool): whether to enforce that all test set of stations have observed FMC available for all requested forecast times. NOTE: if False, possible to get test sts with very few available time for calculating accuracy
     """
     
-    train_times = time_range(tstart, tend-relativedelta(hours=val_hours)) # Remove val_hours from train period
-    val_times = time_range(tend-relativedelta(hours=val_hours-1), tend) # Get val_hours number of hours from the end of train window
+    #train_times = time_range(tstart, tend-relativedelta(hours=val_hours)) # Remove val_hours from train period
+    train_times = time_range(tstart, tend)
+    val_times = time_range(tstart, tend) # all train times for val
+    #val_times = time_range(tend-relativedelta(hours=val_hours-1), tend) # Get val_hours number of hours from the end of train window
     if (fstart is None) and (fend is None):
         test_times = None
     else:

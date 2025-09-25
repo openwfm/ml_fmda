@@ -154,8 +154,8 @@ def build_training_batches(X_list, y_list,
     
     if verbose:
         print(f"{batch_size=}")
-        print(f"X train shape: {X.shape}")
-        print(f"y train shape: {y.shape}")
+        print(f"X shape: {X.shape}")
+        print(f"y shape: {y.shape}")
         print(f"Unique locations: {len(np.unique(loc_indices))}")
         print(f"Total Batches: {X.shape[0] // batch_size}")
     
@@ -218,10 +218,16 @@ class RNNData(MLData):
 
         self.X_val, self.y_val = (None, None)
         if val:
-            self.X_val = self._combine_data(val, self.features_list)
-            self.y_val = self._combine_data(val, [y_col])
+            X_list, y_list, t_list = staircase_dict(val, sequence_length = self.timesteps, features_list = self.features_list)
+            X_val, y_val, loc_val_indices = build_training_batches(
+                X_list, y_list,
+                method=method, random_state = None 
+            )
+            self.X_val = X_val
+            self.y_val = y_val
             self.val_locs = [*val.keys()]
-            assert len(self.val_locs) == self.X_val.shape[0], f"Mismatch number of unique stations in input val set and resulting X_val array, {len(self.val_locs)=}, {self.X_val.shape[0]=}"
+            # Commented out line below is for time ordered val set, which we are testing removing
+            #assert len(self.val_locs) == self.X_val.shape[0], f"Mismatch number of unique stations in input val set and resulting X_val array, {len(self.val_locs)=}, {self.X_val.shape[0]=}"
 
         self.X_test, self.y_test = (None, None)
         if test:
