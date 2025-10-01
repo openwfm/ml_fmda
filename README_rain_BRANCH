@@ -1,0 +1,7 @@
+This branch is intended to test things related to rain. 
+
+TODO:
+- Flag rain events in test set, break out accuracy statistics for rain/norain
+- Flag rain events in train set, test different loss functions
+- Test smoothed rain variable
+- Test min/max scaled rain 
