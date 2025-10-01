@@ -2,10 +2,10 @@
 
 
 #SBATCH --job-name=train
-#SBATCH --partition=math-alderaan
+#SBATCH --partition=math-alderaan-gpu-cuda12
 #SBATCH --output=logs/train_%j.out
 #SBATCH --ntasks=2
-#SBATCH --mem=16G
+#SBATCH --mem=32G
 
 # NOTE: different scripts than forecast analysis which is used to estimate forecast error with spatiotemporal CV
 # this is intended to deploy a model operationally

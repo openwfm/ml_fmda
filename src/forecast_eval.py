@@ -91,6 +91,7 @@ if __name__ == '__main__':
 
     if len(sys.argv) != 2:
         print(f"Invalid arguments. {len(sys.argv)} was given but 2 expected")
+        print(f"User args: {sys.argv}")
         print(('Usage: %s <model_dir>' % sys.argv[0]))
         print("Example: python src/forecast_eval.py forecasts/fmc_forecast_test/")
         sys.exit(-1)
@@ -108,6 +109,7 @@ if __name__ == '__main__':
     files = sorted(files, key=lambda x: int(re.search(r'_(\d+)\.h5$', x).group(1))) # Sort by task number, shouldn't be necessary but for clarity
     ## Read and combine into dataframe, add indicator column for replication number from file name
     baselines = fconf.baselines
+    if baselines is None: baselines = []
     key_list = ["rnn"] + baselines
     # key_list =["rnn", "ode", "xgb", "clim"]
     df = read_hdf_list(files, key_list)

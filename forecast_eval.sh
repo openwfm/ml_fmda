@@ -10,14 +10,13 @@
 # Re-grab the variable that was passed in the run_rnn_hyperparam_model.sh script
 
 
-MODEL_DIRECTORY=$1
+MODEL_DIRECTORY="$1"
 
 # Set up environment
 source ~/.bashrc
 conda activate ml_fmda_models
 
-# Pass array number to python script and run
-
+echo python src/forecast_eval.py $MODEL_DIRECTORY
 python src/forecast_eval.py $MODEL_DIRECTORY
 
 
