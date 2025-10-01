@@ -1,3 +1,0 @@
-The branch val_test is to compare how to construct validation data used to control early stopping
-- Default: Validation data constructed by taking random sample of stations and extracting final 48 hours of training period. Potential flaws: very small dataset. Strengths: time and space independent of training set
-- New for testing: just use simple random sample, mix up time and space. Potential flaws: now mixing up time and space for train/val. Strengths: larger dataset, it might not matter to have the val set meticulously indeppendent of train, it's just to stop epochs 
