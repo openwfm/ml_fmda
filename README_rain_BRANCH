@@ -1,7 +1,11 @@
 This branch is intended to test things related to rain. 
 
 TODO:
-- Flag rain events in test set, break out accuracy statistics for rain/norain
 - Flag rain events in train set, test different loss functions
 - Test smoothed rain variable
-- Test min/max scaled rain 
+- Test min/max scaled rain
+DONE
+- Flag rain events in test set, break out accuracy statistics for rain/norain. Threshold: 0.5mm/hr
+Model,rain_flag,bias_mean,bias_std,mse_mean,mse_std,N_total,N_mean
+rnn,0.0,-0.35490948704404224,0.3228649514169102,7.7275281950159265,1.279361088124023,6951504,69515.04
+rnn,1.0,0.07261384828069999,0.42882314331519295,13.584800551804305,1.7097444426351291,2342928,23429.28 
