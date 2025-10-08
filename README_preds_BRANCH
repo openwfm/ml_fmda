@@ -1,0 +1,13 @@
+Branch related to testing predictors
+
+TESTS TODO:
+- Remove lon/lat and test accuracy comparison. Purpose is to test whether we can ignore lon/lat and use data from outside CONUS
+- Soil moisture with/without
+	- HRRR
+	- CYGNSS
+
+Forecast analysis files:
+- `base`: same analysis used in RNN Paper, rocky 24
+- `no_latlon`: same as base, remove lat/lon
+
+
