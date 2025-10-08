@@ -32,7 +32,6 @@ from models.moisture_rnn import RNN_Flexible, RNNData, scale_3d
 
 # Config and metadata files
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-params_models = Dict(read_yml(osp.join(CONFIG_DIR, "params_models.yaml")))
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
@@ -46,8 +45,9 @@ if __name__ == '__main__':
     f_dir = sys.argv[2]
     print(f"Running forecast analysis replication {task_id}")    
 
-    # Read forecast config file, it is created during setup py script
+    # Read config files, it is created during setup py script
     fconf = Dict(read_yml(osp.join(f_dir, "forecast_config.yaml")))
+    params_models = Dict(read_yml(osp.join(f_dir, "params_models.yaml")))
 
     # Check if output already exists, exit if so.
     # Allows for running multiple times if process stops for any reason
@@ -82,7 +82,6 @@ if __name__ == '__main__':
 
     print("~"*75)
     print(f"Running Forecast Analysis replication number {task_id}")
-    print(f"Forecast config file: {osp.join(CONFIG_DIR, 'forecast_analysis.yaml')}")
 
     # Run Models
     baselines = fconf.baselines
