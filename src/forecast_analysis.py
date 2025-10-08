@@ -107,6 +107,13 @@ if __name__ == '__main__':
     params = params_models['rnn']
     params.update({'features_list': features_list})
     dat = RNNData(train, val, test=None, method="random", timesteps=fhours, random_state=None, features_list = params["features_list"]) 
+    
+    # Flag rain
+    rain_ind = dat.features_list.index("rain")
+    r0=0.5 # threshold rain intensity
+    rain_cond = dat.X_train[:, :, rain_ind] >= r0
+    rain_flag_train = rain_cond.any(axis=1).astype(int)
+
     dat.scale_data()
     rnn = RNN_Flexible(params=params)
     rnn.fit(dat.X_train, dat.y_train,
@@ -128,6 +135,9 @@ if __name__ == '__main__':
         # data availability is too inefficient 
         if len(test2) > 1:
             X_test = dat._combine_data(test2, params["features_list"])
+            # Flag rain
+            rain_cond = X_test[:, :, rain_ind] >= r0
+            rain_flag_test = rain_cond.any(axis=1).astype(int)
             # Apply fitted scaler from RNNData to test data
             X_test = scale_3d(X_test, dat.scaler)
             sts = dat._combine_data(test2, ['stid'])
@@ -135,7 +145,7 @@ if __name__ == '__main__':
             assert (X_test.shape[0] == len(test2)) and (X_test.shape[1]==ts.shape[0]) and (X_test.shape[0:2]==y_test.shape[0:2])
             # Run predictiona and format for output
             m_rnn = rnn.predict(X_test)
-            df_temp = pd.DataFrame({'preds': m_rnn.flatten(), 'stid': sts.flatten(), 'date_time':np.tile(ts, m_rnn.shape[0]).astype(str), 'fm': y_test.flatten()})
+            df_temp = pd.DataFrame({'preds': m_rnn.flatten(), 'stid': sts.flatten(), 'date_time':np.tile(ts, m_rnn.shape[0]).astype(str), 'fm': y_test.flatten(), 'sample_number': np.repeat(np.arange(X_test.shape[0]), len(ts)), 'rain_flag': np.repeat(rain_flag_test, len(ts))})
             rnn_output = pd.concat([rnn_output, df_temp], ignore_index=True)
 
 
@@ -206,7 +216,7 @@ if __name__ == '__main__':
     print(f"Writing forecast output for RNN and baselines {fconf.baselines} to file {out_file}")
     rnn_output.to_hdf(out_file, key="rnn", mode="w")
     
-    if 'ode' in baselines: xgb_output.to_hdf(out_file, key="ode", mode="a")
+    if 'ode' in baselines: ode_output.to_hdf(out_file, key="ode", mode="a")
     if 'xgb' in baselines: xgb_output.to_hdf(out_file, key="xgb", mode="a")
     if 'clim' in baselines: clim_output.to_hdf(out_file, key="clim", mode="a")
 

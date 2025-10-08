@@ -61,26 +61,46 @@ def calc_errs(df, pred_col="preds", true_col="fm"):
 def summary_table(df, group_vars, bound_vars="rep"):
     """
     """
-    bias = (
-        df.groupby(group_vars, sort=False)["residual"]
-        .mean()
-        .reset_index(name="bias")
+    rep_metrics = (
+        df.groupby(group_vars, sort=False)
+          .agg(
+              bias=("residual", "mean"),
+              mse=("squared_error", "mean"),
+              N=("residual", "size")
+          )
+          .reset_index()
     )
-    mse = (
-        df.groupby(group_vars, sort=False)["squared_error"]
-        .mean()
-        .reset_index(name="mse")
-    )
-    rep_metrics = pd.merge(bias, mse, on=group_vars)
-    group_vars.remove(bound_vars)
-    summary_stats = rep_metrics.groupby(group_vars, sort=False)[["bias", "mse"]].agg(["mean", "std"]).reset_index() 
-    if not type(bound_vars) is list:
-        bound_vars = [bound_vars]
-    summary_stats.columns = group_vars + ["bias_mean", "bias_std", "mse_mean", "mse_std"]
-    #summary_stats["Bias"] = summary_stats["bias_mean"].astype('float64').round(2).astype(str) + " +/- " + summary_stats["bias_std"].round(2).astype(str)
-    #summary_stats["MSE"] = summary_stats["mse_mean"].astype('float64').round(2).astype(str) + " +/- " + summary_stats["mse_std"].round(2).astype(str)
-    #summary_formatted = summary_stats[["Model", "Bias", "MSE"]]
-    #return summary_formatted
+
+    #bias = (
+    #    df.groupby(group_vars, sort=False)["residual"]
+    #    .mean()
+    #    .reset_index(name="bias")
+    #)
+    #mse = (
+    #    df.groupby(group_vars, sort=False)["squared_error"]
+    #    .mean()
+    #    .reset_index(name="mse")
+    #)
+    #rep_metrics = pd.merge(bias, mse, on=group_vars)
+    #group_vars.remove(bound_vars)
+    #summary_stats = rep_metrics.groupby(group_vars, sort=False)[["bias", "mse"]].agg(["mean", "std"]).reset_index() 
+    summary_stats = (
+        rep_metrics
+        .groupby([g for g in group_vars if g != "rep"], sort=False)
+        .agg(
+            bias_mean=("bias", "mean"),
+            bias_std=("bias", "std"),
+            mse_mean=("mse", "mean"),
+            mse_std=("mse", "std"),
+            N_total=("N", "sum"),
+            N_mean=("N", "mean")
+        )
+        .reset_index()
+    )    
+    
+    #if not type(bound_vars) is list:
+    #    bound_vars = [bound_vars]
+    #summary_stats.columns = group_vars + ["bias_mean", "bias_std", "mse_mean", "mse_std"]
     return summary_stats
 
 
@@ -136,7 +156,7 @@ if __name__ == '__main__':
     
     # df.to_hdf(osp.join(f_dir, "all_errors.h5"), key="all_errors") # too large to write with hdf
 
-    
+   
     ml_dict = read_pkl(osp.join(f_dir, "ml_data.pkl"))
     loc_df = pd.DataFrame.from_dict(
         {k: v["loc"] for k, v in ml_dict.items()},
@@ -172,6 +192,11 @@ if __name__ == '__main__':
     table1 = summary_table(df, group_vars = ["Model", "rep"], bound_vars ="rep") 
     print(f"Writing overall error summary to {osp.join(out_dir, 'overall.csv')}")
     table1.to_csv(osp.join(out_dir, "overall.csv"), index=False)
+
+    ## Error by Rain Flag, see config files for threshold used
+    table_r = summary_table(df[df.Model == "rnn"], group_vars = ["Model", "rep", "rain_flag"], bound_vars ="rep")
+    print(f"Writing by rain error summary to {osp.join(out_dir, 'by_rain.csv')}")
+    table_r.to_csv(osp.join(out_dir, "by_rain.csv"), index=False)
 
     ## Error by Station, averaged over all times and replications. Bounds from reps
     table_st = summary_table(df, group_vars = ["Model", "stid", "rep"], bound_vars ="rep")
