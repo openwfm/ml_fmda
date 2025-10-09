@@ -1,7 +1,34 @@
 Branch related to testing predictors
 
-TESTS TODO:
+TESTS:
 - Remove lon/lat and test accuracy comparison. Purpose is to test whether we can ignore lon/lat and use data from outside CONUS
+	- DONE in rocky: overall error slightly increased, but within 1std of base estimate
+		- Baseline:
+  Model  bias_mean  bias_std  mse_mean  mse_std  N_total    N_mean
+0   rnn      -0.21      0.31      9.14     1.30  9294432  92944.32
+1   ode      -2.42      0.25     24.54     2.35  9073008  90730.08
+2   xgb      -0.41      0.37     17.84     2.03  9482496  94824.96
+3  clim      -0.63      0.43     25.01     2.13  5854538  58545.38
+>>> base
+  Model  rain_flag  bias_mean  bias_std   mse_mean   mse_std  N_total    N_mean
+0   rnn        0.0  -0.318181  0.305128   7.659462  1.253496  6951504  69515.04
+1   rnn        1.0   0.120994  0.371759  13.533421  1.685341  2342928  23429.28
+
+		- No lat/lon:
+  Model  bias_mean  bias_std  mse_mean  mse_std  N_total    N_mean
+0   rnn      -0.31      0.35      9.43     1.31  9294432  92944.32
+1   ode      -2.42      0.25     24.54     2.35  9073008  90730.08
+2   xgb      -0.44      0.38     17.44     1.95  9482496  94824.96
+3  clim      -0.63      0.43     25.01     2.13  5854538  58545.38
+	
+>>> nol
+  Model  rain_flag  bias_mean  bias_std   mse_mean   mse_std  N_total    N_mean
+0   rnn        0.0  -0.439143  0.349172   7.952696  1.254247  6951504  69515.04
+1   rnn        1.0   0.075825  0.424926  13.800045  1.709567  2342928  23429.28
+	- TODO: test other region. 
+
+
+
 - Soil moisture with/without
 	- HRRR
 	- CYGNSS
