@@ -547,21 +547,6 @@ class MLData(ABC):
                 print("Inverse scaled, but internal data not changed.")
             return X_train, X_val, X_test    
     
-    # def print_hashes(self, attrs_to_check = ['X_train', 'y_train', 'X_val', 'y_val', 'X_test', 'y_test']):
-    #     """
-    #     Prints the hash of specified data attributes. 
-    #     NOTE: AS OF FEB 3 2025 this doesn't work. data is saved in pandas and reproducibility to_numpy not guarenteed
-
-    #     Parameters:
-    #     -----------
-    #     attrs_to_check : list, optional
-    #         A list of attribute names to hash and print. Default includes 'X', 'y', and split data.
-    #     """
-        
-    #     for attr in attrs_to_check:
-    #         if hasattr(self, attr):
-    #             value = getattr(self, attr)
-    #             print(f"Hash of {attr}: {hash_ndarray(value)}") 
 
 
 class StaticMLData(MLData):
