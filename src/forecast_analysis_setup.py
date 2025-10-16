@@ -47,7 +47,7 @@ if __name__ == '__main__':
     # Check if already run, allows for easy rerun of process
     if osp.exists(osp.join(f_dir, 'ml_data.pkl')) and osp.exists(osp.join(f_dir, 'analysis_info.json')):
         print(f"Forecast analysis setup already run at {f_dir}, exiting")
-        sys.exit(0)
+        #sys.exit(0)
 
     # Set up forecast directory and config
     os.makedirs(f_dir, exist_ok=True)
@@ -108,8 +108,17 @@ if __name__ == '__main__':
 
     # Read and Format Data, get set up for train and test
     print("~"*75)
-    data = data_funcs.combine_fmda_files(file_paths)
-    ml_dict = data_funcs.build_ml_data(data, verbose=False)
+    data = data_funcs.combine_fmda_files(file_paths, atm_source=fconf.atm_source)
+    ml_dict = data_funcs.build_ml_data(data, verbose=False, atm_source=fconf.atm_source)
+    if fconf.atm_source == "RAWS":
+        # Limit to stations with all sensor variables in features list
+        print(f"Filtering stations to ones with sensors for features list: {fconf.features_list}")
+        cond = {st: all(s in ml_dict[st]["data"].columns for s in fconf.features_list) for st in ml_dict}
+        kept = [st for st, ok in cond.items() if ok]
+        removed = [st for st, ok in cond.items() if not ok]
+        print(f"    {len(kept)} stations kept.")
+        print(f"    {len(removed)} stations removed: {', '.join(removed)}")
+        ml_dict = {st: v for st, v in ml_dict.items() if cond[st]}
     df_valid = pd.read_csv(osp.join(PROJECT_ROOT, fconf.valid_path))
     ml_dict = data_funcs.remove_invalid_data(ml_dict, df_valid)
     data_file =  osp.join(PROJECT_ROOT, f_dir, "ml_data.pkl")
