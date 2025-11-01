@@ -1,0 +1,28 @@
+This directory stores materials relevant to the publication *A Recurrent Neural Network for Forecasting Fuel Moisture Content with Inputs from Numerical Weather Models*, submitted to MDPI Fire on ____, 2025
+
+# Setup
+
+## Tokens
+Open the file `etc/tokens.json.initial` and fill out your mesowest token. NOTE: the earthdata token is not needed for this paper
+
+## RAWS Stash
+Instead of retrieving RAWS from...
+
+## Main project Config File
+The configuration file `etc/rocky_config.yaml` contains the configuration instructions to repeat the analysis used in the paper. The relevant confirations are:
+- `train_start`: set to first hour UTC of January 1st 2025. Used to define training period for ML models as well as for controlling the data retrieval process
+- `train_end`: set to last hour of 2023 UTC, used to control training period for ML models.
+- "f_start": when to start forecasting, set to first hour of 2024.
+- "f_end": when to end forecasting, set to last hour of 2024. Also used to control data retrieval process
+- "bbox": spatial bounding box, set to '[37,-111,46,-95]' to bracket all of Rocky Mountain GACC as determined by NIFC.
+- `features_list`: list of features used as inputs to model, see directory `etc/variable_metadata` for more information on how these are constructed
+- `baselines`: list of models used to compare forecast accuracy
+- `data_dir`: location to save retrieved data used to construct training and testing sets
+- `valid_path`: path to file that contains manual QC on FMC sensors for the rocky mountain region
+- `climatology_file`: location of climatology that covers the study region and time period. The climatology is ran separately once so it can be reused for other applications, and it doesn't utilize a spatial holdout cross validation approach
+- `n_reps`: number of replications with new random seeds of spatial sampling for test/train and random seeds for random weight initialization in RNN and XGBoost
+- `space_test_frac`: percent of available RAWS to use for test set
+
+# Data Retrieval Instructions
+Data need to be retrieved from RAWS through Synopticpy and HRRR through Herbie. The config file described above controls this. To retrieve the data 
+ 
