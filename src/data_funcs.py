@@ -79,7 +79,7 @@ def extend_fmda_dicts(d1, d2, st, subdict_keys=["RAWS", "HRRR", "times"]):
 
     return merged_dict, warning_str
 
-def combine_fmda_files(input_file_paths, save_path = None, verbose=True):
+def combine_fmda_files(input_file_paths, save_path = None, verbose=True, atm_source="HRRR"):
     """
     Read a list of files retrieved with retrieve_fmda_data and combine data at common stations based on time
     """
@@ -96,7 +96,10 @@ def combine_fmda_files(input_file_paths, save_path = None, verbose=True):
             if st not in combined_dict.keys():
                 combined_dict[st] = di[st]
             else:
-                merged_dict, warning_str = extend_fmda_dicts(combined_dict[st], di[st], st)
+                if atm_source == "HRRR":
+                    merged_dict, warning_str = extend_fmda_dicts(combined_dict[st], di[st], st)
+                elif atm_source == "RAWS":
+                    merged_dict, warning_str = extend_fmda_dicts(combined_dict[st], di[st], st, subdict_keys=["RAWS", "times"])
                 combined_dict[st] = merged_dict
                 if warning_str and warning_str not in warning_set:
                     warnings.warn(warning_str, UserWarning)
@@ -202,9 +205,9 @@ def build_ml_data(dict0,
                 suffixes=('', '_hrrr')  # Keep the original name for raws, add '_hrrr' for hrrr
             )
         elif atm_source == "RAWS":
-            print("RAWS atmospheric data not tested yet")
-            sys.exit(-1)
-            # df = d[st]["RAWS"]
+            # Columns should already have been renamed and times interpolated to UTC hours
+            df = d[st]["RAWS"]
+            assert df.date_time.dtype == "datetime64[ns, UTC]", "date_time not datetime64[ns, UTC], check time interp preprocessing"
     
         # Split into periods
         if verbose:
@@ -439,7 +442,6 @@ def cv_data_wrap(d, fstart, fend, tstart, tend, val_hours=48, test_frac=0.1, ran
     else:
         test = get_sts_and_times(d, te_sts, test_times)
     
-
     return train, val, test
 
 
@@ -547,21 +549,6 @@ class MLData(ABC):
                 print("Inverse scaled, but internal data not changed.")
             return X_train, X_val, X_test    
     
-    # def print_hashes(self, attrs_to_check = ['X_train', 'y_train', 'X_val', 'y_val', 'X_test', 'y_test']):
-    #     """
-    #     Prints the hash of specified data attributes. 
-    #     NOTE: AS OF FEB 3 2025 this doesn't work. data is saved in pandas and reproducibility to_numpy not guarenteed
-
-    #     Parameters:
-    #     -----------
-    #     attrs_to_check : list, optional
-    #         A list of attribute names to hash and print. Default includes 'X', 'y', and split data.
-    #     """
-        
-    #     for attr in attrs_to_check:
-    #         if hasattr(self, attr):
-    #             value = getattr(self, attr)
-    #             print(f"Hash of {attr}: {hash_ndarray(value)}") 
 
 
 class StaticMLData(MLData):

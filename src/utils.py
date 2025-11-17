@@ -356,6 +356,22 @@ def str2time(input):
     else:
         raise ValueError("Input must be a string or a list of strings")
 
+# Calculate hour of day (HOD) and day of year (DOY) from times
+def calc_times(times):
+    """
+    Calculate hour of day (HOD) and day of year (DOY) from a given input timnes. Should work with a pandas series or a numpy array, also for datetime or timestamp
+
+    Parameters:
+        - times: numpy array or pandas series of datetime/timestamps
+
+    Returns: (hod, doy) tuple of arrays
+        hod and doy arrays
+    """
+    times = pd.to_datetime(times)
+    hod=times.hour
+    doy=times.dayofyear
+
+    return hod, doy
 
 def time_range(start, end, freq="1h"):
     """

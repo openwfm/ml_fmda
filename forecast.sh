@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 #SBATCH --job-name=fcast
 #SBATCH --partition=math-alderaan-gpu-cuda12
 #SBATCH --output=logs/forecast_%j.out
