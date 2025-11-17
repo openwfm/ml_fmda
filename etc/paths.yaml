@@ -7,4 +7,4 @@ landfire_elev_dir: "/storage/math/NSF1/hirschij/LF2020_Elev_220_CONUS" # landfir
 landfire_cc_dir: "/storage/math/NSF1/hirschij/LF2022_CC_230_CONUS" # landfire canopy cover
 forecast_output: "/storage/math/NSF1/hirschij/RNN_forecasts" # where operational forecasts are sent. NOTE: different from forecast analysis used to estimate forecast error
 fmda_data_path: "/storage/math/NSF1/hirschij/FMDA" # Where data retrievals of RAWS + HRRR (+ Other) should go
-
+smap_stash_path: "/storage/math/NSF1/hirschij/SMAP" # where soil moisture retrievals of SMAP via earthaccess should go
