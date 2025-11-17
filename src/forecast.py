@@ -15,6 +15,7 @@ from sklearn.metrics import mean_squared_error
 import tensorflow as tf
 import xarray as xr
 import shutil
+from joblib import dump, load
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -46,19 +47,22 @@ if __name__ == '__main__':
         print(f"Invalid arguments. {len(sys.argv)} was given but 3 expected")
         print(('Usage: %s <train_dir> <config_path>' % sys.argv[0]))
         print("<train_dir> is where trained model sent. <config_path> is path to yaml file setting up time frame and other analysis parameters")
-        print("Example: python src/forecast.py models/train_test etc/forecast_TEST.yaml")
+        print("Example: python src/forecast.py etc/forecast_TEST.yaml")
         sys.exit(-1)
 
     # Get input args
     t_dir = sys.argv[1]
     conf_path = sys.argv[2]
 
-    # Extract config details
-    conf = Dict(read_yml(conf_path))
+    # Extract config details, save to outdir
+    conf = read_yml(conf_path)
+    outdir = conf["outdir"]
+    os.makedirs(outdir, exist_ok=True)
+    with open(osp.join(conf["outdir"], "config.yaml"), 'w') as f:
+        yaml.dump(conf, f, default_flow_style=False, sort_keys=False)    
+    conf = Dict(conf)
     fstart = str2time(conf.f_start)
     fend = str2time(conf.f_end)
-    outdir = conf.outdir
-    os.makedirs(outdir, exist_ok=True)
     
     hrrr_dir = paths.hrrr_stash_path
     params = Dict(read_yml(osp.join(t_dir, "params.yaml")))
@@ -66,7 +70,9 @@ if __name__ == '__main__':
 
     # Read trained model
     rnn = tf.keras.models.load_model(osp.join(t_dir, 'rnn.keras'))
+    scaler = load(osp.join(t_dir, "scaler.joblib"))
 
+    breakpoint()
     print("~"*75)
     print(f"Forecasting with RNN from {fstart} to {fend}")
     print(f"Saving gridded forecasts to {outdir}")
@@ -110,6 +116,10 @@ if __name__ == '__main__':
     # Run prediction with RNN
     # NOTE: batch size in predict is only a memory constraint and not related to batch_size used in training. 
     # We want to make batch_size as large as possible while avoiding memory constraints
+    
+    ## Scale Data
+    breakpoint()
+    X = scaler.transform(X)
     try:
         preds = rnn.predict(X, batch_size=1024, verbose=1)
     except (MemoryError, tf.errors.ResourceExhaustedError) as e:
