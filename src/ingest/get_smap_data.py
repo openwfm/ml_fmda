@@ -41,7 +41,7 @@ if __name__ == '__main__':
     if len(sys.argv) != 3:
         print(f"Invalid arguments. {len(sys.argv)} was given but 2 expected")
         print(('Usage: %s <esmf_from_utc> <esmf_to_utc>' % sys.argv[0]))
-        print("Example: python src/ingest/get_smap_data.py '2023-01-01', '2023-01-02'")
+        print("Example: python src/ingest/get_smap_data.py '2023-01-01' '2023-01-02'")
         print("Times should match format: YYYY-MM-DD")
         sys.exit(1)
 
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     print(f"    Stash Path: {smap_stash_path}")
 
     # Login
-    if not osp.exists("~/.netrc"):
+    if not osp.exists(osp.expanduser("~/.netrc")):
         print(f"Auth file ~/.netrc does not exist, create with user and pass")
         sys.exit(1)
     earthaccess.login()
@@ -73,7 +73,18 @@ if __name__ == '__main__':
         temporal=time_range
     )
     print(f"Found {len(granules)} granules")
-    #files = earthaccess.download(granules, smap_stash_path)
+    # Save in YYYY subdirectory
+    for g in granules:
+        url = g.data_links()[0]
+        filename = url.split("/")[-1]
+        year = filename.split("_")[5][0:4]
+        os.makedirs(osp.join(smap_stash_path, year), exist_ok=True)
+        assert year.isdigit() and 2000 <= int(year) <= 2100, f"Extracted year {year} not interpretable as a year"
+        if osp.exists(osp.join(smap_stash_path, year, filename)):
+            print(f"File already exists, skipping {osp.join(smap_stash_path, year, filename)}")
+            continue
+        print(f"Downloading to {osp.join(smap_stash_path, year, filename)}")
+        earthaccess.download([g], osp.join(smap_stash_path, year))
 
 
     
