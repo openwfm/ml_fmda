@@ -11,7 +11,7 @@ val_hours: 48 # number of hours to use at end of training window (tstart, tend) 
 space_test_frac: 0.1 # Percentage of data based on location for val and test
 bbox: '[35, -120, 46, -111]' # spatial bounding box
 features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'rain', 'hod', 'doy'] # inputs to ML models
-baselines: ['ode', 'xgb'] # Names of models to be run on same data for comparison. USE None if only running RNN
+baselines: ['ode', 'xgb', 'clim'] # Names of models to be run on same data for comparison. USE None if only running RNN
 data_dir: "/storage/math/NSF1/hirschij/FMDA/gb_gacc/" # Directory for formatted FMDA data dictionaries
-valid_path: "data/fmc_valid_rocky24.csv" # Path to manually constructed table for filtered invalid data
-climatology_file: "forecasts/climatology_gb24/climatology_gb_2024_forecasts.pkl" # name of climatology output to be used for comparison, created with src/run_climatology.py
+valid_path: "/storage/math/NSF1/hirschij/FMDA/valid_data/fmc_valid_gb23-24.csv" # Path to manually constructed table for filtered invalid data
+climatology_file: "/storage/math/NSF1/hirschij/FMC_CLIMATOLOGY/climatology_gb24/climatology_gb_2024_forecasts.pkl" # name of climatology output to be used for comparison, created with src/run_climatology.py
