@@ -15,3 +15,4 @@ baselines: ['ode', 'xgb', 'clim'] # Names of models to be run on same data for c
 climatology_file: "/storage/math/NSF1/hirschij/FMC_CLIMATOLOGY/climatology_rocky24/climatology_rocky_2024_forecasts.pkl" # name of climatology output to be used for comparison, created with src/run_climatology.py
 data_dir: "/storage/math/NSF1/hirschij/FMDA/rocky_gacc" # Directory for formatted FMDA data dictionaries 
 valid_path: "/storage/math/NSF1/hirschij/FMDA/valid_data/fmc_valid_rocky24.csv" # Path to manually constructed table for filtered invalid data
+atm_source: "HRRR" # Currently one of ["RAWS", "HRRR"]

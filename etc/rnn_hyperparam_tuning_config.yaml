@@ -29,4 +29,5 @@ val_hours: 48 # number of hours to use at end of training window (tstart, tend) 
 space_test_frac: 0.1 # Percentage of data based on location for val and test
 bbox: '[37,-111,46,-95]' # spatial bounding box
 features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'rain', 'hod', 'doy'] # inputs to ML models
-
+atm_source: "HRRR" # Currently one of ["RAWS", "HRRR"]
+raws_source: "stash"

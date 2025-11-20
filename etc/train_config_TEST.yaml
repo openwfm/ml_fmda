@@ -11,3 +11,5 @@ bbox: '[37,-111,46,-95]' # spatial bounding box
 features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'rain', 'hod', 'doy'] # inputs to ML models
 data_dir: "/storage/math/NSF1/hirschij/FMDA/rocky_gacc" # Directory for formatted FMDA data dictionaries
 valid_path: "/storage/math/NSF1/hirschij/FMDA/valid_data/fmc_valid_rocky24.csv" # Path to manually constructed table for filtered invalid data
+atm_source: "HRRR" # Currently one of ["RAWS", "HRRR"]
+
