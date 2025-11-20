@@ -37,4 +37,7 @@ Forecast analysis files:
 - `base`: same analysis used in RNN Paper, rocky 24
 - `no_latlon`: same as base, remove lat/lon
 
+Data Files
+- `etc/hrrrweather.yaml`: config file for hrrr atmospheric data
+- `etc/rawsweather.yaml`: config file for raws atmospheric dat
 
