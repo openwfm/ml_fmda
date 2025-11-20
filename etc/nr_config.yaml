@@ -12,6 +12,6 @@ bbox: '[44.2, -117, 49, -96.5]' # spatial bounding box
 features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'rain', 'hod', 'doy'] # inputs to ML models
 baselines: ['ode', 'xgb', 'clim'] # Names of models to be run on same data for comparison. USE None if only running RNN
 data_dir: "/storage/math/NSF1/hirschij/FMDA/nr_gacc/" # Directory for formatted FMDA data dictionaries
-valid_path: "data/fmc_valid_nr24.csv" # Path to manually constructed table for filtered invalid data
-climatology_file: "forecasts/climatology_nr24/climatology_nr_2024_forecasts.pkl" # name of climatology output to be used for comparison, created with src/run_climatology.py
+valid_path: "/storage/math/NSF1/hirschij/FMDA/valid_data/fmc_valid_nr24.csv" # Path to manually constructed table for filtered invalid data
+climatology_file: "/storage/math/NSF1/hirschij/FMC_CLIMATOLOGY/climatology_nr24/climatology_nr_2024_forecasts.pkl" # name of climatology output to be used for comparison, created with src/run_climatology.py
 

@@ -1,16 +1,19 @@
+# OK Slapout config file
 # Config file used to set up forecast analysis
-#
+# Adjusted to point to storage directory for data dictionaries
+# Bounding box surrounds Mesonet station Slapout in pandhandle of OK
 f_start: "2024-01-01T00:00:00Z" # first forecast time
 f_end: "2024-12-31T23:00:00Z" # last forecast time
 forecast_hours: 48 # number of hours to run forecast before re-initializing (matters for RNN and ODE baseline, has no effect on static ML models nor on climatology). Hours determined by max forecast window of HRRR
-n_reps: 500 # Number of replications to train/forecast, used to estimate uncertainty in forecast accuracy metrics
+n_reps: 100 # Number of replications to train/forecast, used to estimate uncertainty in forecast accuracy metrics
 train_start: "2023-01-01T00:00:00Z" # first time for training
 train_end: "2023-12-31T23:00:00Z" # last time for training
 val_hours: 48 # number of hours to use at end of training window (tstart, tend) to use for validation data
 space_test_frac: 0.1 # Percentage of data based on location for val and test
-bbox: '[37,-111,46,-95]' # spatial bounding box
+bbox: '[-105.002, 35, -95.000, 40.000]' # spatial bounding box
 features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'rain', 'hod', 'doy'] # inputs to ML models
-baselines: ['ode', 'xgb', 'clim'] # Names of models to be run on same data for comparison. USE None if only running RNN
-climatology_file: "/storage/math/NSF1/hirschij/FMC_CLIMATOLOGY/climatology_rocky24/climatology_rocky_2024_forecasts.pkl" # name of climatology output to be used for comparison
-data_dir: "/storage/math/NSF1/hirschij/FMDA/rocky_gacc/" # Directory for formatted FMDA data dictionaries
-valid_path: "/storage/math/NSF1/hirschij/FMDA/valid_data/fmc_valid_rocky24.csv" # Path to manually constructed table for filtered invalid data
+baselines: ['ode', 'xgb'] # Names of models to be run on same data for comparison. USE None if only running RNN
+data_dir: "/storage/math/NSF1/hirschij/FMDA/ok_panhandle/" # Directory for formatted FMDA data dictionaries
+valid_path: "NONE.csv" # Path to manually constructed table for filtered invalid data
+atm_source: "HRRR" 
+raws_source: "stash" # Currently one of ["api", "stash"]
