@@ -33,7 +33,7 @@ if __name__ == '__main__':
     if len(sys.argv) != 3:
         print(f"Invalid arguments. {len(sys.argv)} was given but 2 expected")
         print(('Usage: %s <esmf_from_utc> <esmf_to_utc>' % sys.argv[0]))
-        print("Example: python src/ingest/get_hrrr.py '2023-06-01T00:00:00Z' '2023-06-02T00:00:00Z'")
+        print("Example: python src/ingest/get_hrrr_data.py '2023-06-01T00:00:00Z' '2023-06-02T00:00:00Z'")
         print("Times should match format: '2023-06-01T00:00:00Z'")
         sys.exit(-1)
 
