@@ -1,0 +1,16 @@
+# Metadata for SMAP
+# Documentation: https://nsidc.org/sites/default/files/spl3smp_e-v005-userguide.pdf
+# Soil moisture from SMAP is top 5cm,
+# Units for soil moisture m^3/m^3, interpretable as a fraction
+# Namelist format OLD:NEW
+
+product: "SPL3SMP_E"   # daily, 9 km enhanced soil moisture
+file_name_convention: "SMAP_L3_SM_P_E_yyyymmdd_RLVvvv_NNN.h5"
+missing: -9999.0
+valid_min: 0.02
+namelist: 
+  longitude: "lon"
+  latitude:  "lat"
+  soil_moisture: "soilw"
+  soil_moisture_error: "soilw_error"
+  soil_moisture_dca: "soilw_dca"
