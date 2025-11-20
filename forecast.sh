@@ -27,5 +27,5 @@ echo "Output path: $OUTPUT_PATH"
 # Set up environment
 source ~/.bashrc
 conda activate ml_gpu2
-
+export PYTHONUNBUFFERED=1
 python src/forecast.py "$MODEL_DIRECTORY" "$CONFIG_PATH" "$OUTPUT_PATH"
