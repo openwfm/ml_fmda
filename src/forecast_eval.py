@@ -61,29 +61,25 @@ def calc_errs(df, pred_col="preds", true_col="fm"):
 def summary_table(df, group_vars, bound_vars="rep"):
     """
     """
-    rep_metrics = (
-        df.groupby(group_vars, sort=False)
-          .agg(
-              bias=("residual", "mean"),
-              mse=("squared_error", "mean"),
-              N=("residual", "size")
-          )
-          .reset_index()
+    bias = (
+        df.groupby(group_vars, sort=False)["residual"]
+        .mean()
+        .reset_index(name="bias")
     )
-    summary_stats = (
-        rep_metrics
-        .groupby([g for g in group_vars if g != "rep"], sort=False)
-        .agg(
-            bias_mean=("bias", "mean"),
-            bias_std=("bias", "std"),
-            mse_mean=("mse", "mean"),
-            mse_std=("mse", "std"),
-            N_total=("N", "sum"),
-            N_mean=("N", "mean")
-        )
-        .reset_index()
-    )    
+    mse = (
+        df.groupby(group_vars, sort=False)["squared_error"]
+        .mean()
+        .reset_index(name="mse")
+    )
+    rep_metrics = pd.merge(bias, mse, on=group_vars)
+    group_vars.remove(bound_vars)
+    summary_stats = rep_metrics.groupby(group_vars, sort=False)[["bias", "mse"]].agg(["mean", "std"]).reset_index() 
+    if not type(bound_vars) is list:
+        bound_vars = [bound_vars]
     
+    summary_stats.columns = group_vars + ["bias_mean", "bias_std", "rmse_mean", "rmse_std"]
+    summary_stats["rmse_mean"] = np.sqrt(summary_stats["rmse_mean"])
+    summary_stats["rmse_std"] = np.sqrt(summary_stats["rmse_std"])
     return summary_stats
 
 
@@ -122,6 +118,7 @@ if __name__ == '__main__':
     print(f"    {fconf.f_start=}")
     print(f"    {fconf.f_end=}")
 
+    
     ml_dict = read_pkl(osp.join(f_dir, "ml_data.pkl"))
     loc_df = pd.DataFrame.from_dict(
         {k: v["loc"] for k, v in ml_dict.items()},
