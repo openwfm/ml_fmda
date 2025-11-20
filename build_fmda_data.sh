@@ -24,7 +24,6 @@ fi
 
 CONFIG_FILE="$1"
 
-
 # Set up environment
 source ~/.bashrc
 conda activate ml_fmda_data

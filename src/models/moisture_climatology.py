@@ -37,7 +37,7 @@ raws_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "raws_metadata.ya
 
 def time_to_climtimes(t, nyears = 10, ndays=15):
     """
-    Given a time, get the corresponding times that will be used for the climatology method.
+    Given a time, get the corresponding times that will be used for the climatology method. For a given target time t, you should expecet 15 times in directly previous of it (since we don't do the +15 days into the future of t), then for the rest of nyears expect 31 (1+15+15 bracketing times) each. So for nyears=10 and ndays=15, expect (15+31*10)=325
 
     Arguments
         t : datetime

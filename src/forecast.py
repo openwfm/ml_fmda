@@ -15,6 +15,7 @@ from sklearn.metrics import mean_squared_error
 import tensorflow as tf
 import xarray as xr
 import shutil
+from joblib import dump, load
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -42,34 +43,39 @@ paths = Dict(read_yml(osp.join(CONFIG_DIR, "paths.yaml")))
 
 if __name__ == '__main__':
 
-    if len(sys.argv) != 4:
-        print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
-        print(('Usage: %s <train_dir> <config_path> <output_dir>' % sys.argv[0]))
+    if len(sys.argv) != 3:
+        print(f"Invalid arguments. {len(sys.argv)} was given but 3 expected")
+        print(('Usage: %s <train_dir> <config_path>' % sys.argv[0]))
         print("<train_dir> is where trained model sent. <config_path> is path to yaml file setting up time frame and other analysis parameters")
-        print("Example: python src/forecast.py models/train_test etc/forecast_TEST.yaml", "forecasts/TEST")
+        print("Example: python src/forecast.py etc/forecast_TEST.yaml")
         sys.exit(-1)
 
     # Get input args
     t_dir = sys.argv[1]
     conf_path = sys.argv[2]
-    forecast_dir = sys.argv[3]
-    os.makedirs(forecast_dir, exist_ok=True)
 
-    # Extract config details
-    conf = Dict(read_yml(conf_path))
+    # Extract config details, save to outdir
+    conf = read_yml(conf_path)
+    outdir = conf["outdir"]
+    os.makedirs(outdir, exist_ok=True)
+    with open(osp.join(conf["outdir"], "config.yaml"), 'w') as f:
+        yaml.dump(conf, f, default_flow_style=False, sort_keys=False)    
+    conf = Dict(conf)
     fstart = str2time(conf.f_start)
     fend = str2time(conf.f_end)
-    out_dir = paths.forecast_output
+    
     hrrr_dir = paths.hrrr_stash_path
     params = Dict(read_yml(osp.join(t_dir, "params.yaml")))
     # bbox
 
     # Read trained model
     rnn = tf.keras.models.load_model(osp.join(t_dir, 'rnn.keras'))
+    scaler = load(osp.join(t_dir, "scaler.joblib"))
 
+    breakpoint()
     print("~"*75)
     print(f"Forecasting with RNN from {fstart} to {fend}")
-    print(f"Saving gridded forecasts to {out_dir}")
+    print(f"Saving gridded forecasts to {outdir}")
     print()
 
     print(f"    Loading HRRR data from stash {hrrr_dir}")
@@ -88,7 +94,7 @@ if __name__ == '__main__':
     #ds2 = ih.rename_ds(ds2)
     ds["elev"] = ds["orog"]# TODO: update to LF elevation
 
-    # ds2.to_netcdf(osp.join(forecast_dir, "hrrr_ds.nc"))
+    # ds2.to_netcdf(osp.join(outdir, "hrrr_ds.nc"))
     #elev = xr.open_dataset(osp.join(paths.landfire_elev_dir, "lf_elevation_hrrrgrid.tif"))
 
     # Format input dataframe for RNN predict
@@ -110,6 +116,10 @@ if __name__ == '__main__':
     # Run prediction with RNN
     # NOTE: batch size in predict is only a memory constraint and not related to batch_size used in training. 
     # We want to make batch_size as large as possible while avoiding memory constraints
+    
+    ## Scale Data
+    breakpoint()
+    X = scaler.transform(X)
     try:
         preds = rnn.predict(X, batch_size=1024, verbose=1)
     except (MemoryError, tf.errors.ResourceExhaustedError) as e:
@@ -131,6 +141,6 @@ if __name__ == '__main__':
     ds["fm_preds"] = pred_da.transpose("time", "y", "x")
     ds["lsm"] = terrain.lsm
     # Write out
-    print(f"Writing predictions to netcdf: {osp.join(forecast_dir, 'fm_preds_hrrr.nc')}")
-    ds.to_netcdf(osp.join(forecast_dir, "fm_preds_hrrr.nc"))
+    print(f"Writing predictions to netcdf: {osp.join(outdir, 'fm_preds_hrrr.nc')}")
+    ds.to_netcdf(osp.join(outdir, "fm_preds_hrrr.nc"))
     
