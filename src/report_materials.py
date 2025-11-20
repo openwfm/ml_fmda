@@ -31,8 +31,8 @@ from utils import Dict, read_pkl, read_yml, str2time, time_range
 ## Used to turn std column into a +/- for style
 def format_table(table1):
     table1["Bias"] = table1["bias_mean"].astype('float64').round(2).astype(str) + r" $\pm$ " + table1["bias_std"].round(2).astype(str)
-    table1["MSE"] = table1["mse_mean"].astype('float64').round(2).astype(str) + r" $\pm$ " + table1["mse_std"].round(2).astype(str)
-    table_formatted = table1[["Model", "Bias", "MSE"]]
+    table1["RMSE"] = table1["rmse_mean"].astype('float64').round(2).astype(str) + r" $\pm$ " + table1["rmse_std"].round(2).astype(str)
+    table_formatted = table1[["Model", "Bias", "RMSE"]]
     return table_formatted 
 
 
@@ -99,6 +99,7 @@ if __name__ == '__main__':
 
 
     # Read tables from output directory
+    print(f"Reading outputs from: {osp.join(f_dir, 'error_analysis')}")
     overall = pd.read_csv(osp.join(f_dir, "error_analysis", "overall.csv"))
     by_dt = pd.read_csv(osp.join(f_dir, "error_analysis", "by_dt.csv"))
     by_hod = pd.read_csv(osp.join(f_dir, "error_analysis", "by_hod.csv"))
@@ -109,10 +110,13 @@ if __name__ == '__main__':
     all_vars = pd.read_csv(osp.join(f_dir, "error_analysis", "all_variables_summary.csv"))
 
     # Create Tables
+    print(f"Creating latex format tables, saving to {out_dir}")
     ## Overall error table
+    print("    Formatting overall forecast error table")
     table_overall_error = table_to_latex(format_table(overall), caption="Overall Forecast Error", label="tab:overall")
 
     ## Predictor Variable Summary
+    print("    Formatting predictor summary table")
     all_vars.Variable = ["Drying Equilibrium", "Wetting Equilibrium", "Solar Radiation", "Wind Speed", "Elevation", "Longitude", "Latitude", "Rain", "Hour of Day", "Day of Year"]
     all_vars["Units"] = [r"$\%$", r"$\%$", r"$kWh/m^2$", r"$m/s$", "meters", "degree", "degree",r"mm/h", r"hours", "days"]
     all_vars["Description"] = ["Derived from RH and temperature.", "Derived from RH and temperature.", "Downward shortwave radiative flux.", "Wind speed at 10m.", "Height above sea level.", "X-Coordinate", "Y-Coordinate", "Calculated from rain accumulated over the hour.", "From 0 to 23, UTC time.", "From 0 to 365 or 366 (leap year in 2024)"]
@@ -121,6 +125,7 @@ if __name__ == '__main__':
 
     ## Model Hyperparam Tables
     ## RNN, not including model architecutre params, those will be presented separately
+    print("    Formatting RNN hyperparam table")
     params = params_models.rnn
     keep_params = ['learning_rate', 'timesteps', 'batch_size', 'dropout', 'early_stopping_patience', 'scaler']
     renames = ["Learning Rate", "Timesteps", "Batch Size", "Dropout", "Scaling", "Early Stopping Patience"]
@@ -142,6 +147,7 @@ if __name__ == '__main__':
 
 
     ## ODE Model
+    print("    Formatting ODE hyperparam table")
     params = params_models.ode
     keep_params = ['spinup_hours', 'process_variance', 'data_variance', 'r0', 'rs', 'Tr', 'S', 'T']
     renames = ["Spinup", "Process Variance", "Data Variance", "$r_0$", "$r_s$", "$T_r$", "$S$", "$T$"]
@@ -161,6 +167,7 @@ if __name__ == '__main__':
     ode_tab = table_to_latex(ode_tab, caption="ODE Hyperparameters", label="tab:ode_params")   
 
     ## XGB Model
+    print("    Formatting XGB hyperparam table")
     params = params_models.xgb
     keep_params = ['n_estimators', 'max_depth', 'eta', 'min_child_weight', 'gamma', 'subsample', 'colsample_bytree']
     renames = ["N Estimators", "Max Tree Depth", "Learning Rate", "Min Child Weight", r"$\gamma", "Subsample",
@@ -183,6 +190,7 @@ if __name__ == '__main__':
 
 
     ## Climatology Method
+    print("    Formatting climatology hyperparam table")
     params = params_models.climatology
     keep_params = ['nyears', 'ndays', 'min_years']
     renames = ["Years", "Days", "Min Years"]
@@ -215,25 +223,34 @@ if __name__ == '__main__':
 
 
     # Plots
-
+    print("    Creating plot of error over 24 hours")
     ## Average error over 24 hours
     x = np.arange(24)
     models = by_hod.Model.unique()
 
+    rename = {
+        "rnn": "RNN",
+        "ode": "ODE+KF",
+        "xgb": "XGBoost",
+        "clim": "Climatology"
+    }
+
     plt.figure()
     for model in models:
-        y = by_hod[by_hod.Model == model].mse_mean.to_numpy()
-        plt.plot(x, y, label=model.capitalize())
+        y = by_hod[by_hod.Model == model].rmse_mean.to_numpy()
+        label = rename.get(model, model)
+        plt.plot(x, y, label=label)
 
     plt.xlabel('Hour of Day (UTC)')
-    plt.ylabel('MSE')
+    plt.ylabel('RMSE')
     plt.xticks(np.arange(0, 24, 2))
-    plt.ylim(0, 40)
+    plt.ylim(0, 7)
     plt.legend(loc='upper left')
     print(f"Writing plot of error averaged over hour of day to: {osp.join(out_dir, 'err24.png')}")
     plt.savefig(osp.join(out_dir, "err24.png"), dpi=300)
     
     ## RNN FM vs Residual Plot
+    print("    Creating residual histogram plot")
     plt.figure()
     plt.scatter(rnn.fm, rnn.residual, marker="o", alpha=.7); plt.grid(); plt.axhline(0, color='black', linestyle='--')
     plt.xlabel("FMC (%)")
