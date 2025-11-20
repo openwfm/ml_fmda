@@ -25,5 +25,5 @@ echo "Config path: $CONFIG_PATH"
 # Set up environment
 source ~/.bashrc
 conda activate gpu_TEST
-export PYTHONUNBUFFERED=1
+
 python src/train.py "$MODEL_DIRECTORY" "$CONFIG_PATH"
