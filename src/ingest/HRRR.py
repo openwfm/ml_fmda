@@ -33,22 +33,28 @@ hrrr_stash_path = project_paths['hrrr_stash_path']
 
 def features_to_searchstr(flist):
     """
-    Given features list, return dictionary of regex search strings to be used in Herbie package
+    Given features list, return dictionary of regex search strings to be used in Herbie package.
+
+    Accessing specific variables within Herbie objects is convenient when grouped by layer, e.g. surface variables. See the "search_this" column of herbie inventory
+
+    For soil moisture (SOILW) and soil temp (TSOIL), they define variables at multiple depths, so we read those separately. HRRR variables show that these are the only 2 variables below ground, so adding that as a layer 
     """
     
     # Initialize the output dictionary
     search_strings = {
         "surface": "",
         "2m": "",
-        "10m": ""
+        "10m": "",
+        "belowground": ""
     }
 
     for feat in flist:
         feature_info = Dict(hrrr_meta[feat])
         feature_type = feature_info.feature_type
-        
         if feature_type == "hrrr_data":
             layer = feature_info.layer
+            #if feature_info.layer == "belowground":
+            #    continue
             ss = feature_info.herbie_str
             search_strings[layer] += f"|{ss}"
             if not ss in search_strings[layer]:
@@ -323,6 +329,10 @@ def retrieve_hrrr_api(start, end, all_features = True, forecast_step = 3, save_t
         print(f"Reading HRRR data for layer: {layer}")
         print(f"    search strings: {search_strings[layer]}")
         ds_dict[layer] = FH.xarray(search_strings[layer], remove_grib=False) # Keep grib for easier re-use, delete later
+    breakpoint()
+    # Convert soil temp and soil water to 
+    ds_dict["belowground"]
+    #ds = merge_datasets({k: v for k, v in ds_dict.items() if k != 'belowground'})
     ds = merge_datasets(ds_dict)
 
     # Store Regular i,j grid coordinates
