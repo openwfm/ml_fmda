@@ -5,7 +5,6 @@
 
 # Stateless RNN, batch_size declared at fit step
 rnn:
-    features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'rain', 'hod', 'doy'] 
     timesteps: 48 # number of time steps that constistutes one single input sample, matches HRRR max forecast cycle and max time this model is intended to be extrapolated into the future
     batch_size: 64 # number of sequences of length `timesteps` that are processed independently in an iteration of weight updates
     hidden_layers: [lstm, dense, dense, dropout] # Sequential order of neural network hidden layers, one of 'dense', 'rnn', 'lstm', 'attention', 'dropout'
@@ -33,7 +32,6 @@ rnn:
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 xgb:
-  features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'rain', 'hod', 'doy'] 
   max_depth: 3            # maximum tree depth
   eta: 0.1                # Learning rate
   min_child_weight: 1     # minimum sum of Hessian of samples needed to make a partition
