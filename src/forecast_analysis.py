@@ -108,10 +108,11 @@ if __name__ == '__main__':
     dat = RNNData(train, val, test=None, method="random", timesteps=fhours, random_state=None, features_list = params["features_list"]) 
     
     # Flag rain
-    rain_ind = dat.features_list.index("rain")
-    r0=0.5 # threshold rain intensity
-    rain_cond = dat.X_train[:, :, rain_ind] >= r0
-    rain_flag_train = rain_cond.any(axis=1).astype(int)
+    if 'rain' in features_list: 
+        rain_ind = dat.features_list.index("rain")
+        r0=0.5 # threshold rain intensity
+        rain_cond = dat.X_train[:, :, rain_ind] >= r0
+        rain_flag_train = rain_cond.any(axis=1).astype(int)
 
     dat.scale_data()
     rnn = RNN_Flexible(params=params)
