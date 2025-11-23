@@ -47,7 +47,7 @@ if __name__ == '__main__':
     # Check if already run, allows for easy rerun of process
     if osp.exists(osp.join(f_dir, 'ml_data.pkl')) and osp.exists(osp.join(f_dir, 'analysis_info.json')):
         print(f"Forecast analysis setup already run at {f_dir}, exiting")
-        #sys.exit(0)
+        sys.exit(0)
 
     # Set up forecast directory and config
     os.makedirs(f_dir, exist_ok=True)
