@@ -136,8 +136,9 @@ if __name__ == '__main__':
         if len(test2) > 1:
             X_test = dat._combine_data(test2, params["features_list"])
             # Flag rain
-            rain_cond = X_test[:, :, rain_ind] >= r0
-            rain_flag_test = rain_cond.any(axis=1).astype(int)
+            if 'rain' in features_list:
+                rain_cond = X_test[:, :, rain_ind] >= r0
+                rain_flag_test = rain_cond.any(axis=1).astype(int)
             # Apply fitted scaler from RNNData to test data
             X_test = scale_3d(X_test, dat.scaler)
             sts = dat._combine_data(test2, ['stid'])
@@ -145,7 +146,9 @@ if __name__ == '__main__':
             assert (X_test.shape[0] == len(test2)) and (X_test.shape[1]==ts.shape[0]) and (X_test.shape[0:2]==y_test.shape[0:2])
             # Run predictiona and format for output
             m_rnn = rnn.predict(X_test)
-            df_temp = pd.DataFrame({'preds': m_rnn.flatten(), 'stid': sts.flatten(), 'date_time':np.tile(ts, m_rnn.shape[0]).astype(str), 'fm': y_test.flatten(), 'sample_number': np.repeat(np.arange(X_test.shape[0]), len(ts)), 'rain_flag': np.repeat(rain_flag_test, len(ts))})
+            df_temp = pd.DataFrame({'preds': m_rnn.flatten(), 'stid': sts.flatten(), 'date_time':np.tile(ts, m_rnn.shape[0]).astype(str), 'fm': y_test.flatten(), 'sample_number': np.repeat(np.arange(X_test.shape[0]), len(ts))})
+            if 'rain' in features_list:
+                df_temp['rain_flag'] = np.repeat(rain_flag_test, len(ts))
             rnn_output = pd.concat([rnn_output, df_temp], ignore_index=True)
 
 
