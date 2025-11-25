@@ -235,27 +235,65 @@ if __name__ == '__main__':
         "clim": "Climatology"
     }
 
-    plt.figure()
+    marker_map = {
+        "rnn": "o",      # solid circle
+        "ode": "^",      # triangle
+        "xgb": "s",      # square (example – adjust as needed)
+        "clim": None
+    }
+
+    fillstyle_map = {
+        "rnn": "full",   # filled circle
+        "ode": "none",   # open triangle
+        "xgb": "full",
+        "clim": "full"
+    }
+
+    linestyle_map = {
+        "rnn": "-",      # solid
+        "ode": "-",      # solid
+        "xgb": "-",      # solid
+        "clim": "--"     # dashed for climatology
+    }
+
+    fig, ax = plt.subplots()
     for model in models:
         y = by_hod[by_hod.Model == model].rmse_mean.to_numpy()
         label = rename.get(model, model)
-        plt.plot(x, y, label=label)
+        ax.plot(
+            x,
+            y,
+            label=label,
+            marker=marker_map.get(model),
+            linestyle=linestyle_map.get(model),
+            fillstyle=fillstyle_map.get(model),
+            markersize=6
+        )
 
-    plt.xlabel('Hour of Day (UTC)')
-    plt.ylabel('RMSE')
-    plt.xticks(np.arange(0, 24, 2))
+    plt.xlabel('Hour of Day (UTC)', fontsize=16)
+    plt.ylabel('RMSE (%)', fontsize=16)
+    plt.xticks(np.arange(0, 24, 2), fontsize=14)
+    plt.yticks(fontsize=14)
     plt.ylim(0, 7)
+    
+    mst_hour = (x - 7) % 24
+    ax_top = ax.secondary_xaxis("top")
+    ax_top.set_xticks(np.arange(0, 24, 2))
+    ax_top.tick_params(labelsize=14)
+    ax_top.set_xticklabels(mst_hour[::2].astype(int))  # match your spacing
+    ax_top.set_xlabel("Hour of Day (MST)", fontsize=16)
+    
     plt.legend(loc='upper left')
     print(f"Writing plot of error averaged over hour of day to: {osp.join(out_dir, 'err24.png')}")
-    plt.savefig(osp.join(out_dir, "err24.png"), dpi=300)
+    plt.savefig(osp.join(out_dir, "err24.png"), dpi=400)
     
     ## RNN FM vs Residual Plot
-    print("    Creating residual histogram plot")
-    plt.figure()
-    plt.scatter(rnn.fm, rnn.residual, marker="o", alpha=.7); plt.grid(); plt.axhline(0, color='black', linestyle='--')
-    plt.xlabel("FMC (%)")
-    plt.ylabel("Residual (Observed - Predicted)")
-    plt.savefig(osp.join(out_dir, "rnn_residuals.png"), dpi=300)
+    #print("    Creating residual histogram plot")
+    #plt.figure()
+    #plt.scatter(rnn.fm, rnn.residual, marker="o", alpha=.7); plt.grid(); plt.axhline(0, color='black', linestyle='--')
+    #plt.xlabel("FMC (%)")
+    #plt.ylabel("Residual (Observed - Predicted)")
+    #plt.savefig(osp.join(out_dir, "rnn_residuals.png"), dpi=300)
 
 
 
