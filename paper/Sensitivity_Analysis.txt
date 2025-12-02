@@ -1,0 +1,35 @@
+Sensitivity Analysis:
+
+\begin{table}[tbh]
+\caption{Sensitivity analysis for specific predictors\label{sens2}}
+\begin{tabularx}{\textwidth}{CCCC}
+\toprule
+\textbf{Configuration} & \textbf{RMSE Mean} & \textbf{Relative Difference} & \textbf{Difference} \\
+\midrule
+Full Model & 3.02 $\pm$ 1.12 &  &  \\
+No Lat/Lon & 3.07 & 1.66$\%$ & 0.05 \\
+No Solar & 3.07 & 1.66$\%$ & 0.05 \\
+No Rain & 3.09 & 2.32$\%$ & 0.07 \\
+No Wind & 3.1 & 2.65$\%$ & 0.08 \\
+No Equilibria & 4.23 & 40.07$\%$ & 1.21 \\
+\bottomrule
+\end{tabularx}
+
+\end{table}
+
+\begin{table}[tbh]
+\caption{Sensitivity analysis for predictor groups.\label{sens1}}
+\begin{tabularx}{\textwidth}{CCCC}
+\toprule
+\textbf{Configuration} & \textbf{RMSE Mean} & \textbf{Relative Difference} & \textbf{Difference} \\
+\midrule
+Full Model & 3.02 $\pm$ 1.12 &  &  \\
+Weather $+$ Temporal & 3.06 & 1.32$\%$ & 0.04 \\
+Weather Only & 3.2 & 5.96$\%$ & 0.18 \\
+Weather $+$ Geographic & 3.2 & 5.96$\%$ & 0.18 \\
+No Weather & 5.37 & 77.81$\%$ & 2.35 \\
+\bottomrule
+\end{tabularx}
+
+\end{table}
+
