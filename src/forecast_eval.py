@@ -76,11 +76,10 @@ def summary_table(df, group_vars, bound_vars="rep"):
     summary_stats = rep_metrics.groupby(group_vars, sort=False)[["bias", "mse"]].agg(["mean", "std"]).reset_index() 
     if not type(bound_vars) is list:
         bound_vars = [bound_vars]
-    summary_stats.columns = group_vars + ["bias_mean", "bias_std", "mse_mean", "mse_std"]
-    #summary_stats["Bias"] = summary_stats["bias_mean"].astype('float64').round(2).astype(str) + " +/- " + summary_stats["bias_std"].round(2).astype(str)
-    #summary_stats["MSE"] = summary_stats["mse_mean"].astype('float64').round(2).astype(str) + " +/- " + summary_stats["mse_std"].round(2).astype(str)
-    #summary_formatted = summary_stats[["Model", "Bias", "MSE"]]
-    #return summary_formatted
+    
+    summary_stats.columns = group_vars + ["bias_mean", "bias_std", "rmse_mean", "rmse_std"]
+    summary_stats["rmse_mean"] = np.sqrt(summary_stats["rmse_mean"])
+    summary_stats["rmse_std"] = np.sqrt(summary_stats["rmse_std"])
     return summary_stats
 
 
@@ -102,7 +101,6 @@ if __name__ == '__main__':
     out_dir = osp.join(f_dir, "error_analysis")
     os.makedirs(out_dir, exist_ok=True)
 
-
     # Read output files for forecast analysis run
     ## Get all files in outputs
     files = os.listdir(osp.join(f_dir, 'forecast_outputs'))
@@ -113,28 +111,12 @@ if __name__ == '__main__':
     key_list = ["rnn"] + baselines
     # key_list =["rnn", "ode", "xgb", "clim"]
     df = read_hdf_list(files, key_list)
-    #rnn = read_hdf_list(files, key="rnn")
-    #ode = read_hdf_list(files, key="ode")
-    #xgb = read_hdf_list(files, key="xgb")
-    #clim = read_hdf_list(files, key="clim")
-    #clim = clim[(~clim.preds.isna()) & (~clim.fm.isna())]
-
-    # Evaluate Accuracy
-    ## First calculate errors (residuals)
-    #rnn = calc_errs(rnn); rnn["Model"] = "RNN"
-    #ode = calc_errs(ode); ode["Model"] = "ODE"
-    #xgb = calc_errs(xgb); xgb["Model"] = "XGB"
-    #clim = calc_errs(clim); clim["Model"] = "CLIMATOLOGY"
 
     ## Combine all individual predictions so someone can easily reproduce summary tables that aggregate
     ## Add spatial info and calculate hour of dayi
     print(f"Combining and evaluating errors for forecast period:")
     print(f"    {fconf.f_start=}")
     print(f"    {fconf.f_end=}")
-
-    # df = pd.concat([rnn, xgb, ode, clim], ignore_index=True)
-    
-    # df.to_hdf(osp.join(f_dir, "all_errors.h5"), key="all_errors") # too large to write with hdf
 
     
     ml_dict = read_pkl(osp.join(f_dir, "ml_data.pkl"))
