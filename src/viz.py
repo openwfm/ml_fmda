@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import os
 # import imageio.v2 as imageio
 from matplotlib import pyplot as plt
-# import plotly.express as px
-# import plotly.graph_objects as go
+import plotly.express as px
+import plotly.graph_objects as go
 import pandas as pd
 
 # Dictionary used to store timeseries plot schemes, ts for single location
@@ -18,8 +18,8 @@ import pandas as pd
 plot_styles = {
     'fm': {'color': '#468a29', 'linestyle': '-', 'label': 'Observed FMC'},
     'fm_preds': {'color': '#468a29', 'linestyle': '-', 'label': 'Observed FMC'},
-    'Ed': {'color': '#EF847C', 'linestyle': '--', 'alpha':.8, 'label': 'drying EQ'},
-    'Ew': {'color': '#7CCCEF', 'linestyle': '--', 'alpha':.8, 'label': 'wetting EQ'},
+    'Ed': {'color': '#EF847C', 'linestyle': '--', 'alpha':.8, 'label': 'Drying EQ'},
+    'Ew': {'color': '#7CCCEF', 'linestyle': '--', 'alpha':.8, 'label': 'Wetting EQ'},
     'rain': {'color': 'b', 'linestyle': '-', 'alpha':.9, 'label': 'Rain'},
     'model': {'color': 'k', 'linestyle': '-', 'label': 'Predicted FMC'}
 }
@@ -68,39 +68,6 @@ def plot_one(d, st, features=True, m=None, start_time="2024-01-01", end_time = "
     if not show:
         plt.close()
 
-
-        
-# Dictionary to store mapping schemes, eg cmaps and titles
-## Using NWS color maps from the herbie package
-## Moisture vars, like equil and FMC, use NWS humidity scheme
-# map_dict = {
-#     'fm': {'cmap': paint.NWSRelativeHumidity.cmap, 
-#            'legend_title': 'Fuel Moisture Content (%)'},
-#     'fm_preds': {'cmap': paint.NWSRelativeHumidity.cmap, 
-#            'legend_title': 'Fuel Moisture Content (%)'},    
-#     'Ed': {'cmap': paint.NWSRelativeHumidity.cmap, 
-#            'legend_title': 'Drying Equilibrium Moisture Content (%)'},
-#     'Ew': {'cmap': paint.NWSRelativeHumidity.cmap, 
-#            'legend_title': 'Wetting Equilibrium Moisture Content (%)'},
-#     'rh': {'cmap': paint.NWSRelativeHumidity.cmap, 
-#            'legend_title': 'Relative Humidity (%)',
-#            'xarray_name': "r2"
-#           },
-#     'temp': {'cmap': paint.NWSTemperature.cmap, 
-#              'legend_title': 'Air Temperature (K)',
-#              'xarray_name': "t2m"
-#             },
-#     'rain': {'cmap': paint.NWSPrecipitation.cmap, 
-#              'legend_title': 'Hourly Precipitation (mm/hr)',
-#              'xarray_name': "tp"
-#             },
-#     'elev': {'cmap': paint.LandGreen.cmap, 
-#              'legend_title': 'Elevation (m)'},
-#     'wind': {'cmap': paint.NWSWindSpeed.cmap, 
-#              'legend_title': 'Wind Speed (m/s)',
-#              'xarray_name': "si10"
-#             }
-# }
 
 def map_var(ds, var_str, time_step=0, scale='110m', figsize=[15, 9], legend_title=None, title=None, save_path=None, vmin=None, vmax=None):
     """
@@ -196,7 +163,7 @@ def make_st_map_interactive(df, color=None, binary=False):
     Make interactive map with plotted bounding box. If color None, default scatter color. If color not none, it specifies a numeric column used for plotting color of scatter
     """
     marker_dict={
-        'size': 10,
+        'size': 6,
         'opacity': 0.7
     }
     
@@ -253,6 +220,6 @@ def make_st_map_interactive(df, color=None, binary=False):
         margin={"r":0,"t":0,"l":0,"b":0},
         mapbox_zoom =5,
         mapbox_center={"lat": np.median(df.lat), "lon": np.median(df.lon)},  # Center the map on desired location
-        width=800, height=600
+        width=1000, height=600
     )
     return fig
