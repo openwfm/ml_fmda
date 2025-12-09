@@ -183,7 +183,13 @@ def build_ml_data(dict0,
             atm.rename(columns={"max_10si": "wind", "sdswrf": "solar"}, inplace=True)
 
             # Check times match
-            times = pd.to_datetime(atm.date_time.to_numpy()).tz_localize('UTC')
+            times_raw = pd.to_datetime(atm.date_time.to_numpy())
+            if times_raw.tz is None:
+                # naive → assume UTC
+                times = times_raw.tz_localize('UTC')
+            else:
+                # already tz-aware → convert to UTC
+                times = times_raw.tz_convert('UTC')
             assert np.all(raws.date_time.to_numpy() == times), f"date_time column doesn't match from RAWS and HRRR for station {st}"
             atm.date_time = times
 
