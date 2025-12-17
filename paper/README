@@ -87,3 +87,34 @@ conda activate ml_fmda_models
 python src/report_materials.py /PATH_TO_OUTPUT/
 ```
 
+## Sensitivity Analysis
+
+To evaluate relative predictor importance, we ran a series of sensitivity analysis. We removed invidual predictors and sets of predictors and reran the analysis. Edit the `features_list` object in the config file, for example a config file to test predictors without geographic features (lat, lon, elev) would have the list: 
+
+```
+...
+features_list = ['Ed', 'Ew', 'rain', 'solar', 'wind', 'doy', 'hod']
+...
+
+```
+
+Below are the configurations we ran with descriptions of the comparison in question:
+
+The following comparisons were for groups of predictors (weather, geographic, temporal)
+- Full model, inputs from weather+geographic+temporal: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'rain', 'hod', 'doy']
+- Weather only model: ['Ed', 'Ew', 'solar', 'wind', 'rain']
+- Weather + temporal: ['Ed', 'Ew', 'solar', 'wind', 'rain', 'doy', 'hod']
+- Weather + geo:      ['Ed', 'Ew', 'solar', 'wind', 'rain', 'elev', 'lon', 'lat']
+- No weather model (temporal and geo features): ['elev', 'lon', 'lat', 'hod', 'doy'] 
+
+
+The following python script reads results from all forecasts directories and combines into latex format tables (space separated, order doesn't matter the code extracts the features list and organizes)
+
+
+```
+python src/sensitivity forecasts/rocky24_paper forecasts/rocky24_noweather ...
+```
+
+
+
+
