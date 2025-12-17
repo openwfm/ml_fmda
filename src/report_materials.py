@@ -270,23 +270,23 @@ if __name__ == '__main__':
             markersize=6
         )
 
-    plt.xlabel('Hour of Day (UTC)', fontsize=16)
-    plt.ylabel('RMSE (%)', fontsize=16)
-    plt.xticks(np.arange(0, 24, 2), fontsize=14)
-    plt.yticks(fontsize=14)
+    plt.xlabel('Hour of Day (UTC)', fontsize=12)
+    plt.ylabel('RMSE (%)', fontsize=12)
+    plt.xticks(np.arange(0, 24, 2), fontsize=12)
+    plt.yticks(fontsize=12)
     plt.ylim(0, 7)
     
     mst_hour = (x - 7) % 24
     ax_top = ax.secondary_xaxis("top")
     ax_top.set_xticks(np.arange(0, 24, 2))
-    ax_top.tick_params(labelsize=14)
+    ax_top.tick_params(labelsize=12)
     ax_top.set_xticklabels(mst_hour[::2].astype(int))  # match your spacing
-    ax_top.set_xlabel("Hour of Day (MST)", fontsize=16)
+    ax_top.set_xlabel("Hour of Day (MST)", fontsize=12)
     
     plt.legend(loc='upper left')
     print(f"Writing plot of error averaged over hour of day to: {osp.join(out_dir, 'err24.png')}")
     plt.savefig(osp.join(out_dir, "err24.png"), dpi=400)
-    
+   
     ## RNN FM vs Residual Plot
     #print("    Creating residual histogram plot")
     #plt.figure()
