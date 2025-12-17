@@ -118,7 +118,7 @@ if __name__ == '__main__':
     ## Predictor Variable Summary
     print("    Formatting predictor summary table")
     all_vars.Variable = ["Drying Equilibrium", "Wetting Equilibrium", "Solar Radiation", "Wind Speed", "Elevation", "Longitude", "Latitude", "Rain", "Hour of Day", "Day of Year"]
-    all_vars["Units"] = [r"$\%$", r"$\%$", r"$kWh/m^2$", r"$m/s$", "meters", "degree", "degree",r"mm/h", r"hours", "days"]
+    all_vars["Units"] = [r"$\%$", r"$\%$", r"$W/m^2$", r"$m/s$", "meters", "degree", "degree",r"mm/h", r"hours", "days"]
     all_vars["Description"] = ["Derived from RH and temperature.", "Derived from RH and temperature.", "Downward shortwave radiative flux.", "Wind speed at 10m.", "Height above sea level.", "X-Coordinate", "Y-Coordinate", "Calculated from rain accumulated over the hour.", "From 0 to 23, UTC time.", "From 0 to 365 or 366 (leap year in 2024)"]
     all_vars = all_vars[["Variable", "Units", "Description", "Mean", "Low", "High"]]
     all_vars = table_to_latex(all_vars, caption="Predictors Summary", label="tab:all_vars")
