@@ -1,16 +1,85 @@
 # Metadata for SMAP
-# Documentation: https://nsidc.org/sites/default/files/spl3smp_e-v005-userguide.pdf
+# Documentation: 
+    # https://nsidc.org/sites/default/files/documents/user-guide/multi_spl4smau-v008-userguide.pdf
+    # https://developers.google.com/earth-engine/datasets/catalog/NASA_SMAP_SPL4SMGP_008
 # Soil moisture from SMAP is top 5cm,
 # Units for soil moisture m^3/m^3, interpretable as a fraction
 # Namelist format OLD:NEW
 
-product: "SPL3SMP_E"   # daily, 9 km enhanced soil moisture
-file_name_convention: "SMAP_L3_SM_P_E_yyyymmdd_RLVvvv_NNN.h5"
+product: "SPL4SMGP"   # daily, 9 km enhanced soil moisture, data assimilated
+version: "version"
+file_name_convention: "SMAP_L4_SM_pid_yyyymmddThhmmss_VLMmmm_NNN.h5" # e.g. SMAP_L4_SM_gph_20151015T133000_Vv2010_001.h5
 missing: -9999.0
-valid_min: 0.02
-namelist: 
-  longitude: "lon"
-  latitude:  "lat"
-  soil_moisture: "soilw"
-  soil_moisture_error: "soilw_error"
-  soil_moisture_dca: "soilw_dca"
+vars:
+    sm_surface:
+        desc: "Top layer soil moisture (0-5 cm)"
+        units: "fraction"
+        min: 0.0
+        max: 0.9
+    sm_rootzone:
+        desc: "Root zone soil moisture (0-100 cm)"
+        units: "fraction"
+        min: 0.0
+        max: 0.9
+    surface_temp:
+        desc: "Mean land surface temperature (including snow-covered land area)"
+        units: "K"
+        min: 180
+        max: 350
+    soil_temp_layer1:
+        desc: "Soil temperature in layer 1 of soil heat diffusion model"
+        units: "K"
+        min: 210
+        max: 350
+    soil_temp_layer2:
+        desc: "Soil temperature in layer 2 of soil heat diffusion model"
+        units: "K"
+        min: 210
+        max: 330
+    soil_temp_layer3:
+        desc: "Soil temperature in layer 3 of soil heat diffusion model"
+        units: "K"
+        min: 215
+        max: 325
+    soil_temp_layer4:
+        desc: "Soil temperature in layer 4 of soil heat diffusion model"
+        units: "K"
+        min: 220
+        max: 325
+    soil_temp_layer5:
+        desc: "Soil temperature in layer 5 of soil heat diffusion model"
+        units: "K"
+        min: 225
+        max: 325
+    soil_temp_layer6:
+        desc: "Soil temperature in layer 6 of soil heat diffusion model"
+        units: "K"
+        min: 230
+        max: 320
+    land_fraction_saturated:
+        desc: "Fractional land area that is saturated and snow-free"
+        units: "fraction"
+        min: 0 
+        max: 1
+    land_fraction_snow_covered:
+        desc: "Fractional land area that is snow covered"
+        units: "fraction"
+        min: 0 
+        max: 1
+    snow_depth:
+        desc: "Snow depth within snow-covered land fraction of grid cell"
+        units: "m"
+        min: 0 
+        max: 50
+    vegetation_greenness_fraction:
+        desc: "Fraction of transpiring leaves averaged over the land area of the grid cell."
+        units: "fraction"
+        min: 0 
+        max: 1
+    leaf_area_index:
+        desc: "Vegetation leaf area index."
+        units: "index"
+        min: 0 
+        max: 10
+
+
