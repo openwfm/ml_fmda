@@ -41,6 +41,13 @@ Workflow Description:
 	- Read and combine using either APIs or stashes of saved data. For access to the RAWS stash or HRRR stashes, just ask jonathon.hirschi@ucdenver.edu
 	- Interpolate missing RAWS data to regular 1-hr intervals (filters associated with this are applied later) 
 	- This process is intended to get all available data relevant to FMC modeling, and it is not affected by choice of particular model predictors or data filtering hyperparameters
+	- Uses metadata files for RAWS and HRRR to specify which variables to retrieve and what to name them
+
+Example for building data dictionaries for 2023 in North Rockies GACC, see rtma_cycler for more info
+```
+sbatch build_fmda_data.sh '2023-01-01T00:00:00Z' '2023-12-31T23:00:00Z' '[44.2,-117,49,-96.5]' /storage/math/NSF1/hirschij/FMDA/nr_gacc
+```
+
 
 - Build ML Data:
 	- Apply interpolation and constant data filters to identify long stretches of constant or perfectly linear data. This filters broken sensors as well as stretches of data that were interpolated past a reasonable limit
@@ -67,6 +74,8 @@ To apply filters related to broken sensors or too long stretches of missing data
 - 72 hours is divisible by 12 and 24, which are candidates for the timesteps hyperparameter length for defining samples to the RNNs
 
 Changing this from 72 might lead to errors, particularly if changed to something not divisible by 12
+
+
 
 ## Building Models
 

@@ -30,9 +30,6 @@ from utils import Dict, time_range, read_yml, print_dict_summary, is_consecutive
 params_models = read_yml(osp.join(CONFIG_DIR, "params_models.yaml"))
 raws_meta = read_yml(osp.join(CONFIG_DIR, "variable_metadata", "raws_metadata.yaml"))
 
-# Update stash path. We do this here so it works if module called from different locations
-raws_meta.update({'raws_stash_path': osp.join(PROJECT_ROOT, raws_meta['raws_stash_path'])})
-
 
 
 # Climatology Method
@@ -188,8 +185,8 @@ def build_climatology(start, end, bbox, clim_params=None, n_workers = 8):
     print(f"    Required number of years of data: {min_years}")
     
     # Get target RAWS stations
-    sts_df = get_stations(bbox)
-    sts = list(sts_df["stid"])
+    sts_df = get_stations(bbox, source="stash")
+    sts = sts_df.index.to_list()
 
     # Forecast Times, and needed RAWS file hours based on params
     ftimes = time_range(start, end)

@@ -14,7 +14,6 @@ except ImportError:
 
 # Set common environment variables.
 environ = {
-    'TF_DETERMINISTIC_OPS': '1',
     'PYTHONHASHSEED': '0',
     'TF_CPP_MIN_LOG_LEVEL': '2'
 }
@@ -32,12 +31,15 @@ def set_seed(seed=123):
     --------
     >>> set_seed(42)
     """
+
+    print('Resetting random seeds to %i' % seed)
     # Seed Python's random module.
     random.seed(seed)
     # Seed NumPy.
     np.random.seed(seed)
-    # Update environment variable for PYTHONHASHSEED.
+    # Update environment variables.
     os.environ['PYTHONHASHSEED'] = str(seed)
+    os.environ["TF_DETERMINISTIC_OPS"] = '1'
 
     if _tf_available:
         # Set TensorFlow seeds.
@@ -48,8 +50,8 @@ def set_seed(seed=123):
         # Enable deterministic operations if available.
         if hasattr(tf.config.experimental, 'enable_op_determinism'):
             tf.config.experimental.enable_op_determinism()
-    
-    print('Resetting random seeds to %i' % seed)
+
+
 
 
 

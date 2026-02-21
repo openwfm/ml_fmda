@@ -1,0 +1,21 @@
+# Metadata for CYGNSS Smoil Moisture Data
+# Links: https://podaac.jpl.nasa.gov/dataset/CYGNSS_L3_SOIL_MOISTURE_V3.2
+# Citation: CYGNSS. 2024. CYGNSS Level 3 Soil Moisture Version 3.2. Ver. 3.2. PO.DAAC, CA, USA. Dataset accessed [YYYY-MM-DD] at https://doi.org/10.5067/CYGNU-L3S32
+# Soil moisture from is top 5cm,
+# Units for soil moisture cm^3/cm^3, interpretable as a fraction
+# two gridded resolutions: 9x9km and 36x36km
+# Name convention: "cyg.ddmi.sYYYYMMDD-HHMMSS-eYYYYMMDD-HHMMSS.l3.grid-soil-moisture-36km.a32.d33.nc"
+# # mission name . delay dopler mapping instrument . start date . end date . level 3 gridded . product type . spatial resolution . algorithm version a## . data version d## . netcdf file type
+# Namelist format OLD:NEW
+# NOTE: as of Nov 20 2025, using only one of subdaily vs daily. Haven't figured out a way to handle both variables effectively
+
+product: "CYGNSS_L3_SOIL_MOISTURE_V3.2"   # daily, 9 km enhanced soil moisture
+file_name_convention: "cyg.ddmi.sYYYYMMDD-HHMMSS-eYYYYMMDD-HHMMSS.l3.grid-soil-moisture-36km.a32.d33.nc"
+missing: [null, -9999.0]
+namelist: 
+  longitude: "lon"
+  latitude:  "lat"
+  asSM_daily: "soilw"
+  SIGMA_daily: "soilw_sigma"
+  #SM_subdaily: "soilw"
+  #SIGMA_subdaily: "soilw_sigma"

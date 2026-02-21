@@ -16,7 +16,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import str2time, hash_ndarray
-from ingest.get_project_data import retrieve_fmda_data
+from ingest.get_fmda_data import retrieve_fmda_data
 
 start = str2time('2024-01-01T00:00:00Z')
 end = str2time('2024-01-01T02:00:00Z')

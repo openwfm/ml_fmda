@@ -1,0 +1,22 @@
+# Recipe to build conda environment for data retrieval
+# Building from yaml file has been too unstable
+# Main packages are SynopticPy and Herbie, and other packages for support
+
+conda config --set channel_priority strict
+conda config --add channels conda-forge
+
+
+mamba create -n ml_data -c conda-forge python=3.11   xarray rioxarray dask zarr s3fs netcdf4 eccodes cfgrib   pyproj cartopy matplotlib pandas synopticpy herbie-data -y
+
+conda install tqdm
+
+#conda create -n ml_data python=3.12 pip numpy
+#conda activate ml_data
+
+# conda install -c conda-forge xarray pandas matplotlib dask zarr s3fs
+# conda install -c conda-forge xarray rioxarray dask zarr s3fs netcdf4 eccodes cfgrib pyproj cartopy matplotlib pandas
+
+
+
+
+

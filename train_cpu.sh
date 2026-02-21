@@ -2,8 +2,7 @@
 
 
 #SBATCH --job-name=train
-#SBATCH --partition=math-alderaan-gpu-cuda12
-#SBATCH --gres=gpu:a100:1
+#SBATCH --partition=math-alderaan-short
 #SBATCH --output=logs/train_%j.out
 #SBATCH --ntasks=2
 #SBATCH --mem=32G

@@ -1,7 +1,6 @@
 # File used to store project data paths
 # Use absolute paths if not in project file structure
 
-valid_path: "data/fmc_valid_rocky24.csv" # Path to manually constructed table for filtered invalid data
 raws_stash_path: "/storage/math/NSF1/hirschij/RAWS_stash/MesoDB" # formatted RAWS stash, see Angel for access (as of May 2025)
 hrrr_stash_path: "/storage/math/NSF1/hirschij/HRRR_retrievals" # formatted HRRR stash, prs model data retrieved with herbie, 3hr forecast and variables determined by the metadata file etc/variable_metadata/hrrr_metadata.yaml
 landfire_elev_dir: "/storage/math/NSF1/hirschij/LF2020_Elev_220_CONUS" # landfire elevation file on HRRR grid
