@@ -203,9 +203,9 @@ class RNNData(MLData):
 
         Creates numpy ndarrays X_train, y_train, X_val, y_val, X_test, y_test
         """
-        
-        self.train_locs = [*train.keys()]
+
         train = data_funcs.sort_train_dict(train)
+        self.train_locs = [*train.keys()]
         # Get training samples with staircase, and construct batches
         # Subset features happens at this step
         X_list, y_list, t_list = staircase_dict(train, sequence_length = self.timesteps, features_list = self.features_list)

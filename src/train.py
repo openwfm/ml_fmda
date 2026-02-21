@@ -14,6 +14,7 @@ import numpy as np
 import yaml
 from sklearn.metrics import mean_squared_error
 import time
+from joblib import dump, load
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -144,7 +145,8 @@ if __name__ == '__main__':
     rnn.save_weights(osp.join(t_dir, "rnn.weights.h5"), overwrite=True)
     print(f"Saving model object to: {osp.join(t_dir, 'rnn.keras')}")
     rnn.save(osp.join(t_dir, "rnn.keras"))
+    print(f"Saving data scaler to: {osp.join(t_dir, 'scaler')}")
+    dump(dat.scaler, osp.join(t_dir, "scaler.joblib"))
     elapsed = code_end - code_start
     print(f"Code Runtime (seconds): {elapsed:.2f}")
-
 

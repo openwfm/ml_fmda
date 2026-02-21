@@ -36,12 +36,12 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import time_range, merge_dicts
+from utils import time_range, merge_dicts, Dict, read_yml, str2time
 import ingest.RAWS as rr
 import ingest.HRRR as ih
 
 
-def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None):
+def retrieve_fmda_data(start, end, bbox, raws_source = "stash", atm_source="HRRR", save_path = None):
     """
     Retrieve data for FMC models. Combines RAWS observations with HRRR for given time period and bounding box
 
@@ -51,6 +51,8 @@ def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None
     
     raws_source : str
         One of "stash" or "api".
+    atm_source : str
+        One of "HRRR", "RAWS"
 
     save_filename: str
         Optional filename string, will be saved in the "data" directory relative to PROJECT_ROOT
@@ -71,31 +73,28 @@ def retrieve_fmda_data(start, end, bbox, raws_source = "stash", save_path = None
     else:
         raise ValueError(f"Input raws_source: {raws_source} not recognized")
 
-    # Retrieve Data
+    # Retrieve RAWS Data
     raws_dict = build_raws_dict(start, end, bbox)
-    hrrr_ds = ih.retrieve_hrrr(start, end, save_to_stash=True)
 
-    # Handle HRRR data
-    hrrr_pts = ih.subset_hrrr2raws(hrrr_ds, raws_dict)
-    hrrr_pts = ih.rename_ds(hrrr_pts)
-    assert np.all(hrrr_pts.point_stid.to_numpy() == np.array([*raws_dict.keys()])), "Not all RAWS STID in raws_dict found in hrrr data"
-    hrrr_units = ih.get_units_xr(hrrr_pts)
-    
-    
-    # Merge Dictionaries
-    for st in raws_dict:
-        # Comfirm times match. For HRRR data it should be the date_time which accounts for forecast hour
-        raws_timesi = raws_dict[st]["times"]
-        hrrr_timesi = pd.to_datetime(hrrr_pts.date_time.to_numpy(), utc=True)
-        assert np.all(raws_timesi == hrrr_timesi), "Times in RAWS dict don't match HRRR data date_time"
-    
-        # Extract dataframe of predictors, save in HRRR subdictionary
-        df = hrrr_pts.where(hrrr_pts.point_stid == st, drop=True).to_dataframe()
-        df.reset_index('point', drop=True, inplace=True)
-        raws_dict[st]["HRRR"] = df
-
-        # Add HRRR units
-        raws_dict[st]["units"] = merge_dicts(raws_dict[st]["units"], hrrr_units)
+    if atm_source == "HRRR":
+        # Handle HRRR data
+        hrrr_ds = ih.retrieve_hrrr(start, end, save_to_stash=True)
+        hrrr_pts = ih.subset_hrrr2raws(hrrr_ds, raws_dict)
+        hrrr_pts = ih.rename_ds(hrrr_pts)
+        assert np.all(hrrr_pts.point_stid.to_numpy() == np.array([*raws_dict.keys()])), "Not all RAWS STID in raws_dict found in hrrr data"
+        hrrr_units = ih.get_units_xr(hrrr_pts)
+        # Merge Dictionaries
+        for st in raws_dict:
+            # Comfirm times match. For HRRR data it should be the date_time which accounts for forecast hour
+            raws_timesi = raws_dict[st]["times"]
+            hrrr_timesi = pd.to_datetime(hrrr_pts.date_time.to_numpy(), utc=True)
+            assert np.all(raws_timesi == hrrr_timesi), "Times in RAWS dict don't match HRRR data date_time"
+            # Extract dataframe of predictors, save in HRRR subdictionary
+            df = hrrr_pts.where(hrrr_pts.point_stid == st, drop=True).to_dataframe()
+            df.reset_index('point', drop=True, inplace=True)
+            raws_dict[st]["HRRR"] = df
+            # Add HRRR units
+            raws_dict[st]["units"] = merge_dicts(raws_dict[st]["units"], hrrr_units)
 
     # Save if a filename specified to data directory relative to PROJECT_ROOT
     if save_path is not None:
@@ -121,18 +120,27 @@ def parse_bbox(box_str):
         return None
 
 if __name__ == '__main__':
-    if len(sys.argv) != 5:
+    if len(sys.argv) != 2:
         print(f"Invalid arguments. {len(sys.argv)} was given but 4 expected")
-        print(('Usage: %s <esmf_from_utc> <esmf_to_utc> <bbox> <output_dir>' % sys.argv[0]))
-        print("Example: python src/ingest/get_project_data.py '2024-01-01T00:00:00Z' '2024-01-02T00:00:00Z' '[37,-111,46,-95]' data/rocky_fmda")
+        print(('Usage: %s  <config_file>' % sys.argv[0]))
+        print("Example: python src/ingest/get_fmda_data.py etc/forecast_analysis_TEST.yaml")
         print("bbox format should match rtma_cycler: [latmin, lonmin, latmax, lonmax]")
         print("Times should match format: 2023-06-01T00:00:00Z")
         sys.exit(-1)
 
-    start = sys.argv[1]
-    end = sys.argv[2]
-    bbox = parse_bbox(sys.argv[3])
-    output_dir = sys.argv[4]
+    # Get Configuration
+    ## Some config files have times associated with training, some with forecasting
+    ## We want to get the earliest and latest such dates to control data retrieval
+    conf = Dict(read_yml(sys.argv[1]))
+    bbox = parse_bbox(conf.bbox)
+    output_dir = conf.data_dir
+    atm_source = conf.atm_source
+    raws_source = conf.raws_source
+    ## Times
+    fields = [conf.get(k) for k in ["train_start", "train_end", "f_start", "f_end"] if conf.get(k)]
+    if len(fields) < 2: print("Error: fewer than 2 date fields found."); sys.exit(-1)
+    times = np.array([str2time(f) for f in fields])
+    start, end = times.min(), times.max()
 
     if not osp.exists(output_dir):
         print(f"Creating output directory: {output_dir}")
@@ -140,6 +148,8 @@ if __name__ == '__main__':
 
     print(f"Data retrieval start: {start}")
     print(f"Data retrieval end: {end}")
+    print(f"Source for atmospheric data: {atm_source}")
+    print(f"Source for RAWS data: {raws_source}")
 
     # Retrieve Data
     # Organize files in Month directories and whole days for pkl files
@@ -162,7 +172,8 @@ if __name__ == '__main__':
         print(filepath)
         if not osp.exists(filepath):
             print(f"Retrieving FMDA data from {start_t} to {end_t}")
-            retrieve_fmda_data(start_t, end_t, bbox, save_path = filepath)
+            retrieve_fmda_data(start_t, end_t, bbox, save_path = filepath, 
+                    raws_source=raws_source, atm_source=atm_source)
         else:
             print(f"Data for day {t} already exists in {output_dir}/{ym_dir}, skipping to next period")
 

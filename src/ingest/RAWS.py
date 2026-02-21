@@ -28,8 +28,8 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from utils import read_yml, read_pkl, Dict, time_intp, str2time, rename_dict, time_range
-
+from utils import read_yml, read_pkl, Dict, time_intp, str2time, rename_dict, time_range, calc_times
+from metrics import calc_eq
 
 # Read RAWS Metadata and Data Params for high/low bounds
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -291,6 +291,21 @@ def build_raws_dict_api(start, end, bbox, rename=True, verbose = True, save_path
             raws_dict[st]["RAWS"] = raws_dict[st]["RAWS"].rename(columns = raws_meta["rename_synoptic"])
             raws_dict[st]["loc"] = rename_dict(raws_dict[st]["loc"], raws_meta["rename_synoptic"])
 
+            # Calculate Eq
+            if "rh" in raws_dict[st]["RAWS"] and "temp" in raws_dict[st]["RAWS"]:
+                Ed, Ew = calc_eq(raws_dict[st]["RAWS"]["rh"], raws_dict[st]["RAWS"]["temp"])
+                raws_dict[st]["RAWS"]["Ed"] = Ed; raws_dict[st]["RAWS"]["Ew"] = Ew
+            # Calc Times
+            assert times.shape[0] == raws_dict[st]["RAWS"].shape[0], "Times mismatch between target times and RAWS dataframe"
+            hod, doy = calc_times(times)
+            raws_dict[st]["RAWS"]["hod"] = hod
+            raws_dict[st]["RAWS"]["doy"] = doy
+             
+            # Calc rain from accumulated, set 0th time as 0 rain
+            if "precip_accum" in raws_dict[st]["RAWS"]:
+                rain = raws_dict[st]["RAWS"]["precip_accum"].diff()
+                rain[0] = 0
+                raws_dict[st]["RAWS"]["rain"] = rain
     # Save if path provided
     if save_path is not None:
         with open(save_path, 'wb') as handle:
