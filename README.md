@@ -1,22 +1,47 @@
 # Machine Learning Models of Fuel Moisture Content
 
-Build, train, and deploy machine learning models of fuel moisture content, including recurrent neural networks.
+Project to forecast fuel moisture content with RNNs. Goal is to improve the FMC forecasts used within WRF-SFIRE
+
+## Overview
+
+The Project has components:
+- Retrieve and format data for use with ML models
+	* FMC data from RAWS
+	* Weather data, from RAWS sensors or from HRRR weather model
+	* Geographic predictors from RAWS stations or from HRRR or from LandFire
+- Train and forecast with RNNs for the purpose of estimating forecast accuracy
+	* Train/val/test split, multiple replications with different random seeds to account for training uncertainty
+	* Predict with model at RAWS locations so they can be compared to sensor data
+	* Run baseline methods of accuracy comparison: ODE, climatology, xgboost
+- Train and forecast with RNNs for operational use
+	* Do not use a test set. Use all data and rely on forecast accuracy estimates from before
+	* Predict with model on HRRR grid to generate regional forecasts
+	* Save models for reuse
+
+Data collection, forecast analysis, and saved models are organized by GACC. This is done for performance reasons. Future research should test whether a single national model or several regional models is more accurate
 
 ## Setup
 
-First, build and activate the conda environment:
+### Conda Environments
 
-```
-conda env create -f environment.yml
-conda activate ml_fmda
-```
+Due to stability issues with building conda environments, we break up the environment into components:
+- Data retrieval environment: uses SynopticPy for FMC data, Herbie for HRRR model, etc. Requires setting up API tokens
+	* Name: `ml_fmda_data`
+	* Instructions: `install/data_build.txt`
+- Error analysis Modeling environment with CPU TensorFlow: used for forecast analysis. Hundreds of replications of training and testing make GPU build infeasible. Parallelization of training replications with CPUs over SLURM
+	* Name: `ml_fmda_models`
+	* Instructions: `install/env_model.txt` 
+- Operational Forecast environment with GPU Tensorflow: run once 
+	* Name: `ml_gpu`
+	* Instructions: `install/env_gpu.txt`
 
-Next, set up your `token.json` file in order to access APIs by modifying the template file `tokens.json.initial` using VIM or your preferred text editor. If you don’t have one already, you will need a ![SynopticAPI token](https://synopticdata.com/weatherapi/) 
+### API Access
+
+For building datasets from API sources, set up your `token.json` file in order to access APIs by modifying the template file `tokens.json.initial` using VIM or your preferred text editor. If you don’t have one already, you will need a ![SynopticAPI token](https://synopticdata.com/weatherapi/) 
 
 ```
 cp tokens.json.initial tokens.json
 vi tokens.json
-…
 ```
 
 This project utilizes a cache of RAWS data, since Synoptic charges for data older than 1 year. The stash is maintained by Angel Farguell. The typical workflow is to receive a packaged tar.gz file and extract to the "data" directory with the following command from the Root project directory:
@@ -29,7 +54,6 @@ Finally, if you wish to replicate results from the research associated with this
 
 ```
 python src/setup.py
-…
 ```
 
 ## Data Retrieval Description
