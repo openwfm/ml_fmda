@@ -2,7 +2,7 @@
 # NOTE: forecast analysis scripts have their own config files
 # this is intended for train and save a model for use deployment
 
-
+target_model_dir: "/storage/math/NSF1/hirschij/FMDA/models/rocky23-24" # directory to save model object
 train_start: "2023-01-01T00:00:00Z" # first time for training
 train_end: "2024-12-31T23:00:00Z" # last time for training
 val_hours: 48 # number of hours to use at end of training window (tstart, tend) to use for validation data
