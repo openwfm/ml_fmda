@@ -62,19 +62,38 @@ def build_training_dict(days, data_dir):
 
 if __name__ == '__main__':
 
-    if len(sys.argv) != 3:
-        print(f"Invalid arguments. {len(sys.argv)} was given but 3 expected")
-        print(('Usage: %s <train_dir> <config_path>' % sys.argv[0]))
-        print("<train_dir> is where trained model sent. <config_path> is path to yaml file setting up time frame and other analysis parameters")
-        print("Example: python src/train.py models/rocky24 etc/train_config_TEST.yaml")
+
+    # Optional seed argument. When calling this script with slurm arrays, the array numbers get passed in as random seed
+    # If seed passed, import reproduciblity for deterministic ops and set seed
+    # If no second argument, run without deterministic ops
+    if len(sys.argv) not in [2, 3]:
+        print(f"Invalid arguments. {len(sys.argv)} was given but 2 or 3 expected")
+        print(('Usage: %s <config_path> [seed]' % sys.argv[0]))
+        print("<config_path> is path to yaml file setting up time frame and other analysis parameters")
+        print("Optional [seed] sets deterministic mode and random seed")
+        print("Example: python src/train.py etc/train_config_TEST.yaml 42")
         sys.exit(-1)
 
     # Get input args
-    t_dir = sys.argv[1]
-    conf_path = sys.argv[2]
+    conf_path = sys.argv[1]
+    conf = read_yml(conf_path)
+    t_dir = conf["target_model_dir"]
+    
+    seed = None
+    if len(sys.argv) == 3:
+        try:
+            seed = int(sys.argv[2])
+        except ValueError:
+            print("Seed must be an integer.")
+            sys.exit(-1)
+
+        import reproducibility
+        reproducibility.set_seed(seed)
+        t_dir = osp.join(t_dir, f"seed_{seed}")
+    
+    # Setup output directory.
     os.makedirs(osp.join(t_dir), exist_ok=True)
 
-    conf = read_yml(conf_path)
     params = params_models['rnn']
     with open(osp.join(t_dir, "train_config.yaml"), 'w') as f:
         yaml.dump(conf, f, default_flow_style=False, sort_keys=False)
