@@ -1,0 +1,14 @@
+# Config file used to set up operational model train
+# NOTE: forecast analysis scripts have their own config files
+# this is intended for train and save a model for use deployment
+
+region: "rocky"
+target_model_dir: "/storage/math/NSF1/hirschij/FMDA/models/" # directory to save model object
+train_start: "2023-01-01T00:00:00Z" # first time for training
+train_end: "2024-12-31T23:00:00Z" # last time for training
+val_hours: 48 # number of hours to use at end of training window (tstart, tend) to use for validation data
+space_test_frac: 0.1 # Percentage of data based on location for val and test
+bbox: '[37,-111,46,-95]' # spatial bounding box
+features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'rain', 'hod', 'doy'] # inputs to ML models
+data_dir: "/storage/math/NSF1/hirschij/FMDA/rocky_gacc" # Directory for formatted FMDA data dictionaries
+valid_path: "/storage/math/NSF1/hirschij/FMDA/valid_data/fmc_valid_rocky24.csv" # Path to manually constructed table for filtered invalid data

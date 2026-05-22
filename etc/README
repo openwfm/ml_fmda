@@ -1,0 +1,7 @@
+This directory stores metadata files as well as config files to set up certain runs.
+
+Models split by GACC for performance reasons. Future work should test whether one national model is better.
+
+Different processes need different configuration arguments, so we organize the config files as such:
+* Error analysis config files: has a train/test split to estimate model forecast accuracy. Predict at RAWS locations to compare to sensors. Example config name: `rocky_evaluation.yaml`
+* Train/Forecast for Operational Use: no test set, combine all data. Predict over HRRR grid. Example config name: `rocky_operational.yaml`

@@ -5,7 +5,7 @@
 #SBATCH --partition=math-alderaan-short
 #SBATCH --output=logs/trep_%j.out
 #SBATCH --ntasks=4
-#SBATCH --mem=64G
+#SBATCH --mem=32G
 
 # This script is a *submitter* (runs on the login node).
 # It submits a SLURM job array where each task runs one replication.

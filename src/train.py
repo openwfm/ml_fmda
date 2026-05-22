@@ -76,8 +76,15 @@ if __name__ == '__main__':
 
     # Get input args
     conf_path = sys.argv[1]
-    conf = read_yml(conf_path)
-    t_dir = conf["target_model_dir"]
+    conf = Dict(read_yml(conf_path))
+    region = conf.region
+    t_dir = conf.target_model_dir
+
+    # Setup output directory.
+    tstart = str2time(conf.train_start)
+    tend = str2time(conf.train_end)    
+    tstring =  f"{tstart.strftime('%Y%m%d')}-{tend.strftime('%Y%m%d')}" # time parameters string for naming model directory
+    t_dir = osp.join(t_dir, f"{region}_{tstring}") 
     
     seed = None
     if len(sys.argv) == 3:
@@ -89,10 +96,10 @@ if __name__ == '__main__':
 
         import reproducibility
         reproducibility.set_seed(seed)
-        t_dir = osp.join(t_dir, f"seed_{seed}")
+        t_dir = f"{t_dir}_reps"
+        t_dir = osp.join(t_dir, f"seed_{seed}")    
     
-    # Setup output directory.
-    os.makedirs(osp.join(t_dir), exist_ok=True)
+    os.makedirs(t_dir, exist_ok=True)
 
     params = params_models['rnn']
     with open(osp.join(t_dir, "train_config.yaml"), 'w') as f:

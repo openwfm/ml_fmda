@@ -56,6 +56,31 @@ Finally, if you wish to replicate results from the research associated with this
 python src/setup.py
 ```
 
+## Running Models
+
+There are two modes for training and prediction:
+* Evaluation Runs: used to estimate forecast accuracy. Data uses a train/val/test split to estimate forecast accuracy at out-of-sample locations. Training and forecasting is done in the same scripts. Model prediction is done at RAWS locations. Replications can be done with different random seeds to account for training uncertainty. Baseline models are also run, including ODE+KF, climatology, xgboost. 
+
+```
+sbatch rnn_hyperparam_controller.sh models/rnn_hyperparam_tuning_rocky23_TEST/ etc/rnn_hyperparam_tuning_TEST.yaml/
+```
+
+```
+sbatch forecast_analysis_controller.sh forecasts/fmc_forecast_test/ etc/rocky_evaluation.yaml
+```
+
+* Operational Runs: used as final prediction for estimating wildfire risk and simulation initialization. No test set is used, all available data used for training and a small validation set to control early stopping. Forecast accuracy estimate is used from an evaluation run in reporting. Training and forecasting are separate processes. Model weights are saved after training. Model prediction is done as a gridded forecast.
+
+```
+sbatch train_cpu.sh etc/sw_operational.yaml
+```
+
+```
+sbatch train_cpu_reps.sh etc/sw_operational.yaml
+```
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 ## Data Retrieval Description
 
 Retrieved data is organized by RAWS station. This is not necessarily the most computationally efficient approach, but it makes it easier to organize spatiotemporal cross validation and pointwise deployment of baseline models. Data from various sources, including RAWS, HRRR, and LandFire, and combined into one dictionary object.
@@ -133,7 +158,7 @@ For running the corecast analysis, it is recommened to run on Aleraan or another
 1. Run setup and analysis with controller shell file
 
 ```
-sbatch forecast_analysis_controller.sh forecasts/fmc_forecast_test/ data/rocky_fmda etc/forecast_config.yaml
+sbatch forecast_analysis_controller.sh forecasts/fmc_forecast_test/ etc/rocky_evaluation.yaml
 ```
 
 

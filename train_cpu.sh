@@ -2,10 +2,10 @@
 
 
 #SBATCH --job-name=train
-#SBATCH --partition=math-alderaan-short
+#SBATCH --partition=math-alderaan
 #SBATCH --output=logs/train_%A_%a.out
 #SBATCH --ntasks=4
-#SBATCH --mem=64G
+#SBATCH --mem=32G
 
 # Runs a single training job.
 #
