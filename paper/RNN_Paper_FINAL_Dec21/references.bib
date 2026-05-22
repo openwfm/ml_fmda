@@ -1,0 +1,689 @@
+%
+% JOURNAL ABBREVIATIONS
+%
+@STRING{AMS 	= "Amer.\ Meteor.\ Soc."}
+@STRING{AGU 	= "Amer.\ Geophys.\ Union"}
+@STRING{AIP 	= "Amer. Inst. Phys."}
+@STRING{ADGEO     = "Adv.\ Geosci."}
+@STRING{AFM       = "Agric.\ For.\ Meteor."}
+@STRING{AM        = "Ann.\ Meteor."}
+@STRING{AN        = "Astrophys.\ Norv."}		% Astrophysica Norvegica
+@STRING{AO        = "Atmos.--Ocean"}			% Atmosphere--Ocean, published by Canadian Meteorological Society (CMOS)
+@STRING{AR        = "Atmos.\ Res."}			% Atmospheric Research
+@STRING{ARFM      = "Annu.\ Rev.\ Fluid Mech."}
+@STRING{AUMET     = "Aust.\ Meteor.\ Mag."}
+@STRING{BAMS      = "Bull.\ Amer.\ Meteor.\ Soc."}
+@STRING{CAP       = "Contrib.\ Atmos.\ Phys."}
+@STRING{CC        = "Climate Change"}      % Climate Change 
+@STRING{CCH       = "Climatic Change"}			% Climatic Change
+@STRING{CDYN      = "Climate Dyn."}
+@STRING{CHAOS     = "Chaos"}
+@STRING{COL       = "Collier's"}
+@STRING{CRS       = "Cont.\ Shelf Res."}
+@STRING{DAO       = "Dyn.\ Atmos.\ Oceans"}
+@STRING{ECO       = "Ecology"}
+@STRING{EI        = "Earth Interact."}
+@STRING{GA        = "Geophysica"}			% Geophysica, published by Geophysical Society of Finland 
+@STRING{GEOMAG    = "Geophys.\ Mag."}
+@STRING{GN        = "Geophys.\ Norv."}			% Geophysica Norvegica
+@STRING{GRL       = "Geophys.\ Res.\ Lett."}
+@STRING{GEOINT    = "Geofis.\ Int."}			% Geofisica Internacional (Mexican journal -- vols. 3--5 contained proceedings from a hurricane conference
+@STRING{GEOPUB    = "Geofys.\ Publ."}
+@STRING{GPC       = "Global Planet.\ Change"}
+@STRING{HP        = "Health Phys."}
+@STRING{IAOP      = "Izv.\ Atmos.\ Ocean.\ Phys.\ (Engl.\ Transl.)"}
+@STRING{IJC       = "Int.\ J.\ Climatol."}
+@STRING{JAM       = "J.\ Appl.\ Meteor."}		% renamed to name below in 2006
+@STRING{JAMC      = "J.\ Appl.\ Meteor.\ Climatol."}  	% Journal of Applied Meteorology and Climatology (this journal used to be called the Journal of Applied Meteorology before 2006)
+@STRING{JAS       = "J.\ Atmos.\ Sci."}
+@STRING{JAOT      = "J.\ Atmos.\ Oceanic Technol."}
+@STRING{JCAM      = "J.\ Climate Appl.\ Meteor."}	% from 1983--87, now JAMC
+@STRING{JCLI      = "J.\ Climate"}
+@STRING{JCR       = "J.\ Coastal Res."}
+@STRING{JFM       = "J.\ Fluid\ Mech."}
+@STRING{JEM       = "J.\ Eng.\ Math."}			% Journal of Engineering Mathematics
+@STRING{JGR       = "J.\ Geophys.\ Res."}
+@STRING{JHM       = "J.\ Hydrometeor."}
+@STRING{JMS       = "J.\ Mar.\ Syst."}
+@STRING{JM        = "J.\ Meteor."}
+@STRING{JMR       = "J.\ Mar.\ Res."}
+@STRING{JMSJ      = "J.\ Meteor.\ Soc.\ Japan"}
+@STRING{JPO       = "J.\ Phys.\ Oceanogr."}
+@STRING{JOCEAN    = "J.\ Oceanogr."}			% Journal of Oceanography
+@STRING{JOSJ      = "J.\ Oceanogr.\ Soc.\ Japan"}
+@STRING{JSE       = "J.\ Struct.\ Eng."}	% Journal of Structural Engineering at ASCE
+@STRING{JTM       = "J.\ Tropical Meteor."}
+@STRING{JWEIA     = "J.\ Wind Eng.\ Ind.\ Aerodyn."}
+@STRING{MA        = "Meteor.\ Appl."}
+@STRING{MAP       = "Meteor.\ Atmos.\ Phys."}
+@STRING{METMON    = "Meteor.\ Monogr."}
+@STRING{METZEIT   = "Meteor.\ Z."}
+@STRING{MWL       = "Mar.\ Wea.\ Log"}
+@STRING{MWR       = "Mon.\ Wea.\ Rev."}
+@STRING{NAT       = "Nature"}
+@STRING{NHR       = "Nat.\ Hazards Rev."}
+@STRING{NWD       = "Natl.\ Weather Dig."}
+@STRING{OA        = "Oceanol. Aeta"}
+@STRING{OCEAN     = "Oceanography"}                	% a quarterly journal of The Oceanography Society
+@STRING{PAG       = "Pure Appl.\ Geophys."}
+@STRING{PF        = "Phys.\ Fluids"}
+@STRING{PHYSD     = "Physica D"}
+@STRING{PMG       = "Pap.\ Meteor.\ Geophys."}	% Papers in Meteorology and Geophysics
+@STRING{PNAS      = "Proc.\ Natl.\ Acad.\ Sci.\ (USA)"}
+@STRING{PRE       = "Phys.\ Rev.\ E"}
+@STRING{PRSA      = "Proc.\ Roy.\ Soc."}
+@STRING{PT        = "Phys.\ Today"}
+@STRING{PTRS      = "Philos.\ Trans.\ Roy.\ Soc.\ London"}
+@STRING{QJRMS     = "Quart.\ J.\ Roy.\ Meteor.\ Soc."}
+@STRING{RGEO      = "Rev. Geophys."}
+@STRING{SCI       = "Science"}
+@STRING{SOLA      = "SOLA"}				% Scientific Online Letters on the Atmosphere
+@STRING{TAGU      = "Eos, Trans.\ Amer.\ Geophys.\ Union"}
+@STRING{TELLUS    = "Tellus"}
+@STRING{TCFD      = "Theor.\ Comput.\ Fluid Dyn."}
+@STRING{WEA       = "Weather"}
+@STRING{WW        = "Weatherwise"}
+@STRING{WF        = "Wea.\ Forecasting"}
+@STRING{WMOB      = "WMO Bull."}
+
+
+
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+% FMC Lit
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+@techreport{Bradshaw-1983-NFD,
+author = {Bradshaw, L.S. and Deeming, J.E. and Burgan R.E., and Cohen J.D.},
+year={1984},
+
+title={The 1978 National Fire-Danger Rating System : technical documentation},
+
+institution={U.S. Dept. of Agriculture, Forest Service, Intermountain Forest and Range Experiment Station, 1984},
+
+language={English},
+
+}
+
+@misc{VanWagner-1985-EFP,
+author="Van Wagner, C. E.  and Pickett, T. L.",
+title="Equations and {FORTRAN} Program for the {C}anadian Forest Fire
+Weather Index System",
+howpublished="Canadian Forestry Service, Forestry Technical Report 33",
+isbn="0-662-13906-2",
+address="Ottawa",
+note          = {\url{https://ostrnrcan-dostrncan.canada.ca/handle/1845/228362}},
+year="1985"
+}
+
+@misc{VanWagner-1987-DSC,
+author="Van Wagner, C. E.",
+title="Development and Structure of the {C}anadian Forest Fire
+Weather Index System",
+howpublished="Canadian Forestry Service Forestry Technical Report 35",
+isbn="0-662-15198-4",
+address="Ottawa",
+note = {\url{https://ostrnrcan-dostrncan.canada.ca/handle/1845/228434}},
+year="1987"
+}
+
+@article{Viney-1991-RFF,
+  title={A review of fine fuel moisture modelling},
+  author={Viney, Neil R.},
+  journal={International Journal of Wildland Fire},
+  volume={1},
+  number={4},
+  pages={215--234},
+  year={1991},
+  publisher={CSIRO},
+  doi="10.1071/WF9910215"
+}
+
+@article{Nelson-2000-PDC,
+author = {Nelson Jr., Ralph M. },
+key="Nelson",
+title = {Prediction of diurnal change in 10-h fuel stick moisture content},
+journal = {Canadian Journal of Forest Research},
+volume = {30},
+number = {7},
+pages = {1071--1087},
+year = {2000},
+doi = {10.1139/x00-032},
+}
+
+
+
+@article{Carlson-2007-ANM,
+author="Carlson, J. D. and Bradshaw, Larry S. and Nelson, Ralph M., Jr. and Bensch, Randall R. and Jabrzemski, Rafal",
+year="2007",
+title="Application of the {N}elson model to four timelag fuel classes using {O}klahoma field observations: Model evaluation and comparison with {N}ational {F}ire {D}anger {R}ating {S}ystem algorithms",
+journal="International Journal of Wildland Fire",
+volume="16",
+pages="204--216",
+doi="10.1071/WF06073",
+xurl="http://www.treesearch.fs.fed.us/pubs/27712"
+}
+
+
+
+@Article{Mandel-2014-RAA,
+AUTHOR = {Mandel, J. and Amram, S. and Beezley, J. D. and Kelman, G. and Kochanski, A. K. and Kondratenko, V. Y. and Lynn, B. H. and Regev, B. and Vejmelka, M.},
+TITLE = {Recent advances and applications of {WRF-SFIRE}},
+JOURNAL = {Natural Hazards and Earth System Science},
+VOLUME = {14},
+YEAR = {2014},
+NUMBER = {10},
+PAGES = {2829--2845},
+xURL = {http://www.nat-hazards-earth-syst-sci.net/14/2829/2014/},
+DOI = {10.5194/nhess-14-2829-2014}
+}
+
+@incollection{Vejmelka-2014-DAF,
+author="M. Vejmelka and A. K. Kochanski and J. Mandel",
+title="Data assimilation of fuel moisture in {WRF-SFIRE}",
+howpublished="In \cite{Wade-2014-P4F}",
+editor="Wade, D. D. and Fox, R. L.",
+note="Compiled by M. L. Robinson. 
+Available at \url{http://www.iawfonline.org/4th_Fuels_Conference_Proceedings_USA-Russia.pdf}, accessed July 2014",
+year="2014",
+publisher="International Association of Wildland Fire",
+address="Missoula, MT",
+booktitle="Proceedings of 4th Fire Behavior and 
+Fuels Conference, 18-22 {F}ebruary 2013, {R}aleigh, {NC} and 1-4 {J}uly 2013, {S}t. {P}etersburg, {R}ussia",
+pages="122--137"
+}
+
+@article{Vejmelka-2016-DAD,
+title="Data assimilation of dead fuel moisture observations from remote automatic weather stations",
+author="Martin Vejmelka and Adam K. Kochanski and Jan Mandel",
+journal="International Journal of Wildland Fire",
+preprint="arXiv:1406.4480",
+volume="25",
+issue="5",
+pages="558--568",
+doi="10.1071/WF14085",
+year="2016"
+}
+
+
+@incollection{Mandel-2023-BFM,
+author="J. Mandel and J. Hirschi and  A. K. Kochanski and A. Farguell 
+and J. Haley and D. V. Mallia and B. Shaddy and A. A. Oberai and K. A. Hilburn",
+title="Building a Fuel Moisture Model for
+the Coupled Fire-Atmosphere Model {WRF-SFIRE} from Data:
+{F}rom {K}alman Filters to Recurrent Neural Networks",
+booktitle="SNA'23 Seminar on Numerical Analysis",
+subtitle="Ostrava, Czech Republic, January 23--27, 2023",
+year="2023",
+note="\url{https://www.ugn.cas.cz/event/2023/sna},
+also available as arXiv:2301.05427",
+pages="52--55",
+isbn="978-80-86407-85-2",
+publisher="Institute of Geonics of the Czech Academy of Sciences",
+doi="10.48550/arXiv.2301.05427"
+}
+
+@misc{Hirschi-2025-CLF,
+      title={Custom Loss Functions in Fuel Moisture Modeling}, 
+      author={Jonathon Hirschi},
+      year={2025},
+      eprint={2501.10401},
+      archivePrefix={arXiv},
+      primaryClass={stat.AP},
+      url={https://arxiv.org/abs/2501.10401}, 
+}
+
+@misc{NWCG-2022-LFM,
+  author       = {{National Wildfire Coordinating Group}},
+  title        = {Live Fuel Moisture Content},
+  howpublished = {\url{https://www.nwcg.gov/publications/pms437/fuel-moisture/live-fuel-moisture-content}},
+  note         = {Accessed: 2025-11-25},
+  year         = {2022},
+  publisher    = {National Wildfire Coordinating Group},
+  institution  = {NWCG},
+}
+
+
+@article{Lewis-2024-DFM,
+  author    = {Lewis, C. H. M. and Little, K. and Graham, L. J. and others},
+  title     = {Diurnal fuel moisture content variations of live and dead Calluna vegetation in a temperate peatland},
+  journal   = {Scientific Reports},
+  volume    = {14},
+  pages     = {4815},
+  year      = {2024},
+  doi       = {10.1038/s41598-024-55322-z},
+  url       = {https://doi.org/10.1038/s41598-024-55322-z}
+}
+
+@article{Rao-2020-SEM,
+title = {SAR-enhanced mapping of live fuel moisture content},
+journal = {Remote Sensing of Environment},
+volume = {245},
+pages = {111797},
+year = {2020},
+issn = {0034-4257},
+doi = {https://doi.org/10.1016/j.rse.2020.111797},
+url = {https://www.sciencedirect.com/science/article/pii/S003442572030167X},
+author = {Krishna Rao and A. Park Williams and Jacqueline Fortin Flefil and Alexandra G. Konings}
+}
+
+@article{Zhu-2021-LFM,
+author = {Zhu, Liujun and Webb, Geoffrey and Yebra, Marta and Scortechini, Gianluca and Miller, Lynn and Petitjean, François},
+year = {2021},
+month = {08},
+pages = {81-91},
+title = {Live fuel moisture content estimation from MODIS: A deep learning approach},
+volume = {179},
+journal = {ISPRS Journal of Photogrammetry and Remote Sensing},
+doi = {10.1016/j.isprsjprs.2021.07.010}
+}
+
+@article{Miller-2023-PLF,
+    author = {Miller, Lynn and Zhu, Liujun and Yebra, Marta and Rüdiger, Christoph and Webb, Geoffrey I.},
+    title = {Projecting live fuel moisture content via deep learning},
+    journal = {International Journal of Wildland Fire},
+    volume = {32},
+    number = {5},
+    pages = {709-727},
+    year = {2023},
+    month = {03},
+    issn = {1049-8001},
+    doi = {10.1071/WF22188},
+    url = {https://doi.org/10.1071/WF22188},
+    eprint = {https://connectsci.au/wf/article-pdf/32/5/709/695350/wf22188.pdf},
+}
+
+@Article{Xie-2022-RLF,
+AUTHOR = {Xie, Jiangjian and Qi, Tao and Hu, Wanjun and Huang, Huaguo and Chen, Beibei and Zhang, Junguo},
+TITLE = {Retrieval of Live Fuel Moisture Content Based on Multi-Source Remote Sensing Data and Ensemble Deep Learning Model},
+JOURNAL = {Remote Sensing},
+VOLUME = {14},
+YEAR = {2022},
+NUMBER = {17},
+ARTICLE-NUMBER = {4378},
+URL = {https://www.mdpi.com/2072-4292/14/17/4378},
+ISSN = {2072-4292},
+DOI = {10.3390/rs14174378}
+}
+
+@Article{Hou-2024-CAM,
+AUTHOR = {Hou, Xiang and Wu, Zhiwei and Zhu, Shihao and Li, Zhengjie and Li, Shun},
+TITLE = {Comparative Analysis of Machine Learning-Based Predictive Models for Fine Dead Fuel Moisture of Subtropical Forest in China},
+JOURNAL = {Forests},
+VOLUME = {15},
+YEAR = {2024},
+NUMBER = {5},
+ARTICLE-NUMBER = {736},
+URL = {https://www.mdpi.com/1999-4907/15/5/736},
+ISSN = {1999-4907},
+DOI = {10.3390/f15050736}
+}
+
+
+@Article{Wang-2025-NAI,
+AUTHOR = {Wang, Wenjun and Zhou, Cui and Zhang, Junxiang and Li, Yuanzong and Chen, Zhenyu and Luo, Yongfeng},
+TITLE = {A Novel Approach for Inverting Forest Fuel Moisture Content Utilizing Multi-Source Remote Sensing and Deep Learning},
+JOURNAL = {Forests},
+VOLUME = {16},
+YEAR = {2025},
+NUMBER = {9},
+ARTICLE-NUMBER = {1423},
+URL = {https://www.mdpi.com/1999-4907/16/9/1423},
+ISSN = {1999-4907},
+DOI = {10.3390/f16091423}
+}
+
+
+@Article{Schreck-2023-MLV,
+AUTHOR = {Schreck, John S. and Petzke, William and Jiménez, Pedro A. and Brummet, Thomas and Knievel, Jason C. and James, Eric and Kosović, Branko and Gagne, David John},
+TITLE = {Machine Learning and VIIRS Satellite Retrievals for Skillful Fuel Moisture Content Monitoring in Wildfire Management},
+JOURNAL = {Remote Sensing},
+VOLUME = {15},
+YEAR = {2023},
+NUMBER = {13},
+ARTICLE-NUMBER = {3372},
+URL = {https://www.mdpi.com/2072-4292/15/13/3372},
+ISSN = {2072-4292},
+DOI = {10.3390/rs15133372}
+}
+
+@misc{NCAR-2025-FMC,
+  author       = {{Research Applications Laboratory, National Center for Atmospheric Research (NCAR)}},
+  title        = {Fuel Moisture Content Retrievals},
+  howpublished = {\url{https://ral.ucar.edu/tool/fuel-moisture-content-retrievals}},
+  note         = {Accessed: October 31, 2025},
+  year         = {2025}
+}
+
+@article{Fan-2021-PGD,
+AUTHOR = {Fan, Chunquan and He, Binbin},
+TITLE = {A Physics-Guided Deep Learning Model for 10-h Dead Fuel Moisture Content Estimation},
+JOURNAL = {Forests},
+VOLUME = {12},
+YEAR = {2021},
+NUMBER = {7},
+ARTICLE-NUMBER = {933},
+URL = {https://www.mdpi.com/1999-4907/12/7/933},
+ISSN = {1999-4907},
+ABSTRACT = {Dead fuel moisture content (DFMC) is a key driver for fire occurrence and is often an important input to many fire simulation models. There are two main approaches to estimating DFMC: empirical and process-based models. The former mainly relies on empirical methods to build relationships between the input drivers (weather, fuel and site characteristics) and observed DFMC. The latter attempts to simulate the processes that occur in the fuel with energy and water balance conservation equations. However, empirical models lack explanations for physical processes, and process-based models may provide an incomplete representation of DFMC. To combine the benefits of empirical and process-based models, here we introduced the Long Short-Term Memory (LSTM) network and its combination with an effective physics process-based model fuel stick moisture model (FSMM) to estimate DFMC. The LSTM network showed its powerful ability in describing the temporal dynamic changes of DFMC with high R2 (0.91), low RMSE (3.24%) and MAE (1.97%). When combined with a FSMM model, the physics-guided model FSMM-LSTM showed betterperformance (R2 = 0.96, RMSE = 2.21% and MAE = 1.41%) compared with the other models. Therefore, the combination of the physics process and deep learning estimated 10-h DFMC more accurately, allowing the improvement of wildfire risk assessments and fire simulating.},
+DOI = {10.3390/f12070933}
+}
+
+@INPROCEEDINGS{Kang-2022-FMC,
+  author={Kang, Zhenyu and Jiao, Miao and Zhou, Zijie},
+  booktitle={IGARSS 2022 - 2022 IEEE International Geoscience and Remote Sensing Symposium}, 
+  title={Fuel Moisture Content Forecasting Using Long Short-Term Memory(LSTM) Model}, 
+  year={2022},
+  volume={},
+  number={},
+  pages={5672-5675},
+  keywords={Recurrent neural networks;Time series analysis;Fires;Moisture;Vegetation;Predictive models;Data models;Fuel Moisture Content (FMC);Long short-term memory(LSTM);Multivariate time series forecasting;PRISM},
+  doi={10.1109/IGARSS46834.2022.9883168}}
+
+@article {Dowell-2022-THR,
+      author = "David C. Dowell and Curtis R. Alexander and Eric P. James and Stephen S. Weygandt and Stanley G. Benjamin and Geoffrey S. Manikin and Benjamin T. Blake and John M. Brown and Joseph B. Olson and Ming Hu and Tatiana G. Smirnova and Terra Ladwig and Jaymes S. Kenyon and Ravan Ahmadov and David D. Turner and Jeffrey D. Duda and Trevor I. Alcott",
+      title = "The High-Resolution Rapid Refresh (HRRR): An Hourly Updating Convection-Allowing Forecast Model. Part I: Motivation and System Description",
+      journal = "Weather and Forecasting",
+      year = "2022",
+      publisher = "American Meteorological Society",
+      address = "Boston MA, USA",
+      volume = "37",
+      number = "8",
+      doi = "10.1175/WAF-D-21-0151.1",
+      pages=      "1371 - 1395",
+      url = "https://journals.ametsoc.org/view/journals/wefo/37/8/WAF-D-21-0151.1.xml"
+}
+
+@article{vanderKamp-2017-MFS,
+  title={A model for simulating the moisture content of standardized fuel sticks of various sizes},
+  author={Van der Kamp, D. W. and Moore, R. D. and McKendry, I. G.},
+  journal={Agricultural and Forest Meteorology},
+  volume={236},
+  pages={123--134},
+  year={2017},
+  doi="10.1016/j.agrformet.2017.01.013",
+  publisher={Elsevier}
+}
+
+
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+% General ML Lit
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+@misc{Keras-2025-LSTM,
+  title        = {Keras API: LSTM Layer},
+  author       = {{Keras Team}},
+  year         = {2025},
+  howpublished = {\url{https://keras.io/api/layers/recurrent_layers/lstm/}},
+  note         = {Model training used \texttt{return\_sequences=True}. Accessed: 2025-10-31},
+  organization = {Keras Documentation},
+  url          = {https://keras.io/api/layers/recurrent_layers/lstm/}
+}
+
+@misc{Keras-2025-Loss,
+  title        = {Keras API: Loss Functions},
+  author       = {{Keras Team}},
+  year         = {2025},
+  howpublished = {\url{https://keras.io/api/losses/}},
+  note         = {"sum\_over\_batch\_size" means the loss instance will return the average of the per-sample losses in the batch. Accessed: 2025-10-31},
+  organization = {Keras Documentation},
+  url          = {https://keras.io/api/losses/}
+}
+
+@book{Zhang-2023-DDL,
+  title     = {Dive into Deep Learning},
+  author    = {Aston Zhang and Zachary C. Lipton and Mu Li and Alexander J. Smola},
+  year      = {2023},
+  publisher = {Cambridge University Press},
+  url       = {https://d2l.ai},
+  note      = {Internet Textbook: \url{https://d2l.ai/index.html}, (Accessed Oct. 31, 2025)}
+}
+
+@inproceedings{Chen-2016-XAS, series={KDD ’16},
+   title={XGBoost: A Scalable Tree Boosting System},
+   url={http://dx.doi.org/10.1145/2939672.2939785},
+   DOI={10.1145/2939672.2939785},
+   booktitle={Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining},
+   publisher={ACM},
+   author={Chen, Tianqi and Guestrin, Carlos},
+   year={2016},
+   month={August}, pages={785–794},
+   collection={KDD ’16} }
+
+@article{Hochreiter-1997-LST,
+author = {Hochreiter, Sepp and Schmidhuber, Jürgen},
+year = {1997},
+month = {12},
+pages = {1735-80},
+title = {Long Short-term Memory},
+volume = {9},
+journal = {Neural computation},
+doi = {10.1162/neco.1997.9.8.1735}
+}
+
+@book{Geron-2019-HOM,
+  author    = {Aurélien Géron},
+  title     = {Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow: Concepts, Tools, and Techniques to Build Intelligent Systems},
+  publisher = {O’Reilly Media},
+  year      = {2019},
+  address   = {Sebastopol, CA},
+  note       = {\url{https://research-ebsco-com.aurarialibrary.idm.oclc.org/linkprocessor/plink?id=6093bf50-e842-3a3a-a38b-be8566dfa5e1}},
+  edition="Second",
+  ISBN="978-1-492-03264-9",
+  errata="https://www.oreilly.com/catalog/errata.csp?isbn=9781492032649",
+  release="2020-09-18: Seventh Release"
+}
+
+@book{Hastie-2010-ESL,
+  added-at = {2010-06-03T15:15:09.000+0200},
+  author = {Hastie, Trevor and Tibshirani, Robert and Friedman, Jerome},
+  biburl = {https://www.bibsonomy.org/bibtex/200d858c0bd2826d4eb5f39450192d1f5/ukoethe},
+  edition = 2,
+  file = {:Books\\HastieTibshiraniFriedman-09-Elements-of-Statistical-Learning-2nd-edition\\hastie_09_elements-of.statistical-learning.pdf:PDF},
+  interhash = {52d1772f39be836e3b298d37b8c0cfa1},
+  intrahash = {00d858c0bd2826d4eb5f39450192d1f5},
+  keywords = {inference mathmatics dataanalysis method clutering statistics},
+  publisher = {Springer},
+  timestamp = {2010-06-03T15:15:09.000+0200},
+  title = {The elements of statistical learning: data mining, inference and prediction},
+  note = {\url{http://www-stat.stanford.edu/~tibs/ElemStatLearn/}},
+  year = 2009
+}
+
+
+
+@article{Hunt-2022-ULS,
+  author    = {Hunt, Kieran M. R. and others},
+  title     = {Using a long short-term memory (LSTM) neural network to boost river streamflow forecasts over the western United States},
+  journal   = {Hydrology and Earth System Sciences},
+  volume    = {26},
+  number    = {21},
+  pages     = {5449},
+  year      = {2022},
+  month     = {Nov},
+  url       = {https://link.gale.com/apps/doc/A724772462/EAIM?u=auraria_main&sid=summon&xid=80a99451},
+  note      = {Accessed 4 Mar. 2025}
+}
+
+
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+% Wildfire Background
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+@misc{NIFC-2024-IFP,
+  title        = {Interagency Fire Perimeter History (All Years)},
+  author       = {{National Interagency Fire Center}},
+  year         = {2024},
+  howpublished = {\url{https://services3.arcgis.com/T4QMspbfLg3qTGWY/ArcGIS/rest/services/InterAgencyFirePerimeterHistory_All_Years_View/FeatureServer/0}},
+  note         = {Accessed via ArcGIS REST API with query: FIRE\_YEAR\_INT = 2024 AND UNIT\_ID LIKE 'CO\%'}
+}
+
+@techreport{USFS-2024-AMF,
+  author       = {U.S. Forest Service, Arapaho \& Roosevelt National Forests and Pawnee National Grassland},
+  title        = {Alexander Mountain Fire Burned Area Summary Report: Burned Area Emergency Response (BAER)},
+  institution  = {U.S. Department of Agriculture, Forest Service},
+  address      = {Canyon Lakes Ranger District, Colorado, USA},
+  year         = {2024},
+  month        = {Aug},
+  url          = {https://inciweb-prod-media-bucket.s3.us-gov-west-1.amazonaws.com/s3fs-public/2024-09/Alexander%20Mountain%20BAER%20Summary%20Report_0.pdf?VersionId=xqimvvZGUPwh2O9c_jF6ca3.hGdqB05},
+  note         = {Accessed: 2025-11-25}
+}
+
+@incollection{IPCC-2021-LCI,
+  author       = {Gulev, {Intergovernmental Panel on Climate Change}},
+  title        = {Land-Climate Interactions},
+  booktitle    = {IPCC Sixth Assessment Report},
+  publisher    = {IPCC},
+  year         = {2021},
+  month        = {02},
+  day          = {05},
+  chapter      = {2},
+  pages        = {133-168},
+  note          = {\url{https://www.ipcc.ch/site/assets/uploads/sites/4/2021/02/05_Chapter-2-V5.pdf}, {Accessed: July 3, 2024}}
+}
+
+@article{Cartier-2022-UFQ,
+    author={Cartier,Kimberly},
+    year={2022},
+    title={U.S. Fires Quadrupled in Size, Tripled in Frequency in 20 Years},
+    journal={Eos (Washington, D.C.)},
+    volume={103},
+    abstract={Changes including intensifying drought, expansion into burnable land, and an increase in human-caused ignitions have led to a shift in fire patterns.},
+    isbn={2324-9250},
+    language={English},
+    note = {\url{https://eos.org/articles/u-s-fires-quadrupled-in-size-tripled-in-frequency-in-20-years}}
+}
+
+@misc{CDFPC-2024-HWI,
+  author       = {CDFPC},
+  organization       = {Colorado Division of Fire Prevention \& Control},
+  year = {2024},
+  title        = {Historical Wildfire Information},
+  howpublished = {\url{https://dfpc.colorado.gov/sections/wildfire-information-center/historical-wildfire-information}},
+  note         = {Accessed: December 26, 2024}
+}
+
+@misc{NIFC-2024-RAW,
+  author       = {NIFC},
+  year = {2024},
+  institution = {National Interagency Fire Center},
+  title        = {Remote Automatic Weather Stations ({RAWS})},
+  howpublished = {\url{https://www.nifc.gov/about-us/what-is-nifc/remote-automatic-weather-stations}},
+  note         = {Accessed: December 26, 2024}
+}
+
+@misc{NIFC-2024-GAC,
+  author       = {NIFC},
+  year = {2024},
+  institution = {NIFC},
+  title        = {{Geographic Area Coordination Centers} - About Us},
+  howpublished = {\url{https://gacc.nifc.gov/admin/about_us/about_us.htm}},
+  note         = {Accessed: July 3, 2024}
+}
+
+@misc{Synoptic-2025-MSN,
+  author       = {{Synoptic Data Public API}},
+  title        = {Mesonet Station Networks and Providers},
+  year         = {2025},
+  howpublished = {\url{https://demos.synopticdata.com/providers/index.html}},
+  note         = {Accessed: October 15, 2025}
+}
+
+@manual{Campbell-2015-CFM,
+  title        = {CS506 Fuel Moisture Sensor Instruction Manual},
+  author       = {{Campbell Scientific, Inc.}},
+  year         = {2015},
+  revision     = {Revision: 7/15},
+  note          = {\url{https://s.campbellsci.com/documents/us/manuals/cs506.pdf}, {Accessed: July 3, 2024}}
+}
+
+@misc{FTS-2016-FSS,
+  title        = {Fuel Stick Sensor (FS-3) Technical Specifications},
+  author       = {FTS, Inc.},
+  howpublished = {\url{https://ftsinc.com/wp-content/uploads/2016/12/Fuel-Stick-Sensor-Technical-Specifications.pdf}},
+  year         = {2016},
+  note         = {Accessed: 2025-10-15}
+}
+
+@misc{WHO-2024-WFS,
+  Author       = {World Health Organization},
+  title        = {Wildfires},
+  howpublished = {\url{https://www.who.int/health-topics/wildfires}},
+  note         = {Accessed: December 26, 2024},
+  year         = {2024},
+  organization = {World Health Organization}
+}
+
+@article{Juliano-2023-TBU,
+author = {Juliano, Timothy and Lareau, Neil and Frediani, Maria and Shamsaei, Kasra and Eghdami, Masih and Kosiba, Karen and Wurman, Joshua and DeCastro, Amy and Kosovic, Branko and Ebrahimian, Hamed},
+year = {2023},
+month = {05},
+pages = {},
+title = {Toward a Better Understanding of Wildfire Behavior in the Wildland‐Urban Interface: A Case Study of the 2021 Marshall Fire},
+volume = {50},
+journal = {Geophysical Research Letters},
+doi = {10.1029/2022GL101557}
+}
+
+@misc{USGS-2024-WQA,
+  author = {{Water Resources Mission Area, U.S. Geological Survey}},
+  title        = {Water Quality After Wildfire},
+  year         = {2024},
+  howpublished = {\url{https://www.usgs.gov/mission-areas/water-resources/science/water-quality-after-wildfire}},
+  note         = {Accessed: December 26, 2024}
+}
+
+@misc{NCEI-2024-DFM,
+  author       = {NCEI},
+  institution = {National Centers for Environmental Information - NOAA},
+  year = {2024},
+  month = {6},
+  day = {10},
+  title        = {Dead Fuel Moisture},
+  howpublished = {\url{https://www.ncei.noaa.gov/access/monitoring/dyk/deadfuelmoisture}},
+  note         = {Accessed: May 31, 2024}
+}
+
+
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+% Software Cites
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+@misc{Blaylock-2024-SPA,
+  author       = {Blaylock, {B.K}},
+  title        = {SynopticPy: Synoptic {API} for {Python} (Version {2024.12.0})},
+  year         = {2024},
+  version      = {2024.12.0},
+  howpublished = {\url{https://github.com/blaylockbk/SynopticPy}},
+  note         = {Computer software}
+}
+
+@misc{Blaylock-2024-HRM,
+  author       = {Blaylock, {B.K.}},
+  title        = {Herbie: Retrieve Numerical Weather Prediction Model Data (Version {2024.8.0})},
+  year         = {2024},
+  version      = {2024.8.0},
+  howpublished = {\url{https://github.com/blaylockbk/Herbie}},
+  note         = {Computer software}
+}
+
+% Blaylock, B. K. (YEAR). Herbie: Retrieve Numerical Weather Prediction Model Data (Version 20xx.x.x) [Computer software].
+
+@misc{WFAS,
+title="Wildland Fire Assessment System (WFAS)",
+author="{NIFC}",
+note="\url{https://www.wfas.net}, accessed October 14, 2025"
+}
+
+@incollection{Mandel-2019-IDH,
+author="Jan Mandel and Martin Vejmelka and Adam K. Kochanski and Angel Farguell and James D. Haley and Derek V. Mallia and Kyle Hilburn",
+booktitle="2019 IEEE/ACM HPC for Urgent Decision Making (UrgentHPC), Supercomputing 2019, Denver, CO, USA",
+title="An Interactive Data-Driven {HPC} System for Forecasting Weather, Wildland Fire, and Smoke",
+pages="35--44",
+doi="10.1109/UrgentHPC49580.2019.00010",
+publisher="IEEE",
+year="2019",
+}
+
