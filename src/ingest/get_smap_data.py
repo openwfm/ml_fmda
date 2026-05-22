@@ -25,16 +25,15 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import Dict, read_yml
+import SMAP as smap
 
 project_paths = Dict(read_yml(osp.join(CONFIG_DIR, "paths.yaml")))
+smap_meta = Dict(read_yml(osp.join(CONFIG_DIR, "variable_metadata", "smap_metadata.yaml")))
+
 
 # Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-smap_config = {
-    'product': "SPL3SMP_E",   # daily, 9 km enhanced soil moisture
-    'bbox': (-125, 24.94, -66.93, 49.6) # CONUS, [south_lat, west_lon, north_lat, east_lon]
-}
 
 
 if __name__ == '__main__':
@@ -45,46 +44,29 @@ if __name__ == '__main__':
         print("Times should match format: YYYY-MM-DD")
         sys.exit(1)
 
+    # Get user args
     start = sys.argv[1]
     end = sys.argv[2]
-    smap_stash_path = project_paths["smap_stash_path"]
 
-    if not osp.exists(smap_stash_path):
-        print(f"Stash directory doesn't exist: {smap_stash_path}")
-        print(f"Update path in `etc/paths.yaml` and manually create directory")
-        sys.exit(1)
-    
-    print(f"Retrieving SMAP data for FMDA stash")
-    print(f"    Start Time: {start}")
-    print(f"    End Time: {end}")
-    print(f"    Stash Path: {smap_stash_path}")
-
-    # Login
+    # Login credentials
     if not osp.exists(osp.expanduser("~/.netrc")):
         print(f"Auth file ~/.netrc does not exist, create with user and pass")
         sys.exit(1)
     earthaccess.login()
 
-    # Retrieve
-    time_range = (start, end)
-    granules = earthaccess.search_data(
-        short_name=smap_config["product"],
-        bounding_box=smap_config["bbox"],
-        temporal=time_range
-    )
-    print(f"Found {len(granules)} granules")
-    # Save in YYYY subdirectory
-    for g in granules:
-        url = g.data_links()[0]
-        filename = url.split("/")[-1]
-        year = filename.split("_")[5][0:4]
-        os.makedirs(osp.join(smap_stash_path, year), exist_ok=True)
-        assert year.isdigit() and 2000 <= int(year) <= 2100, f"Extracted year {year} not interpretable as a year"
-        if osp.exists(osp.join(smap_stash_path, year, filename)):
-            print(f"File already exists, skipping {osp.join(smap_stash_path, year, filename)}")
-            continue
-        print(f"Downloading to {osp.join(smap_stash_path, year, filename)}")
-        earthaccess.download([g], osp.join(smap_stash_path, year))
+    # Get granules, open files
+    granules = smap.get_granules(start, end, smap_meta)
+    if not granules:
+        raise SystemExit("No granules found for the specified product and time range.")
+    files = earthaccess.open(granules)
+
+    # Get metadata and projection info
+    fname = files[1]
+    print(f"Extracting metadata from file: {fname}")
+    proj, coords = smap.get_smap_spatial(fname)
+    breakpoint()
+
+
 
 
     

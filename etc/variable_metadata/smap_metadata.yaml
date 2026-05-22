@@ -7,7 +7,7 @@
 # Namelist format OLD:NEW
 
 product: "SPL4SMGP"   # daily, 9 km enhanced soil moisture, data assimilated
-version: "version"
+version: "008"
 file_name_convention: "SMAP_L4_SM_pid_yyyymmddThhmmss_VLMmmm_NNN.h5" # e.g. SMAP_L4_SM_gph_20151015T133000_Vv2010_001.h5
 missing: -9999.0
 vars:
