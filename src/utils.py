@@ -90,22 +90,6 @@ def remove_key_list(d, ls, verbose=False):
                 print(f"Removing key {key} due to data flags")
             del d[key]
 
-# def print_first(item_list,num=3,indent=0,id=None):
-#     """
-#     Print the first num items of the list followed by '...' 
-
-#     :param item_list: List of items to be printed
-#     :param num: number of items to list
-#     """
-#     indent_str = ' ' * indent
-#     if id is not None:
-#         print(indent_str, id)
-#     if len(item_list) > 0:
-#         print(indent_str,type(item_list[0]))
-#     for i in range(min(num,len(item_list))):
-#         print(indent_str,item_list[i])
-#     if len(item_list) > num:
-#         print(indent_str,'...')
 
 def print_dict_summary(d,indent=0,first=[],first_num=3):
     """
