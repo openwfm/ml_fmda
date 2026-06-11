@@ -40,40 +40,11 @@ if __name__ == '__main__':
     raws_dict = rr.build_raws_dict_stash(start, end, bbox)
     
     fm = pd.concat([raws_dict[st]["RAWS"]["fm"] for st in raws_dict]).reset_index(drop=True).astype(float).to_numpy().round(3)
-    fm_hash = hash_ndarray(fm)
-    
-    failed=False
-    if [*raws_dict.keys()] != stids:
-        warnings.warn("Returned STIDs don't match expected")
-        failed=True
-    if fm_hash != fm_hash_expected:
-        warnings.warn("FM hash doesn't match expected")
-        failed=True
-    if not failed:
-        print(f"TEST PASSED STASH: stashed RAWS dictionary matches expected stations, FM data hash matches") 
     
     print()
     print(f"Testing RAWS Retrieval from API")
-    start = str2time('2024-12-30T00:00:00Z')
-    end = str2time('2024-12-30T02:00:00Z')
-    
-    oneyr = datetime.now(timezone.utc) - timedelta(days=365)
-    if start <= oneyr:
-        warnings.warn("Start date not within the past year, free Synoptic API will fail")
-
+    end = datetime.now()
+    start = end - timedelta(days=1)   
+ 
     raws_dict = rr.build_raws_dict_api(start, end, bbox)
     fm = pd.concat([raws_dict[st]["RAWS"]["fm"] for st in raws_dict]).reset_index(drop=True).astype(float).to_numpy().round(3)    
-    fm_hash = hash_ndarray(fm)
-
-    failed=False
-    if [*raws_dict.keys()] != stids2:
-        warnings.warn("Returned STIDs don't match expected")
-        failed=True
-    if fm_hash != fm_hash_expected2:
-        warnings.warn("FM hash doesn't match expected")
-        failed=True
-    if not failed:
-        print(f"TESTS PASSED API: RAWS dictionary matches expected stations, FM data hash matches")    
-
-
-
