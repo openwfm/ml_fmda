@@ -57,18 +57,21 @@ if __name__ == '__main__':
     })
 
     # Run Model
-    rnn = mrnn.RNN_Flexible(n_features = n_features, params = params)
+    rnn = mrnn.RNN_Flexible(params = params)
     rnn.fit(X_train, y_train, 
             validation_data=(X_val, y_val),
             batch_size = params["batch_size"],
             epochs = params["epochs"],
             verbose_fit = True, plot_history=False
            )
-    rnn.test_eval(X_test, y_test)
+    preds, errs = rnn.test_eval(X_test, y_test)
 
-    print(f"Trained Model Weights Hash: {hash_weights(rnn)}")
+    # Checks
+    assert preds.shape == (n_test, sequence_length, 1), f"Unexpected shape of RNN predictions, {preds.shape=}"
+    assert np.isfinite(preds).all()
+    assert all(np.all(np.isfinite(errs[metric])) for metric in errs)
+    assert rnn.output_shape == (None, None, 1)
 
-    if hash_weights(rnn) == "6efbc3225d68acdcb4065101a61f0879":
-        print("TEST PASSED")
-    else:
-        print("Trained weights don't match expected hash")
+    nparams = 100 # LSTM(3 units, 3 inputs) = 84, Dense(3->3) = 12, Dense(3->1) = 4.
+    assert rnn.count_params() == nparams, f"Expected {nparams} parameters, got {rnn.count_params()=}"
+
