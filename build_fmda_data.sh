@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-#SBATCH --job-name=fmda_data
+#SBATCH --job-name=mldata
 #SBATCH --partition=math-alderaan
 #SBATCH --output=logs/fmda_data_%j.out
 #SBATCH --ntasks=2

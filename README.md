@@ -94,7 +94,7 @@ Workflow Description:
 
 Example for building data dictionaries for 2023 in North Rockies GACC, see rtma_cycler for more info
 ```
-sbatch build_fmda_data.sh '2023-01-01T00:00:00Z' '2023-12-31T23:00:00Z' '[44.2,-117,49,-96.5]' /storage/math/NSF1/hirschij/FMDA/nr_gacc
+sbatch build_fmda_data.sh etc/nr_evaluation.yaml
 ```
 
 
@@ -130,8 +130,14 @@ Changing this from 72 might lead to errors, particularly if changed to something
 
 ### Climatology
 
+Give config file with bbox and start/end dates for forecast and destination directory for climatology output. 
+
 ```
-python src/run_climatology.py '2024-01-01T00:00:00Z' '2024-12-31T23:00:00Z' '[37,-111,46,-95]' data/climatology_rocky2024.pkl
+sbatch run_climatology.sh etc/config.yaml
+```
+
+```
+python src/run_climatology.py etc/config.yaml
 ```
 
 ### RNN

@@ -134,8 +134,8 @@ if __name__ == '__main__':
     conf = Dict(read_yml(sys.argv[1]))
     bbox = parse_bbox(conf.bbox)
     output_dir = conf.data_dir
-    atm_source = conf.atm_source
-    raws_source = conf.raws_source
+    atm_source = conf.get("atm_source", "HRRR")
+    raws_source = conf.get("raws_source", "stash")
     ## Times
     fields = [conf.get(k) for k in ["train_start", "train_end", "f_start", "f_end"] if conf.get(k)]
     if len(fields) < 2: print("Error: fewer than 2 date fields found."); sys.exit(-1)

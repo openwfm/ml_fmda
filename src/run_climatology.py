@@ -24,7 +24,7 @@ if __name__ == '__main__':
         print(f"Invalid arguments. {len(sys.argv)} was given but 2 expected")
         print(('Usage: %s <config_file>' % sys.argv[0]))
         print("Config file should define a climatology file and directory")
-        print("Example: python src/run_climatology etc/forecast_analysis_TEST.yaml")
+        print("Example: python src/run_climatology.py etc/forecast_analysis_TEST.yaml")
         sys.exit(-1)
 
     # Setup
