@@ -13,7 +13,7 @@
 MODEL_DIRECTORY="$1"
 
 # Set up environment
-source ~/.bashrc
+eval "$(conda shell.bash hook)"
 conda activate ml_fmda_models
 
 echo python src/forecast_eval.py $MODEL_DIRECTORY

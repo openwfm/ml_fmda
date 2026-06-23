@@ -24,7 +24,7 @@ MODEL_DIRECTORY="$1"
 CONFIG_FILE="$2"
 
 # Set up environment
-source ~/.bashrc
+eval "$(conda shell.bash hook)"
 conda activate ml_fmda_models
 
 # Run setup, specify <model_directory>

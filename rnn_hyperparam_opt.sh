@@ -13,7 +13,7 @@ SLURM_TASK_ARRAY_ID=$1
 MODEL_DIRECTORY=$2
 
 # Set up environment
-source ~/.bashrc
+eval "$(conda shell.bash hook)"
 conda activate ml_fmda_models
 
 # Pass array number to python script and run

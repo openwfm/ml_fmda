@@ -33,7 +33,7 @@ CONFIG_PATH="$1"
 echo "Config path: $CONFIG_PATH"
 
 # Set up environment
-source ~/.bashrc
+eval "$(conda shell.bash hook)"
 conda activate gpu_TEST
 
 # If this job is part of an array, SLURM will define SLURM_ARRAY_TASK_ID.

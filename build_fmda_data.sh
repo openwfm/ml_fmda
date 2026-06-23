@@ -25,7 +25,7 @@ fi
 CONFIG_FILE="$1"
 
 # Set up environment
-source ~/.bashrc
+eval "$(conda shell.bash hook)"
 conda activate ml_fmda_data
 
 export PYTHONUNBUFFERED=1

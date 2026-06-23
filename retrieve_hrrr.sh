@@ -30,7 +30,7 @@ echo "End Time: $END_TIME"
 
 
 # Set up environment
-source ~/.bashrc
+eval "$(conda shell.bash hook)"
 conda activate ml_fmda_data
 
 export PYTHONUNBUFFERED=1

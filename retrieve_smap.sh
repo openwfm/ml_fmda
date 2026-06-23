@@ -30,7 +30,7 @@ echo "End Time: $END_TIME"
 
 
 # Set up environment
-source ~/.bashrc
+eval "$(conda shell.bash hook)"
 
 export PYTHONUNBUFFERED=1
 python -u src/ingest/get_smap_data.py "$START_TIME" "$END_TIME" 

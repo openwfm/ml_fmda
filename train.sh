@@ -22,7 +22,7 @@ echo "Model directory: $MODEL_DIRECTORY"
 echo "Config path: $CONFIG_PATH"
 
 # Set up environment
-source ~/.bashrc
+eval "$(conda shell.bash hook)"
 conda activate gpu_TEST
 
 python src/train.py "$CONFIG_PATH"
