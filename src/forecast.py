@@ -1,4 +1,4 @@
-# Script used to forecast with a trained RNN on HRRR grid
+# Script used to generate CONUS forecast with a trained RNN on HRRR grid
 # Intended for operational use, not for forecast analysis which
 # has it's own set of scripts
 
@@ -6,6 +6,7 @@ import sys
 import pickle
 import os.path as osp
 import os
+from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import json
 import pandas as pd
@@ -43,27 +44,27 @@ paths = Dict(read_yml(osp.join(CONFIG_DIR, "paths.yaml")))
 
 if __name__ == '__main__':
 
-    if len(sys.argv) != 3:
-        print(f"Invalid arguments. {len(sys.argv)} was given but 3 expected")
-        print(('Usage: %s <train_dir> <config_path>' % sys.argv[0]))
-        print("<train_dir> is where trained model sent. <config_path> is path to yaml file setting up time frame and other analysis parameters")
+    if len(sys.argv) != 2:
+        print(f"Invalid arguments. {len(sys.argv)} was given but 2 expected")
+        print(('Usage: %s <config_path>' % sys.argv[0]))
         print("Example: python src/forecast.py etc/forecast_TEST.yaml")
         sys.exit(-1)
 
     # Get input args
-    t_dir = sys.argv[1]
-    conf_path = sys.argv[2]
-
+    conf_path = sys.argv[1]
+    
     # Extract config details, save to outdir
     conf = read_yml(conf_path)
-    outdir = conf["outdir"]
+    outdir = conf["forecast_dir"]
+    t_dir = conf["target_model_dir"]
     os.makedirs(outdir, exist_ok=True)
-    with open(osp.join(conf["outdir"], "config.yaml"), 'w') as f:
+    with open(osp.join(conf["forecast_dir"], "config.yaml"), 'w') as f:
         yaml.dump(conf, f, default_flow_style=False, sort_keys=False)    
     conf = Dict(conf)
     fstart = str2time(conf.f_start)
-    fend = str2time(conf.f_end)
-    
+    #fend = str2time(conf.f_end)
+    fend = fstart + timedelta(hours=48)
+
     hrrr_dir = paths.hrrr_stash_path
     params = Dict(read_yml(osp.join(t_dir, "params.yaml")))
     # bbox
@@ -72,7 +73,6 @@ if __name__ == '__main__':
     rnn = tf.keras.models.load_model(osp.join(t_dir, 'rnn.keras'))
     scaler = load(osp.join(t_dir, "scaler.joblib"))
 
-    breakpoint()
     print("~"*75)
     print(f"Forecasting with RNN from {fstart} to {fend}")
     print(f"Saving gridded forecasts to {outdir}")
@@ -108,18 +108,24 @@ if __name__ == '__main__':
     assert len(ds2.data_vars) == len(features_list), f"Missing features from list, {features_list=}, data_vars= {(list(ds2.data_vars))}"
     ds_stacked = ds2[features_list].stack(loc=("y", "x"))
     ds_transposed = ds_stacked.transpose("loc", "time", ...)
-    X = ds_transposed.to_array().transpose("loc", "time", "variable").values
+    X_gridded = ds_transposed.to_array().transpose("loc", "time", "variable").values
 
     times = time_range(fstart, fend)
-    assert X.shape == (ds.x.shape[0] * ds.y.shape[0], len(times), len(features_list)), f"Unexpected X array shape: {X.shape=}, expected={(ds.x.shape[0] * ds.y.shape[0], len(times), len(features_list))}"
+    assert X_gridded.shape == (ds.x.shape[0] * ds.y.shape[0], len(times), len(features_list)), f"Unexpected X array shape: {X.shape=}, expected={(ds.x.shape[0] * ds.y.shape[0], len(times), len(features_list))}"
 
     # Run prediction with RNN
     # NOTE: batch size in predict is only a memory constraint and not related to batch_size used in training. 
     # We want to make batch_size as large as possible while avoiding memory constraints
     
     ## Scale Data
-    breakpoint()
-    X = scaler.transform(X)
+    # Reshape to 2d table to apply scaler, flatten (xy) dimensions
+    X_flat = X_gridded.reshape(-1, X_gridded.shape[-1])
+    X_scaled = scaler.transform(X_flat)
+    nbatch, ntimes, nfeatures = X_gridded.shape
+    assert X_scaled.shape[0] == nbatch * ntimes
+    assert X_scaled.shape[1] == nfeatures
+    X = X_scaled.reshape(nbatch, ntimes, nfeatures)
+    
     try:
         preds = rnn.predict(X, batch_size=1024, verbose=1)
     except (MemoryError, tf.errors.ResourceExhaustedError) as e:
