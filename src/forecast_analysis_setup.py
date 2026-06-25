@@ -110,8 +110,12 @@ if __name__ == '__main__':
     print("~"*75)
     data = data_funcs.combine_fmda_files(file_paths)
     ml_dict = data_funcs.build_ml_data(data, verbose=False)
-    df_valid = pd.read_csv(osp.join(PROJECT_ROOT, fconf.valid_path))
-    ml_dict = data_funcs.remove_invalid_data(ml_dict, df_valid)
+    if osp.exists(fconf.valid_path):
+        print(f"Using labeled valid data file: {fconf.alid_path}")
+        df_valid = pd.read_csv(osp.join(PROJECT_ROOT, fconf.valid_path))
+        ml_dict = data_funcs.remove_invalid_data(ml_dict, df_valid)
+    else:
+        print(f"No labeled valid data found at {fconf.valid_path}, proceeding with no filtering of bad RAWS")
     data_file =  osp.join(PROJECT_ROOT, f_dir, "ml_data.pkl")
     with open(data_file, 'wb') as f:
         pickle.dump(ml_dict, f)
