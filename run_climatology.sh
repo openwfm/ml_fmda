@@ -1,7 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=clim
 #SBATCH --output=logs/climatology_%j.out
-#SBATCH --ntasks=16
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
 #SBATCH --partition=math-alderaan-short
 #SBATCH --mem=32G
 

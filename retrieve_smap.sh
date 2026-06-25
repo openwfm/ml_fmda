@@ -4,7 +4,8 @@
 #SBATCH --job-name=smap
 #SBATCH --partition=math-alderaan
 #SBATCH --output=logs/smap_%j.out
-#SBATCH --ntasks=2
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 
 # Control script to retrieve, format, and stash HRRR data, used to stash HRRR data to speed up building training and forecast data

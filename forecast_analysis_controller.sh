@@ -1,7 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=fsetup
 #SBATCH --output=logs/forecast_analysis_%j.out
-#SBATCH --ntasks=2
+#SBATCH --cpus-per-task=4
+#SBATCH --ntasks=1
 #SBATCH --partition=math-alderaan
 #SBATCH --mem=32G
 
@@ -23,6 +24,7 @@ FORECAST_DIRECTORY="$1"
 CONFIG_PATH="$2"
 
 # Set up environment
+set -euo pipefail
 eval "$(conda shell.bash hook)"
 conda activate ml_fmda_models
 

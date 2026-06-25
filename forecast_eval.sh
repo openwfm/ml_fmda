@@ -1,7 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=feval
 #SBATCH --output=logs/forecast_eval_%j.out
-#SBATCH --ntasks=2
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
 #SBATCH --partition=math-alderaan
 #SBATCH --mem=64G
 

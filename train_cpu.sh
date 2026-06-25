@@ -4,8 +4,9 @@
 #SBATCH --job-name=train
 #SBATCH --partition=math-alderaan
 #SBATCH --output=logs/train_%A_%a.out
-#SBATCH --ntasks=4
-#SBATCH --mem=32G
+#SBATCH --cpus-per-task=4
+#SBATCH --ntasks=1
+#SBATCH --mem=64G
 
 # Runs a single training job.
 #

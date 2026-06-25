@@ -2,13 +2,10 @@
 
 
 #SBATCH --job-name=ropt
-
 #SBATCH --output=logs/ropt_%a.out
-
 #SBATCH --partition=math-alderaan
-
 #SBATCH --ntasks=1
-
+#SBATCH --cpus-per-task=4
 
 # Credit to user lorellis for aspects of this code structure
 # Pass the variable {SLURM_TASK_ARRAY_ID} to the test_slurm_array.sh script and run said script

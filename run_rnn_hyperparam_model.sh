@@ -2,14 +2,11 @@
 
 
 #SBATCH --job-name=rmodels
-
-# #SBATCH --output=logs/rmodels_%a.out
-
+#SBATCH --output=logs/rmodels_%a.out
 #SBATCH --partition=math-alderaan
-
 #SBATCH --ntasks=1
-
-# #SBATCH --array=1-50
+#SBATCH --cpus-per-task=4
+#SBATCH --array=1-50
 
 # Credit to user lorellis for aspects of this code structure
 # Pass the variable {SLURM_TASK_ARRAY_ID} to the test_slurm_array.sh script and run said script
