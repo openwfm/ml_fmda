@@ -9,3 +9,4 @@ models/*
 logs/*
 forecasts/*
 etc/tokens.json
+etc/paths.yaml

@@ -1,5 +1,5 @@
 # Config file used to set up operational model train
-# NOTE: forecast analysis scripts have their own config files
+# NOTE: forecast analysis scripts that estimate model error have their own config files
 # this is intended for train and save a model for use deployment
 
 region: "rocky"
