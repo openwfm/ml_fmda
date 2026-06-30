@@ -382,12 +382,38 @@ def cv_space_setup(dict0, val_times, test_times, test_frac = 0.1, verbose=True, 
 def filter_df(df, filter_col, ts):
     return df[df[filter_col].isin(ts)]
 
-def get_sts_and_times(dict0, sts_list, times, data_dict = 'data'):
+
+def get_sts_and_times(dict0, sts_list, times, data_dict="data"):
+    """
+    Given input retrieved fmda data, return subdictionary based on given
+    stations list and observed data times.
+    """
+
+    new_dict = {}
+
+    for st in sts_list:
+        if st not in dict0:
+            print(f"Warning: Station {st} not found in data")
+            continue
+
+        # Copy only the station dictionary, not the large DataFrame.
+        station = dict0[st].copy()
+
+        # Replace only the fields that change.
+        station[data_dict] = filter_df(station[data_dict], "date_time", times)
+        station["times"] = station[data_dict].date_time.to_numpy()
+
+        new_dict[st] = station
+
+    return new_dict
+
+
+def get_sts_and_times_OLD(dict0, sts_list, times, data_dict = 'data'):
     """
     Given input retrieved fmda data, return sudictionary based on given stations list and observed data times
     """
-
     d = copy.deepcopy(dict0)
+    #d = dict0
 
     # Get stations
     new_dict = {}
