@@ -38,7 +38,7 @@ params_models = read_yml(osp.join(CONFIG_DIR, "params_models.yaml"))
 # RNN Data Functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def staircase(df, sequence_length=12, features_list=None, y_col="fm"):
+def staircase(df, sequence_length=12, stride=1, features_list=None, y_col="fm"):
     """
     Get sliding-window style sequences from input data frame. 
     Checks date_time column for consecutive hours and only
@@ -68,8 +68,8 @@ def staircase(df, sequence_length=12, features_list=None, y_col="fm"):
     X = []
     y = []
     t = []
-
-    for i in range(len(df) - sequence_length + 1):
+    
+    for i in range(0, len(df) - sequence_length + 1, stride):
         time_window = times[i : i + sequence_length]
         if is_consecutive_hours(time_window):
             X.append(data[i : i + sequence_length])
@@ -83,7 +83,7 @@ def staircase(df, sequence_length=12, features_list=None, y_col="fm"):
     return X, y, t
 
 
-def staircase_dict(dict0, sequence_length, features_list, y_col="fm", verbose=True):
+def staircase_dict(dict0, sequence_length, features_list, y_col="fm", verbose=True, stride=1):
     """
     Wraps extract_sequences to apply to a dictionary and run for each case.
     Intended to be run on train dict only
@@ -91,12 +91,11 @@ def staircase_dict(dict0, sequence_length, features_list, y_col="fm", verbose=Tr
     if verbose:
         print(f"Extracting all consecutive sequences of length {sequence_length}")
         print(f"Subsetting to features: {features_list}, target: {y_col}")    
-    
     X_list, y_list, t_list = [], [], []
     
     for st, station_data in dict0.items():
         dfi = station_data["data"]  # Extract DataFrame
-        Xi, yi, ti = staircase(dfi, sequence_length=sequence_length, features_list=features_list, y_col=y_col)
+        Xi, yi, ti = staircase(dfi, sequence_length=sequence_length, features_list=features_list, y_col=y_col, stride=stride)
 
         # if verbose:
         #     print(f"Station: {st}")
@@ -191,8 +190,9 @@ class RNNData(MLData):
     Custom class to handle RNN data. Performs data scaling and stateful batch structuring.
     In this context, a single "sample" from RNNData is a timeseries with dimensionality (timesteps, n_features)
     """
-    def __init__(self, train, val=None, test=None, scaler="standard", features_list=["Ed", "Ew", "rain"], timesteps=48, method="random", random_state=None):   
+    def __init__(self, train, val=None, test=None, scaler="standard", features_list=["Ed", "Ew", "rain"], timesteps=48, method="random", random_state=None, stride=1):   
         self.timesteps = timesteps
+        self.stride = stride
         super().__init__(train, val, test, scaler, features_list, random_state)
 
         
@@ -208,7 +208,8 @@ class RNNData(MLData):
         self.train_locs = [*train.keys()]
         # Get training samples with staircase, and construct batches
         # Subset features happens at this step
-        X_list, y_list, t_list = staircase_dict(train, sequence_length = self.timesteps, features_list = self.features_list)
+
+        X_list, y_list, t_list = staircase_dict(train, sequence_length = self.timesteps, features_list = self.features_list, stride=self.stride)
         X_train, y_train, loc_train_indices = build_training_batches(
             X_list, y_list,
             method=method, random_state = random_state
