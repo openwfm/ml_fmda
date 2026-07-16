@@ -35,17 +35,52 @@ import reproducibility
 hrrr_meta = Dict(read_yml(osp.join(CONFIG_DIR, "variable_metadata", "hrrr_metadata.yaml")))
 data_filters = Dict(read_yml(osp.join(CONFIG_DIR, "variable_metadata", "data_filters.yaml")))
 
+# Feature Engineering Utilities
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# Cyclical time encoding
+## Example Source: https://scikit-learn.org/stable/auto_examples/applications/plot_cyclical_feature_engineering.html?utm_source=chatgpt.com
+def calc_hod_trig(hod):
+    """
+    Convert hour of day (0-23) to cyclic sine and cosine features.
+    Args:
+        hod: Scalar or array-like hour of day.
+    Returns:
+        Tuple (hod_sin, hod_cos).
+    """
+    hod_sin = np.sin(2 * np.pi * hod / 24)
+    hod_cos = np.cos(2 * np.pi * hod / 24)    
+    return hod_sin, hod_cos
+
+def calc_doy_trig(doy):
+    """
+    Convert day of year (1-365) to cyclic sine and cosine features.
+    Args:
+        doy: Scalar or array-like day of year.
+    Returns:
+        Tuple (doy_sin, doy_cos).
+    """
+    doy_sin = np.sin(2 * np.pi * (doy - 1) / 365)
+    doy_cos = np.cos(2 * np.pi * (doy - 1) / 365)
+    return doy_sin, doy_cos
+
+def add_derived_features(ml_dict):
+    """
+    Add derived features to each station's data frame in-place.
+    Args:
+        ml_dict: Dictionary of station data.
+    Returns:
+        None
+    """
+    for station in ml_dict.values():
+        df = station["data"]
+        df["hod_sin"], df["hod_cos"] = calc_hod_trig(df["hod"])
+        df["doy_sin"], df["doy_cos"] = calc_doy_trig(df["doy"])
+        df["lograin"] = np.log1p(df["rain"])
 
 
 # Data Retrieval Wrappers
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-# def subdicts_identical(d1, d2, subdict_keys = ["units", "loc", "misc"]):
-#     """
-#     Helper function to merge retrieved data dictionaries. Checks that subdicts for metadata are the same
-#     """
-#     return all(d1.get(k) == d2.get(k) for k in subdict_keys)
 
 def subdicts_identical(d1, d2, subdict_keys=["units", "loc"]):
     """
@@ -301,9 +336,6 @@ def remove_invalid_data(dict0, df_valid):
 # Cross Validation Functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
-
-
 def get_stids_in_timeperiod(dict0, times, all_times=True):
     """
     Based on input times, get list of stids from input dictionary 
@@ -476,7 +508,8 @@ def cv_data_wrap(d, fstart, fend, tstart, tend, val_hours=48, test_frac=0.1, ran
     
     return train, val, test
 
-
+# Custom Data Objects
+# ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class MLData(ABC):
     """
