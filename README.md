@@ -9,6 +9,7 @@ The Project has components:
 	* FMC data from RAWS
 	* Weather data, from RAWS sensors or from HRRR weather model
 	* Geographic predictors from RAWS stations or from HRRR or from LandFire
+	* Remote sensing product (SMAP)
 - Train and forecast with RNNs for the purpose of estimating forecast accuracy
 	* Train/val/test split, multiple replications with different random seeds to account for training uncertainty
 	* Predict with model at RAWS locations so they can be compared to sensor data
@@ -124,7 +125,15 @@ To apply filters related to broken sensors or too long stretches of missing data
 
 Changing this from 72 might lead to errors, particularly if changed to something not divisible by 12
 
+### Retrieving Remote Sensing data
 
+SMAP Level 4 soil moisture, stash the `sm_surface` data with the folling
+
+```
+sbatch retrieve_smap.sh '2023-01-01' '2024-12-31'
+```
+
+Training with L4 since complete records, but TODO is to test real-time forecast with L2/L3
 
 ## Building Models
 

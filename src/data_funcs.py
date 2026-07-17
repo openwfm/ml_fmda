@@ -79,6 +79,74 @@ def add_derived_features(ml_dict):
         df["lograin"] = np.log1p(df["rain"])
 
 
+### Tools for Joining SMAP data
+from scipy.spatial import cKDTree
+import numpy as np
+
+
+def add_smap_grid_indices(ml_dict, sm):
+    """
+    Add nearest SMAP grid indices to each station in-place.
+
+    Args:
+        ml_dict: Dictionary of station data. Each station must contain
+            station["loc"]["lat"] and station["loc"]["lon"].
+        sm: xarray Dataset containing 2D variables
+            sm.cell_lat and sm.cell_lon.
+
+    Returns:
+        None
+    """
+    import xarray as xr
+
+    # Build KDTree from SMAP grid
+    lat = sm.cell_lat.values
+    lon = sm.cell_lon.values
+    tree = cKDTree(np.column_stack((lat.ravel(), lon.ravel())))
+
+    # Gather station coordinates
+    stids = list(ml_dict.keys())
+    coords = np.array([
+        (
+            ml_dict[st]["loc"]["lat"],
+            ml_dict[st]["loc"]["lon"],
+        )
+        for st in stids
+    ])
+
+    # Find nearest SMAP grid cells
+    _, inds = tree.query(coords)
+    yind, xind = np.unravel_index(inds, lat.shape)
+
+    # Store indices in-place
+    for st, y, x in zip(stids, yind, xind):
+        ml_dict[st]["loc"]["smap_grid_y"] = int(y)
+        ml_dict[st]["loc"]["smap_grid_x"] = int(x)
+
+
+def add_smap(ml_dict, files):
+    """
+    Add SMAP soil moisture to each station's data.
+
+    Assumes add_smap_grid_indices() has already been called.
+    """
+    import xarray as xr
+
+    for fi in files:
+        with xr.open_dataset(fi) as sm:
+            sm_times = pd.to_datetime(sm.time.values, utc=True)
+            sm_surface = sm["sm_surface"].values
+            for station in ml_dict.values():
+                times = station["times"]
+                y = station["loc"]["smap_grid_y"]
+                x = station["loc"]["smap_grid_x"]
+                for i, (t0, t1) in enumerate(zip(sm_times[:-1], sm_times[1:])):
+                    mask = (times >= t0) & (times < t1)
+                    if not np.any(mask):
+                        continue
+                    station["data"].loc[mask, "sm_surface"] = sm_surface[i, y, x]
+
+
 # Data Retrieval Wrappers
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

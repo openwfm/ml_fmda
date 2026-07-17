@@ -6,7 +6,7 @@
 #SBATCH --output=logs/smap_%j.out
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 
 # Control script to retrieve, format, and stash HRRR data, used to stash HRRR data to speed up building training and forecast data
 # Given time range, save to stash directory
@@ -32,6 +32,7 @@ echo "End Time: $END_TIME"
 
 # Set up environment
 eval "$(conda shell.bash hook)"
+conda activate earth
 
 export PYTHONUNBUFFERED=1
 python -u src/ingest/get_smap_data.py "$START_TIME" "$END_TIME" 
