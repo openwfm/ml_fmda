@@ -8,3 +8,4 @@ product: "SPL4SMGP"   # daily, 9 km enhanced soil moisture
 version: "008"
 file_name_convention: "SMAP_L4_SM_gph_yyyymmdd_RLVvvv_NNN.h5"
 missing: -9999.0
+variables: ["sm_surface"]

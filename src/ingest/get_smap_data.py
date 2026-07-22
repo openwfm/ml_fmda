@@ -106,7 +106,8 @@ if __name__ == '__main__':
     if product == "SPL4SMGP": level = "4"
     elif product == "SPL3SMP_E": level = "3"
     smap_stash_path = osp.join(project_paths["smap_stash_path"], f"L{level}")
-
+    variables_list = config.get("variables", ["sm_surface"])
+    
     if not osp.exists(smap_stash_path):
         print(f"Stash directory doesn't exist: {smap_stash_path}")
         print(f"Update path in `etc/paths.yaml` and manually create directory")
@@ -144,7 +145,7 @@ if __name__ == '__main__':
             )
         )
         print(f"Found {len(granules)} granules")
-        ds = granules_to_xarray(granules)
+        ds = granules_to_xarray(granules, variables = variables_list)
         # Save in YYYY subdirectory
         os.makedirs(osp.join(smap_stash_path, year), exist_ok=True)
         print(f"Writing sm_surface data to {osp.join(smap_stash_path, year, filename)}")
