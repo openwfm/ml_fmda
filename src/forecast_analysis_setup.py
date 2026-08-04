@@ -10,6 +10,9 @@ import json
 import pandas as pd
 import numpy as np
 import yaml
+import xarray as xr
+from pathlib import Path
+from itertools import groupby
 
 # Set up project paths
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -30,34 +33,35 @@ import reproducibility
 params_models = read_yml(osp.join(CONFIG_DIR, "params_models.yaml"))
 project_paths = Dict(read_yml(osp.join(CONFIG_DIR, "paths.yaml")))
 
+# Module Code
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def calc_smap_files(days):
+    return [osp.join(project_paths.smap_stash_path, "L4", day.strftime("%Y"), f"smap_L4_{day.strftime('%Y%m%d')}.nc") for day in days]
+
 if __name__ == '__main__':
 
     if len(sys.argv) != 3:
-        print(f"Invalid arguments. {len(sys.argv)} was given but 3 expected")
-        print(('Usage: %s <forecast_dir> <config_path>' % sys.argv[0]))
-        print("<forecast_dir> is where outputs from the forecasts are sent.  <config_path> is path to yaml file setting up time frame and other analysis parameters")
-        print("Example: python src/forecast_analysis_setup.py forecasts/fmc_forecast_test etc/forecast_analysis_TEST.yaml")
+        print(f"Invalid arguments. {len(sys.argv)} was given but 2 expected")
+        print(('Usage: %s <target_directory> <config_path>' % sys.argv[0]))
+        print("<config_path> is path to yaml file setting up time frame and other analysis parameters")
+        print("Example: python src/forecast_analysis_setup_CHUNKS.py forecast_analysis/TEST etc/forecast_analysis_TEST.yaml")
         sys.exit(-1)
 
     # Get input args
     f_dir = sys.argv[1]
     conf_path = sys.argv[2]
+    fconf = read_yml(conf_path)
     os.makedirs(osp.join(f_dir, 'forecast_outputs'), exist_ok=True)
     
-    # Check if already run, allows for easy rerun of process
-    if osp.exists(osp.join(f_dir, 'ml_data.pkl')) and osp.exists(osp.join(f_dir, 'analysis_info.json')):
-        print(f"Forecast analysis setup already run at {f_dir}, exiting")
-        sys.exit(0)
-
-    # Set up forecast directory and config
-    os.makedirs(f_dir, exist_ok=True)
-    fconf = read_yml(conf_path)
     # Write copy of forecast config file to forecast directory
     # Do this so multiple tests can be run with different input config files
     with open(osp.join(f_dir, "forecast_config.yaml"), 'w') as f:
         yaml.dump(fconf, f, default_flow_style=False, sort_keys=False)
     fconf = Dict(fconf)
     data_dir = fconf["data_dir"]
+    # Update hard coded RNN params with any run-specific changes
+    params_models["rnn"].update(fconf)
+    
     # Write copy of model params config file to forecast directory
     with open(osp.join(f_dir, "params_models.yaml"), 'w') as f:
         yaml.dump(params_models, f, default_flow_style=False, sort_keys=False)  
@@ -105,22 +109,56 @@ if __name__ == '__main__':
         sys.exit(-1)
     else:
         print(f"All Needed Data exists in {data_dir}, proceeding...")
-
+    
     # Read and Format Data, get set up for train and test
-    print("~"*75)
-    data = data_funcs.combine_fmda_files(file_paths)
-    ml_dict = data_funcs.build_ml_data(data, verbose=False)
+    print("~"*75) 
+    monthly_file_paths = [
+        list(group)
+        for _, group in groupby(file_paths, key=lambda p: Path(p).parent.name)
+    ]
     if osp.exists(fconf.valid_path):
-        print(f"Using labeled valid data file: {fconf.alid_path}")
+        print(f"Using labeled valid data file: {fconf.valid_path}")
         df_valid = pd.read_csv(osp.join(PROJECT_ROOT, fconf.valid_path))
-        ml_dict = data_funcs.remove_invalid_data(ml_dict, df_valid)
     else:
         print(f"No labeled valid data found at {fconf.valid_path}, proceeding with no filtering of bad RAWS")
-    data_file =  osp.join(PROJECT_ROOT, f_dir, "ml_data.pkl")
-    with open(data_file, 'wb') as f:
-        pickle.dump(ml_dict, f)
+        df_valid = None
+    for paths in monthly_file_paths:
+        month = Path(paths[0]).parent.name
+        mpath = osp.join(PROJECT_ROOT, f_dir, "ml_data")
+        output_file = Path(mpath) / f"ml_data_{month}.pkl"
+        if osp.exists(output_file):
+            print(f"Skipping {month}: output file already exists: {output_file}")
+            continue
+
+        print(f"Processing {month}...")
+        os.makedirs(mpath, exist_ok=True)
+        data = data_funcs.combine_fmda_files(paths)
+        ml_dict = data_funcs.build_ml_data(data, verbose=False)
+
+        if df_valid is not None:
+            ml_dict = data_funcs.remove_invalid_data(ml_dict, df_valid)
+
+        # Add any derived features
+        data_funcs.add_derived_features(ml_dict)
+        
+        # Add SMAP if in features list
+        if "sm_surface" in fconf.features_list:
+            print(f"Adding SMAP data from {project_paths['smap_stash_path']}")
+            files = calc_smap_files(days)
+            print(f"Days of SMAP data needed: {len(files)}")
+            assert np.all([osp.exists(fi) for fi in files]), f"Missing SMAP files, exiting"
+            with xr.open_dataset(files[0]) as sm:
+                data_funcs.add_smap_grid_indices(ml_dict, sm)
+            data_funcs.add_smap(ml_dict, files)
 
 
+        print(f"Writing data to {output_file}")
+        with open(output_file, "wb") as f:
+            pickle.dump(ml_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        del data
+        del ml_dict
 
 
+    print(f"Forecast analysis setup complete at directory: {f_dir}")
 

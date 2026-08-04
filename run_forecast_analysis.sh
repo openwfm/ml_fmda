@@ -4,7 +4,7 @@
 #SBATCH --job-name=fcast
 #SBATCH --partition=math-alderaan
 #SBATCH --ntasks=2
-#SBATCH --mem=16G
+#SBATCH --mem=64G
 
 # Credit to user lorellis for aspects of this code structure
 # Pass the variable {SLURM_TASK_ARRAY_ID} to the test_slurm_array.sh script and run said script

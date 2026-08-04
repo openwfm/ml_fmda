@@ -106,10 +106,10 @@ if __name__ == '__main__':
     files = os.listdir(osp.join(f_dir, 'forecast_outputs'))
     files = sorted(files, key=lambda x: int(re.search(r'_(\d+)\.h5$', x).group(1))) # Sort by task number, shouldn't be necessary but for clarity
     ## Read and combine into dataframe, add indicator column for replication number from file name
-    baselines = fconf.baselines
+    baselines = fconf.get('baselines', None)
     if baselines is None: baselines = []
     key_list = ["rnn"] + baselines
-    # key_list =["rnn", "ode", "xgb", "clim"]
+    print(f"Reading {len(files)} h5 files, for model list {key_list}")
     df = read_hdf_list(files, key_list)
 
     ## Combine all individual predictions so someone can easily reproduce summary tables that aggregate
@@ -118,36 +118,8 @@ if __name__ == '__main__':
     print(f"    {fconf.f_start=}")
     print(f"    {fconf.f_end=}")
 
-    
-    ml_dict = read_pkl(osp.join(f_dir, "ml_data.pkl"))
-    loc_df = pd.DataFrame.from_dict(
-        {k: v["loc"] for k, v in ml_dict.items()},
-        orient="index"
-    )
-    # Add overall predictor metrics
-    df2 = pd.concat(
-        [v["data"][fconf.features_list] for k, v in ml_dict.items()],
-        ignore_index=True        
-    )
-    psummary = pd.DataFrame({
-        "Variable": df2.columns,
-        "Mean": df2.mean().values,
-        "Low": df2.min().values,
-        "High": df2.max().values
-    })   
-    print(f"Writing summary of all variables to: {osp.join(out_dir, 'all_variables_summary.csv')}")
-    psummary.to_csv(osp.join(out_dir, "all_variables_summary.csv"), index=False)
-    del ml_dict; del df2
-
-
     # Write df of RNN errors for more granular analysis
-    df[df.Model == "rnn"].to_csv(osp.join(out_dir, "rnn_preds.csv"), index=False)
-
-    # Data very big to write as h5, and only done as external double check on calculations. 
-    # Use fperiod files directly for reproducing error calcs
-    #print(f"Writing all forecast and errors to {osp.join(out_dir, 'all_errors.h5')}")
-    #df.to_hdf(osp.join(out_dir, "all_errors.h5"), key="all_errors", mode="w", complib="blosc")
-    loc_df.to_csv(osp.join(out_dir, "stid_locs.csv"), index=False)
+    # df[df.Model == "rnn"].to_csv(osp.join(out_dir, "rnn_preds.csv"), index=False)
 
     ## Overall Error, averaged over every hour, location, and replication
     ## Bounds from +/- 1std for replications

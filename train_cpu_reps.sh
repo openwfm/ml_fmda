@@ -4,7 +4,8 @@
 #SBATCH --job-name=trep
 #SBATCH --partition=math-alderaan-short
 #SBATCH --output=logs/trep_%j.out
-#SBATCH --ntasks=4
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 
 # This script is a *submitter* (runs on the login node).
@@ -46,8 +47,14 @@ echo "Config path: $CONFIG_PATH"
 echo "Replications (NREPS): $NREPS"
 echo "Submitting array: $ARRAY_SPEC"
 
+# Set up environment
+eval "$(conda shell.bash hook)"
+conda activate gpu_TEST
+
+# Run Setup for formatting data
+TARGET_DIR=$(python src/train_setup.py "$CONFIG_PATH")
 
 # Submit the array. Each task will run train_cpu.sh once.
 # NOTE: train_cpu.sh contains the #SBATCH directives (partition, mem, etc.)
 # NOTE: Output logs should be handled by train_cpu.sh 
-sbatch --array="$ARRAY_SPEC" train_cpu.sh "$CONFIG_PATH"
+sbatch --array="$ARRAY_SPEC" --output="$TARGET_DIR/logs/train_%A_%a.out" train_cpu.sh "$TARGET_DIR"

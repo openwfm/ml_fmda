@@ -6,7 +6,7 @@
 #SBATCH --output=logs/train_%A_%a.out
 #SBATCH --cpus-per-task=4
 #SBATCH --ntasks=1
-#SBATCH --mem=64G
+#SBATCH --mem=256G
 
 # Runs a single training job.
 #
@@ -26,12 +26,12 @@ set -euo pipefail
 # (Seed is not passed explicitly; arrays use SLURM_ARRAY_TASK_ID.)
 if [ "$#" -ne 1 ]; then
     echo "Error: Expected exactly 1 arguments, but got $#."
-    echo "Usage: $0 <config_path>"
+    echo "Usage: $0 <target_dir>"
     exit 1
 fi
 
-CONFIG_PATH="$1"
-echo "Config path: $CONFIG_PATH"
+TARGET_DIR="$1"
+echo "Config path: $TARGET_DIR"
 
 # Set up environment
 eval "$(conda shell.bash hook)"
@@ -42,8 +42,8 @@ conda activate gpu_TEST
 if [ -n "${SLURM_ARRAY_TASK_ID:-}" ]; then
     SEED="${SLURM_ARRAY_TASK_ID}"
     echo "Array task detected. Using seed: $SEED"
-    python src/train.py "$CONFIG_PATH" "$SEED"
+    python src/train.py "$TARGET_DIR" "$SEED"
 else
     echo "Non-array job. No seed provided."
-    python src/train.py "$CONFIG_PATH"
+    python src/train.py "$TARGET_DIR"
 fi

@@ -10,3 +10,4 @@ logs/*
 forecasts/*
 etc/tokens.json
 etc/paths.yaml
+forecast_analysis/

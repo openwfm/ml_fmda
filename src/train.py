@@ -32,32 +32,6 @@ from models.moisture_rnn import RNN_Flexible, RNNData, scale_3d
 
 # Config and Params
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-params_models = read_yml(osp.join(CONFIG_DIR, "params_models.yaml"))
-
-
-def build_training_dict(days, data_dir):
-    print(f"    Days of Data Needed: {days.shape[0]}")
-    print(f"    Earliest Day of Data: {days.min()}")
-    print(f"    Latest Day of Data: {days.max()}")
-    file_paths = [f"{data_dir}/{dt.strftime('%Y%m')}/fmda_{dt.strftime('%Y%m%d')}.pkl" for dt in days]
-    all_exist = all(osp.exists(path) for path in file_paths)
-    # For now, hard exit if not all data exists. Maybe relax in the future
-    if not all_exist:
-        print(f"Not all needed file paths exist for target analysis.\n Run src/ingest/get_fmda_data.py with desired dates and data directory to save. Exiting...")
-        missing_paths = [path for path in file_paths if not osp.exists(path)]
-        print("Missing files:")
-        for path in missing_paths:
-            print(path)
-        sys.exit(-1)
-    else:
-        print(f"All Needed Data exists in {data_dir}, proceeding...")
-    # Read and Format Data
-    data = data_funcs.combine_fmda_files(file_paths)
-    ml_dict = data_funcs.build_ml_data(data, verbose=False)
-    df_valid = pd.read_csv(osp.join(PROJECT_ROOT, conf.valid_path))
-    ml_dict = data_funcs.remove_invalid_data(ml_dict, df_valid)
-    return ml_dict
-
 
 
 if __name__ == '__main__':
@@ -66,27 +40,26 @@ if __name__ == '__main__':
     # Optional seed argument. When calling this script with slurm arrays, the array numbers get passed in as random seed
     # If seed passed, import reproduciblity for deterministic ops and set seed
     # If no second argument, run without deterministic ops
+    # train_setup.py is run before that creates the directory and copies configs
     if len(sys.argv) not in [2, 3]:
         print(f"Invalid arguments. {len(sys.argv)} was given but 2 or 3 expected")
-        print(('Usage: %s <config_path> [seed]' % sys.argv[0]))
-        print("<config_path> is path to yaml file setting up time frame and other analysis parameters")
+        print(('Usage: %s <model_dir> [seed]' % sys.argv[0]))
+        print("<model_dir> is path to directory with ml_data and configs")
         print("Optional [seed] sets deterministic mode and random seed")
-        print("Example: python src/train.py etc/train_config_TEST.yaml 42")
-        sys.exit(-1)
+        print("Example: python src/train.py models/train_test/ 42")
+        sys.exit(1)
 
     # Get input args
-    conf_path = sys.argv[1]
-    conf = Dict(read_yml(conf_path))
-    region = conf.region
-    t_dir = conf.target_model_dir
+    t_dir = sys.argv[1]
+    conf = Dict(read_yml(osp.join(t_dir, "train_config.yaml")))
+    params = Dict(read_yml(osp.join(t_dir, "params.yaml")))
 
     # Setup output directory.
     tstart = str2time(conf.train_start)
     tend = str2time(conf.train_end)    
-    tstring =  f"{tstart.strftime('%Y%m%d')}-{tend.strftime('%Y%m%d')}" # time parameters string for naming model directory
-    t_dir = osp.join(t_dir, f"{region}_{tstring}") 
     
     seed = None
+    out_dir = t_dir
     if len(sys.argv) == 3:
         try:
             seed = int(sys.argv[2])
@@ -96,46 +69,37 @@ if __name__ == '__main__':
 
         import reproducibility
         reproducibility.set_seed(seed)
-        t_dir = f"{t_dir}_reps"
-        t_dir = osp.join(t_dir, f"seed_{seed}")    
+        out_dir = osp.join(out_dir, f"seed_{seed}")
+        os.makedirs(out_dir, exist_ok=True)
     
-    os.makedirs(t_dir, exist_ok=True)
 
-    params = params_models['rnn']
-    with open(osp.join(t_dir, "train_config.yaml"), 'w') as f:
-        yaml.dump(conf, f, default_flow_style=False, sort_keys=False)
-    with open(osp.join(t_dir, "params.yaml"), 'w') as f:
-        yaml.dump(params, f, default_flow_style=False, sort_keys=False)
-    
-    conf = Dict(conf)
-    params = Dict(params)
+    # Get needed data
+    # Split train/val/test, use task_id for random seed
+    ml_data_files = [osp.join(t_dir, "ml_data", f) for f in os.listdir(osp.join(t_dir, "ml_data"))]
+    ml_data = {}
+    print(f"Combining ML monthly data files")
+    for f in ml_data_files:
+        print(f"    reading and combining {f}")
+        with open(f, "rb") as fp:
+            ml_data_new = pickle.load(fp)
+            for key, subdict in ml_data_new.items():
+                if key not in ml_data:
+                    ml_data[key] = subdict
+                    continue
+                ml_data[key]["data"] = pd.concat(
+                    [ml_data[key]["data"], subdict["data"]],
+                    ignore_index=True,
+                )
+                ml_data[key]["times"] = np.concatenate(
+                    [ml_data[key]["times"], subdict["times"]]
+                )
+            del ml_data_new    
 
-    tstart = str2time(conf.train_start)
-    tend = str2time(conf.train_end)
-    print("~"*75)
-    print(f"Training RNN from {tstart} to {tend}")
-    print(f"Saving trained model to {t_dir}")
-    print()
-    
-    # Build / Read training data dictionary
-    # NOTE: stashed data organized in days, so read the full days that bracket input train times
-    print(f"    Building Training Data")
-    tdays = time_range(tstart, tend, freq="1d")
-    data_file =  osp.join(PROJECT_ROOT, t_dir, "ml_data.pkl")
-    if osp.exists(data_file):
-        print(f"    ml_data already exists in train directory: {t_dir}")
-        ml_data = read_pkl(osp.join(t_dir, 'ml_data.pkl'))
-    else:
-        data_dir = conf.data_dir
-        ml_data = build_training_dict(tdays, data_dir)  
-        print(f"    Writing training dictionary to {data_file}")
-        with open(data_file, 'wb') as f:
-            pickle.dump(ml_data, f)
 
     # Extract a validation period for controlling early stopping, no test period
     # NOTE: if random_state set to anything besides None, determinstic TF triggered
     train, val, test = data_funcs.cv_data_wrap(ml_data, fstart=None, fend=None, tstart=tstart, tend=tend, val_hours=conf.val_hours, test_frac = conf.space_test_frac, random_state=None)    
-
+    del ml_data
 
     # Train RNN 
     # Check if running deterministic, that should only be for testing as it is slower
@@ -146,6 +110,8 @@ if __name__ == '__main__':
     else: print("    Tensorflow running in non-deterministic mode for better performance, but won't be exactly reproducible")
 
     dat = RNNData(train, val, test=None, method="random", timesteps=params.timesteps, random_state=None, features_list = params.features_list)
+    del train, val, test
+
     dat.scale_data()
     rnn = RNN_Flexible(params=params)
     code_start = time.time() # time fitting to print out
@@ -164,15 +130,15 @@ if __name__ == '__main__':
     valpreds = rnn.predict(dat.X_val)
     mse_val = mean_squared_error(valpreds.flatten(), dat.y_val.flatten())
     df = pd.DataFrame({'set': ["train", "val"], 'n_samples': [fitted.flatten().shape[0], valpreds.flatten().shape[0]], 'mse': [mse_fit, mse_val]})
-    df.to_csv(osp.join(t_dir, "fitting_mse.csv"), index=False)
+    df.to_csv(osp.join(out_dir, "fitting_mse.csv"), index=False)
 
     # Save Model
-    print(f"Saving models weights to: {osp.join(t_dir, 'rnn.weights.h5')}")
-    rnn.save_weights(osp.join(t_dir, "rnn.weights.h5"), overwrite=True)
-    print(f"Saving model object to: {osp.join(t_dir, 'rnn.keras')}")
-    rnn.save(osp.join(t_dir, "rnn.keras"))
-    print(f"Saving data scaler to: {osp.join(t_dir, 'scaler')}")
-    dump(dat.scaler, osp.join(t_dir, "scaler.joblib"))
+    print(f"Saving models weights to: {osp.join(out_dir, 'rnn.weights.h5')}")
+    rnn.save_weights(osp.join(out_dir, "rnn.weights.h5"), overwrite=True)
+    print(f"Saving model object to: {osp.join(out_dir, 'rnn.keras')}")
+    rnn.save(osp.join(out_dir, "rnn.keras"))
+    print(f"Saving data scaler to: {osp.join(out_dir, 'scaler')}")
+    dump(dat.scaler, osp.join(out_dir, "scaler.joblib"))
     elapsed = code_end - code_start
     print(f"Code Runtime (seconds): {elapsed:.2f}")
 

@@ -1,10 +1,10 @@
 #!/bin/bash
 
 #SBATCH --job-name=fcast
-#SBATCH --partition=math-alderaan-gpu-cuda12
 #SBATCH --output=logs/forecast_%j.out
 #SBATCH --cpus-per-task=4
 #SBATCH --ntasks=1
+#SBATCH --partition=math-alderaan
 #SBATCH --mem=64G
 
 # NOTE: different scripts than forecast analysis which is used to estimate forecast error with spatiotemporal CV

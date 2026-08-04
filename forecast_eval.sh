@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --partition=math-alderaan
-#SBATCH --mem=64G
+#SBATCH --mem=128G
 
 # Shell script to combine model outputs and calculate errors for each replication in input model directory
 # Credit to user lorellis for structure of the code

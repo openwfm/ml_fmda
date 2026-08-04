@@ -1,7 +1,9 @@
 # Script to run a single iteration of model forecasting given a forecast period
 # Runs models, including ODE, XGBoost, and RNN on given forecast period. Save to input directory
 # Forecast periods are assigned out with slurm array
+# NOTE: setup uses a config file that sets up a directory and copies the config there, this process called after points to that directory and reads config there. Done this was so you can change the config file externally and not affect anything
 
+import os
 import os.path as osp
 import sys
 import ast
@@ -32,7 +34,6 @@ from models.moisture_rnn import RNN_Flexible, RNNData, scale_3d
 
 # Config and metadata files
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-params_models = Dict(read_yml(osp.join(CONFIG_DIR, "params_models.yaml")))
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
@@ -46,8 +47,9 @@ if __name__ == '__main__':
     f_dir = sys.argv[2]
     print(f"Running forecast analysis replication {task_id}")    
 
-    # Read forecast config file, it is created during setup py script
+    # Read config files, created during setup.py script
     fconf = Dict(read_yml(osp.join(f_dir, "forecast_config.yaml")))
+    params_models = read_yml(osp.join(f_dir, "params_models.yaml"))
 
     # Check if output already exists, exit if so.
     # Allows for running multiple times if process stops for any reason
@@ -56,7 +58,7 @@ if __name__ == '__main__':
     out_file = osp.join(out_dir, f"fperiod_output_{task_id}.h5")    
     if osp.exists(out_file):
         print(f"Output for task {task_id} already exists at: {out_file}, exiting")
-        #sys.exit(0)
+        sys.exit(0)
 
     # Get analysis run configuration
     fstart = str2time(fconf.f_start)
@@ -67,7 +69,26 @@ if __name__ == '__main__':
 
     # Get needed data
     # Split train/val/test, use task_id for random seed
-    ml_data = read_pkl(osp.join(f_dir, 'ml_data.pkl'))
+    ml_data_files = [osp.join(f_dir, "ml_data", f) for f in os.listdir(osp.join(f_dir, "ml_data"))] 
+    ml_data = {}
+    print(f"Combining ML monthly data files")
+    for f in ml_data_files:
+        print(f"    reading and combining {f}")
+        with open(f, "rb") as fp:
+            ml_data_new = pickle.load(fp)
+            for key, subdict in ml_data_new.items():
+                if key not in ml_data:
+                    ml_data[key] = subdict
+                    continue
+                ml_data[key]["data"] = pd.concat(
+                    [ml_data[key]["data"], subdict["data"]],
+                    ignore_index=True,
+                )
+                ml_data[key]["times"] = np.concatenate(
+                    [ml_data[key]["times"], subdict["times"]]
+                )
+            del ml_data_new
+    
     reproducibility.set_seed(task_id)
     train, val, test = data_funcs.cv_data_wrap(ml_data, fstart, fend, tstart, tend, val_hours=fconf.val_hours, test_frac = fconf.space_test_frac, random_state=task_id, all_test_times=False)
 
@@ -105,8 +126,9 @@ if __name__ == '__main__':
     print('~'*75)
     print('Running RNN')
     params = params_models['rnn']
+    params["stride"] = fconf.get('stride', 1)
     params.update({'features_list': features_list})
-    dat = RNNData(train, val, test=None, method="random", timesteps=fhours, random_state=None, features_list = params["features_list"]) 
+    dat = RNNData(train, val, test=None, method="random", timesteps=fhours, random_state=None, features_list = params["features_list"], stride=params['stride']) 
     dat.scale_data()
     rnn = RNN_Flexible(params=params)
     rnn.fit(dat.X_train, dat.y_train,
