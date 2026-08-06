@@ -42,7 +42,7 @@ conda activate ml_fmda_models
 # Run train/test for each forecast replication
 # Create slurm job array for each forecast replication
 N_REPS=$(jq '.nreps' "$FORECAST_DIRECTORY/analysis_info.json")
-echo "Creating slurm array jobs for $N_REPS replications with command:"
+echo "Running executable SLURM command: sbatch --parsable --array=1-$N_REPS --mem=64G --output=\"$FORECAST_DIRECTORY/logs/frep_%j_%a.out\" run_forecast_analysis.sh \"$FORECAST_DIRECTORY\""
 job_id=$(sbatch --parsable --array=1-$N_REPS --mem=64G --output="$FORECAST_DIRECTORY/logs/frep_%j_%a.out" run_forecast_analysis.sh "$FORECAST_DIRECTORY")
 
 # Wait for job to finish and run eval

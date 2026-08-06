@@ -10,6 +10,11 @@
 # Credit to user lorellis for structure of the code
 # Re-grab the variable that was passed in the run_rnn_hyperparam_model.sh script
 
+if [ "$#" -ne 1 ]; then
+    echo "Error: Expected exactly 1 arguments, but got $#."
+    echo "Usage: $0 <model_directory>"
+    exit 1
+fi
 
 MODEL_DIRECTORY="$1"
 

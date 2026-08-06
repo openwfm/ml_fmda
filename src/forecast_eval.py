@@ -118,9 +118,18 @@ if __name__ == '__main__':
     print(f"    {fconf.f_start=}")
     print(f"    {fconf.f_end=}")
 
+    # Big summaries
+    table0 = pd.DataFrame({
+        "Forecast Start": fconf.f_start,
+        "Forecast End": fconf.f_end,
+        "N. Predictions": df.shape[0] / (len(baselines)+1),
+        "N. Test Locations": df.stid.unique().shape[0],
+        "Baselines": [", ".join(map(str, baselines))]
+        })
+    table0.to_csv(osp.join(out_dir, "summary.csv"), index=False)
+
     # Write df of RNN errors for more granular analysis
     # df[df.Model == "rnn"].to_csv(osp.join(out_dir, "rnn_preds.csv"), index=False)
-
     ## Overall Error, averaged over every hour, location, and replication
     ## Bounds from +/- 1std for replications
     table1 = summary_table(df, group_vars = ["Model", "rep"], bound_vars ="rep") 
