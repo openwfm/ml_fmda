@@ -11,10 +11,11 @@ MODEL_DIRECTORY=$2
 
 # Set up environment
 eval "$(conda shell.bash hook)"
+echo "Activating conda env: ml_fmda_models"
 conda activate ml_fmda_models
 
 # Pass array number to python script and run
-
+echo "Running executable Python script: python src/forecast_analysis.py \"$SLURM_ARRAY_TASK_ID\" \"$MODEL_DIRECTORY\""
 python src/forecast_analysis.py $SLURM_ARRAY_TASK_ID $MODEL_DIRECTORY
 
 

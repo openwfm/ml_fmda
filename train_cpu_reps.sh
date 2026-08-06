@@ -49,6 +49,7 @@ echo "Submitting array: $ARRAY_SPEC"
 
 # Set up environment
 eval "$(conda shell.bash hook)"
+echo "Activating conda env: gpu_TEST"
 conda activate gpu_TEST
 
 # Run Setup for formatting data
@@ -57,4 +58,5 @@ TARGET_DIR=$(python src/train_setup.py "$CONFIG_PATH")
 # Submit the array. Each task will run train_cpu.sh once.
 # NOTE: train_cpu.sh contains the #SBATCH directives (partition, mem, etc.)
 # NOTE: Output logs should be handled by train_cpu.sh 
+echo "Running executable SLURM command: sbatch --array=\"$ARRAY_SPEC\" --output=\"$TARGET_DIR/logs/train_%A_%a.out\" train_cpu.sh \"$TARGET_DIR\""
 sbatch --array="$ARRAY_SPEC" --output="$TARGET_DIR/logs/train_%A_%a.out" train_cpu.sh "$TARGET_DIR"

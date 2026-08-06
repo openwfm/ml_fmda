@@ -16,7 +16,8 @@ fi
 CONFIG_PATH="$1"
 
 # Set up environment, need environment with synopticpy
-source ~/.bashrc
+eval "$(conda shell.bash hook)"
+echo "Activating conda env: ml_fmda_data"
 conda activate ml_fmda_data
 
 # Run setup, specify <forecast_directory> and <data_directory>

@@ -32,9 +32,11 @@ echo "End Time: $END_TIME"
 
 # Set up environment
 eval "$(conda shell.bash hook)"
+echo "Activating conda env: ml_fmda_data"
 conda activate ml_fmda_data
 
 export PYTHONUNBUFFERED=1
-python -u src/ingest/get_hrrr_data.py "$START_TIME" "$END_TIME" 
+echo "Running executable Python script: python src/ingest/get_hrrr_data.py \"$START_TIME\" \"$END_TIME\""
+python src/ingest/get_hrrr_data.py "$START_TIME" "$END_TIME" 
 
 

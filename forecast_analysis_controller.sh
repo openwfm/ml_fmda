@@ -26,15 +26,18 @@ CONFIG_PATH="$2"
 # Set up environment
 set -euo pipefail
 eval "$(conda shell.bash hook)"
+echo "Activating conda env: ml_fmda_data"
 conda activate ml_fmda_data
 
 # Run setup, specify <forecast_directory> and <data_directory>
 mkdir -p "$FORECAST_DIRECTORY"
 mkdir -p "$FORECAST_DIRECTORY/forecast_outputs"
 mkdir -p "$FORECAST_DIRECTORY/logs"
-python src/forecast_analysis_setup_CHUNKS.py "$FORECAST_DIRECTORY" "$CONFIG_PATH"
+echo "Running executable Python script: python src/forecast_analysis_setup.py \"$FORECAST_DIRECTORY\" \"$CONFIG_PATH\""
+python src/forecast_analysis_setup.py "$FORECAST_DIRECTORY" "$CONFIG_PATH"
 
-conda activate ml_fmda_data
+echo "Activating conda env: ml_fmda_data"
+conda activate ml_fmda_models
 
 # Run train/test for each forecast replication
 # Create slurm job array for each forecast replication

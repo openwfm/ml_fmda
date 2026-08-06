@@ -35,6 +35,7 @@ echo "Config path: $TARGET_DIR"
 
 # Set up environment
 eval "$(conda shell.bash hook)"
+echo "Activating conda env: gpu_TEST"
 conda activate gpu_TEST
 
 # If this job is part of an array, SLURM will define SLURM_ARRAY_TASK_ID.
@@ -42,8 +43,10 @@ conda activate gpu_TEST
 if [ -n "${SLURM_ARRAY_TASK_ID:-}" ]; then
     SEED="${SLURM_ARRAY_TASK_ID}"
     echo "Array task detected. Using seed: $SEED"
+    echo "Running executable Python script: python src/train.py \"$TARGET_DIR\" \"$SEED\""
     python src/train.py "$TARGET_DIR" "$SEED"
 else
     echo "Non-array job. No seed provided."
+    echo "Running executable Python script: python src/train.py \"$TARGET_DIR\""
     python src/train.py "$TARGET_DIR"
 fi
