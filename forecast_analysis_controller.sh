@@ -36,7 +36,7 @@ mkdir -p "$FORECAST_DIRECTORY/logs"
 echo "Running executable Python script: python src/forecast_analysis_setup.py \"$FORECAST_DIRECTORY\" \"$CONFIG_PATH\""
 python src/forecast_analysis_setup.py "$FORECAST_DIRECTORY" "$CONFIG_PATH"
 
-echo "Activating conda env: ml_fmda_data"
+echo "Activating conda env: ml_fmda_models"
 conda activate ml_fmda_models
 
 # Run train/test for each forecast replication
@@ -46,7 +46,6 @@ echo "Running executable SLURM command: sbatch --parsable --array=1-$N_REPS --me
 job_id=$(sbatch --parsable --array=1-$N_REPS --mem=64G --output="$FORECAST_DIRECTORY/logs/frep_%j_%a.out" run_forecast_analysis.sh "$FORECAST_DIRECTORY")
 
 # Wait for job to finish and run eval
-# NOT working as of June17, get error: sbatch: error: Batch job submission failed: No partition specified or system default partition
 echo "Evaluating Forecast Accuracy after job $job_id"
 echo sbatch --partition=math-alderaan-short --mem=64G  --dependency=afterok:$job_id forecast_eval.sh $FORECAST_DIRECTORY
 sbatch --partition=math-alderaan-short --mem=64G  --dependency=afterok:$job_id forecast_eval.sh $FORECAST_DIRECTORY

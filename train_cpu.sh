@@ -6,7 +6,7 @@
 #SBATCH --output=logs/train_%A_%a.out
 #SBATCH --cpus-per-task=4
 #SBATCH --ntasks=1
-#SBATCH --mem=256G
+#SBATCH --mem=142G
 
 # Runs a single training job.
 #
