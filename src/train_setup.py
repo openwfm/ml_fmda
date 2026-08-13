@@ -30,12 +30,15 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 from utils import read_yml, read_pkl, Dict, str2time, time_range
 import data_funcs
 #import reproducibility
-from models.moisture_rnn import RNN_Flexible, RNNData, scale_3d
 
 # Config and Params
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 params = read_yml(osp.join(CONFIG_DIR, "params_models.yaml"), subkey="rnn")
+project_paths = Dict(read_yml(osp.join(CONFIG_DIR, "paths.yaml")))
 
+
+def calc_smap_files(days):
+    return [osp.join(project_paths.smap_stash_path, "L4", day.strftime("%Y"), f"smap_L4_{day.strftime('%Y%m%d')}.nc") for day in days]
 
 if __name__ == '__main__':
 
@@ -95,6 +98,23 @@ if __name__ == '__main__':
         print(f"No labeled valid data found at {conf['valid_path']}, proceeding with no filtering of bad RAWS", file=sys.stderr)
         df_valid = None
 
+    # TEST STEP August 5: filter to specific GACCs
+    conf = Dict(conf)
+    if "gaccs" in conf:
+        gacc =  Dict(json.load(open('/data001/projects/hirschij/github/wrfxpy/etc/fmda_cycler_all.json')))
+        gacc_regions = gacc["regions"]
+        regions = {
+            region_name: {
+                "code": region["code"],
+                "bbox": region["bbox"],
+            }
+            for region_name, region in gacc["regions"].items()
+            if region["code"] in conf.gaccs
+        }
+        print(f"Filtering to regions: {[*regions.keys()]}", file=sys.stderr)
+    else:
+        regions = None 
+
 
     for paths in monthly_file_paths:
         month = Path(paths[0]).parent.name
@@ -107,6 +127,21 @@ if __name__ == '__main__':
         print(f"Processing {month}...", file=sys.stderr)
         os.makedirs(mpath, exist_ok=True)
         data = data_funcs.combine_fmda_files(paths)
+
+        # Filter GACCs, NOTE this is not an efficient way to do things, just test code. Proper implementation would require changing data_funcs modules
+        if regions is not None:
+            for stid in list(data):
+                lat = data[stid]["loc"]["lat"]
+                lon = data[stid]["loc"]["lon"]
+                keep = False
+                for region in regions.values():
+                    min_lat, min_lon, max_lat, max_lon = region["bbox"]
+                    if min_lat <= lat <= max_lat and min_lon <= lon <= max_lon:
+                        keep = True
+                        break
+                if not keep:
+                    del data[stid]
+
         ml_dict = data_funcs.build_ml_data(data, verbose=False)
 
         if df_valid is not None:
@@ -117,8 +152,14 @@ if __name__ == '__main__':
 
         # Add SMAP if in features list
         if "sm_surface" in conf.features_list:
+            import xarray as xr
             print(f"Adding SMAP data from {project_paths['smap_stash_path']}", file=sys.stderr)
-
+            files = calc_smap_files(days)
+            print(f"Days of SMAP data needed: {len(files)}")
+            assert np.all([osp.exists(fi) for fi in files]), f"Missing SMAP files, exiting"
+            with xr.open_dataset(files[0]) as sm:
+                data_funcs.add_smap_grid_indices(ml_dict, sm)
+            data_funcs.add_smap(ml_dict, files)
 
         print(f"Writing data to {output_file}", file=sys.stderr)
         with open(output_file, "wb") as f:
