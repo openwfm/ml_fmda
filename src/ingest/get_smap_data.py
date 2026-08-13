@@ -38,7 +38,12 @@ config = Dict(read_yml(osp.join(CONFIG_DIR, "variable_metadata", "smap_metadata.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def granules_to_xarray(granules, variables=["sm_surface"]):
-    files = earthaccess.open(granules)
+    # Filter to only h5 files 
+    # .qa files come in for 2026 retrievals
+    
+    files = [f for f in earthaccess.open(granules)
+         if getattr(f, "path", "").endswith(".h5")] 
+
     datasets = []
     print(f"Data variables requested: {variables}")
 
