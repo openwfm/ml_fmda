@@ -2,12 +2,12 @@
 
 
 
-mamba create -n earth -c conda-forge python=3.11   xarray rioxarray dask zarr s3fs netcdf4 bottleneck eccodes cfgrib pyproj cartopy matplotlib pandas -y
+conda create -n earth -c conda-forge python=3.11   xarray rioxarray dask zarr s3fs netcdf4 bottleneck eccodes cfgrib pyproj cartopy matplotlib pandas -y
 
 conda activate earth
 
-mamba install -c conda-forge earthaccess h5py
-mamba install -c conda-forge h5netcdf
+conda install -c conda-forge earthaccess h5py
+conda install -c conda-forge h5netcdf
 
 
 
