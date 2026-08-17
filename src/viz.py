@@ -3,14 +3,8 @@
 ## Credit to Brian Blaylock for EasyMap within Herbie project
 
 import numpy as np
-# from herbie import paint
-# from herbie.toolbox import EasyMap, pc, ccrs
 import matplotlib.pyplot as plt
 import os
-# import imageio.v2 as imageio
-from matplotlib import pyplot as plt
-import plotly.express as px
-import plotly.graph_objects as go
 import pandas as pd
 
 # Dictionary used to store timeseries plot schemes, ts for single location
@@ -23,6 +17,27 @@ plot_styles = {
     'rain': {'color': 'b', 'linestyle': '-', 'alpha':.9, 'label': 'Rain'},
     'model': {'color': 'k', 'linestyle': '-', 'label': 'Predicted FMC'}
 }
+
+import numpy as np
+import matplotlib as mpl
+
+dfm_bounds = [0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.15, 0.2, 0.25, 0.3]
+
+dfm_colors = np.array([
+    (156, 22, 27), (188, 28, 32), (217, 45, 43),
+    (234, 84, 43), (245, 137, 56), (249, 201, 80),
+    (215, 225, 95), (203, 217, 88), (114, 190, 75),
+    (74, 167, 113), (60, 150, 120)
+]) / 255.0
+
+dfm_cmap = mpl.colors.LinearSegmentedColormap.from_list(
+    "dfm_red_to_green", dfm_colors, N=len(dfm_colors)
+)
+
+dfm_norm = mpl.colors.BoundaryNorm(
+    boundaries=dfm_bounds + [1e10],
+    ncolors=len(dfm_bounds)
+)
 
 def plot_one(d, st, features=True, m=None, start_time="2024-01-01", end_time = "2024-01-07", title2 = "", save_path = None, show=True):
     """
@@ -69,46 +84,48 @@ def plot_one(d, st, features=True, m=None, start_time="2024-01-01", end_time = "
         plt.close()
 
 
-def map_var(ds, var_str, time_step=0, scale='110m', figsize=[15, 9], legend_title=None, title=None, save_path=None, vmin=None, vmax=None):
-    """
-    Wrapper to generate EasyMap given xarray and variable string. Uses map_dict conventions. Should be robust to renaming certain vars.
-    """
-    
-    if var_str not in ds:
-        if var_str not in map_dict.keys():
-            raise ValueError(f"var_str not recognized: {var_str}")
-        else:
-            x = ds[map_dict[var_str]["xarray_name"]]
-    else:
-        x = ds[var_str]
-    x = x.isel(time=time_step)
+def map_var(ds, var_str, time_step=0, scale="110m", figsize=(15, 9),
+            legend_title=None, title=None, save_path=None,
+            vmin=None, vmax=None, cmap="viridis", land_mask=None):
 
-    if var_str in map_dict.keys():
-        cmap = map_dict[var_str]["cmap"]
-        if legend_title is None:
-            legend_title = map_dict[var_str]["legend_title"]
-    else:
-        cmap = "viridis"
-        legend_title = legend_title
+    import matplotlib.pyplot as plt
+    import cartopy.crs as ccrs
+    import cartopy.feature as cfeature
 
-    # Rename coords if so
-    if not "latitude" in ds:
-        ds = ds.rename({"lat": "latitude"})
-        ds = ds.rename({"lon": "longitude"})
+    # Rename coords if needed
+    if "latitude" not in ds:
+        ds = ds.rename({"lat": "latitude", "lon": "longitude"})
+
+    x = ds.isel(time=time_step)
+    t = x.time.values
+    time_str = np.datetime_as_string(t, unit="m")
+
+    # NOTE documentation for HRRR LSM is wrong, 
+    # 1 is land 0 is sea. Not sure if herbie or NOAA issue
+    if land_mask is not None:
+        x = x[var_str].where(x[land_mask] == 1)
+    else:
+        x = x[var_str]
     
-    ax = EasyMap("110m", figsize=figsize, crs=ds.herbie.crs).STATES().OCEAN().COASTLINES().LAKES().ax
-    
-    # Add vmin and vmax to fix the colorbar range
+    fig = plt.figure(figsize=figsize)
+    ax = plt.axes(projection=ccrs.LambertConformal())
+
+    ax.add_feature(cfeature.STATES.with_scale(scale), linewidth=0.5)
+    ax.add_feature(cfeature.COASTLINE.with_scale(scale), linewidth=0.5)
+    ax.add_feature(cfeature.LAKES.with_scale(scale), linewidth=0.5)
+    ax.add_feature(cfeature.OCEAN.with_scale(scale))
+
     p = ax.pcolormesh(
         ds.longitude,
         ds.latitude,
         x,
-        transform=pc,
+        transform=ccrs.PlateCarree(),
+        shading="auto",
         cmap=cmap,
         vmin=vmin,
         vmax=vmax,
     )
-    
+
     cbar = plt.colorbar(
         p,
         ax=ax,
@@ -116,28 +133,33 @@ def map_var(ds, var_str, time_step=0, scale='110m', figsize=[15, 9], legend_titl
         pad=0.01,
         shrink=0.8,
     )
-    cbar.set_label(fontsize=14, label=legend_title)
-    plt.title(title, size=18)
+    cbar.set_label(legend_title, fontsize=14)
+
+    if title is None:
+        ax.set_title(f"{var_str} ({time_str} UTC)", fontsize=18)
+    else:
+        ax.set_title(f"{title} ({time_str} UTC)", fontsize=18)       
 
     if save_path is not None:
-        plt.savefig(save_path, bbox_inches='tight')
+        plt.savefig(save_path, bbox_inches="tight")
+        plt.close(fig)
+
+    return fig, ax
 
     
 
-def create_gif(ds, var_str, tsteps, gif_path='output.gif', duration=0.5, legend_title = None, title=None):
+def create_gif(ds, var_str, tsteps, gif_path='output.gif', duration=0.5, legend_title = None, title=None, cmap="viridis", vmin=None, vmax=None):
+    import imageio.v2 as imageio
+    
     temp_dir = "./temp_frames"
     os.makedirs(temp_dir, exist_ok=True)
 
-    if var_str not in ds:
-        if var_str not in map_dict.keys():
-            raise ValueError(f"var_str not recognized: {var_str}")
-        else:
-            x = ds[map_dict[var_str]["xarray_name"]]
-    else:
-        x = ds[var_str]    
+    x = ds[var_str]    
     # Calculate global vmin and vmax across all frames
-    vmin = x.min().item()
-    vmax = x.max().item()
+    if vmin is None:
+        vmin = x.min().item()
+    if vmax is None:
+        vmax = x.max().item()
     
     frames = []
     for tstep in tsteps:
@@ -146,7 +168,7 @@ def create_gif(ds, var_str, tsteps, gif_path='output.gif', duration=0.5, legend_
 
         frame_path = os.path.join(temp_dir, f"frame_{tstep:03d}.png")
         map_var(ds, var_str, time_step=tstep, legend_title=legend_title,
-                title=f"Forecast at {formatted_time}", save_path=frame_path, vmin=vmin, vmax=vmax)
+                title=f"Forecast at {formatted_time}", save_path=frame_path, vmin=vmin, vmax=vmax, cmap=cmap)
         plt.close()
         plt.clf()
         frames.append(imageio.imread(frame_path))
@@ -162,6 +184,9 @@ def make_st_map_interactive(df, color=None, binary=False):
     """
     Make interactive map with plotted bounding box. If color None, default scatter color. If color not none, it specifies a numeric column used for plotting color of scatter
     """
+    import plotly.express as px
+    import plotly.graph_objects as go
+    
     marker_dict={
         'size': 6,
         'opacity': 0.7
