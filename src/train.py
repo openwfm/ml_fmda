@@ -109,7 +109,8 @@ if __name__ == '__main__':
     if deterministic: print("    Tensorflow running in deterministic mode for reproduciblity"); print("    Warning: this is slower and should only be for testing")
     else: print("    Tensorflow running in non-deterministic mode for better performance, but won't be exactly reproducible")
 
-    dat = RNNData(train, val, test=None, method="random", timesteps=params.timesteps, random_state=None, features_list = params.features_list)
+    params["stride"] = conf.get("stride", 1)
+    dat = RNNData(train, val, test=None, method="random", timesteps=params.timesteps, random_state=None, features_list = params.features_list, stride=params["stride"])
     del train, val, test
 
     dat.scale_data()
