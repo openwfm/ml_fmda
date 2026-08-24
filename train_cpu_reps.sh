@@ -67,6 +67,7 @@ job_id=$(sbatch --parsable --array="$ARRAY_SPEC" --reservation=demo --output="$T
 echo "Training job ID: $job_id"
 
 # Wait for jobs to finish and run postprocessing
-echo "Running postprocessing"
+echo "Postprocessing will run after slurm arrays finish"
+echo "sbatch --partition=math-alderaan-short --mem=32G --dependency=afterok:$job_id --job-name=post --wrap=\"python src/train_postprocess.py '$TARGET_DIR'\""
 sbatch --partition=math-alderaan-short --mem=32G --dependency=afterok:$job_id --job-name=post --wrap="python src/train_postprocess.py '$TARGET_DIR'"
 
