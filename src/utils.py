@@ -337,8 +337,10 @@ def str2time(input):
         return parse(input)
     elif isinstance(input, list):
         return [parse(s) for s in input]
+    elif isinstance(input, datetime):
+        return input    
     else:
-        raise ValueError("Input must be a string or a list of strings")
+        raise ValueError("Input must be a string or a list of strings or datetime")
 
 # Calculate hour of day (HOD) and day of year (DOY) from times
 def calc_times(times):
