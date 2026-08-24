@@ -13,6 +13,7 @@
 if [ "$#" -ne 1 ]; then
     echo "Error: Expected exactly 1 arguments, but got $#."
     echo "Usage: $0 <config_path>"
+    echo "Example: ./forecast.sh etc/forecast_TEST.yaml"
     exit 1
 fi
 
@@ -22,6 +23,8 @@ echo "Config path: $CONFIG_PATH"
 
 # Set up environment
 eval "$(conda shell.bash hook)"
+echo "Activating conda env: ml_gpu2"
 conda activate ml_gpu2
 
+echo "python src/forecast.py "$CONFIG_PATH""
 python src/forecast.py "$CONFIG_PATH" 
