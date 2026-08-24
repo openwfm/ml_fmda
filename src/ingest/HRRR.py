@@ -231,7 +231,7 @@ def retrieve_hrrr(start, end, all_features = True, forecast_step = 3, save_to_st
 
     # Run API retieval on days not stashed
     print(f"    Days already stashed: {stashed_days}")
-    print(f"    Days need to retrive: {needed_days}")
+    print(f"    Days need to retrieve: {needed_days}")
     for d in needed_days:
         end_d = d.replace(hour=23)
         retrieve_hrrr_api(d, end_d, all_features=True, forecast_step=3, save_to_stash=save_to_stash)
