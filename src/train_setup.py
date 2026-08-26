@@ -155,7 +155,7 @@ if __name__ == '__main__':
             import xarray as xr
             print(f"Adding SMAP data from {project_paths['smap_stash_path']}", file=sys.stderr)
             files = calc_smap_files(days)
-            print(f"Days of SMAP data needed: {len(files)}")
+            print(f"Days of SMAP data needed: {len(files)}", file=sys.stderr)
             assert np.all([osp.exists(fi) for fi in files]), f"Missing SMAP files, exiting"
             with xr.open_dataset(files[0]) as sm:
                 data_funcs.add_smap_grid_indices(ml_dict, sm)

@@ -58,6 +58,8 @@ echo "Running data setup"
 echo "python src/train_setup.py $CONFIG_PATH"
 TARGET_DIR=$(python src/train_setup.py "$CONFIG_PATH")
 
+printf 'TARGET_DIR=<%q>\n' "$TARGET_DIR"
+
 # Submit the array. Each task will run train_cpu.sh once.
 # NOTE: train_cpu.sh contains the #SBATCH directives (partition, mem, etc.)
 # NOTE: Output logs should be handled by train_cpu.sh 
