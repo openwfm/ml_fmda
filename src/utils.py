@@ -20,6 +20,18 @@ import shutil
 from itertools import islice
     
 
+def save_yaml(yfile, output_dir, filename):
+    """Save yaml once, safely across concurrent processes."""
+    os.makedirs(output_dir, exist_ok=True)
+    path = osp.join(output_dir, filename)
+
+    try:
+        with open(path, "x") as f:
+            yaml.dump(yfile, f, default_flow_style=False, sort_keys=False)
+    except FileExistsError:
+        pass
+
+
 class Dict(dict):
     """
     A dictionary that allows member access to its keys.

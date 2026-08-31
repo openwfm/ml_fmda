@@ -1,6 +1,9 @@
 # Set of functions and executable to retrieve and manipulate HRRR data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # HRRR Data is retrieved using Brian Blaylock for Herbie package
+# From HRRR website https://www.nco.ncep.noaa.gov/pmb/products/hrrr/:
+#  All Standard Cycles go to FH18
+#  Extended Forecast Cycles going to FH48 are 00, 06, 12, 18 UTC
 
 import pandas as pd
 import herbie
@@ -23,7 +26,7 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import read_yml, Dict, time_intp, str2time, print_dict_summary, rename_dict, time_range
-
+from data_funcs import calc_doy_trig, calc_hod_trig
 
 # Read HRRR Metadata
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -115,7 +118,8 @@ def calc_eq(ds):
     if ds.t2m.units == "C":
         print("Converting from C to K")
         ds.t2m = ds.t2m + 273.15
-    
+        ds.t2m.attrs["units"] = "K"
+
     temp = ds.t2m
     rh = ds.r2
 
@@ -143,6 +147,8 @@ def calc_times(ds):
         "hod": ds.valid_time.dt.hour,
         "doy": ds.valid_time.dt.dayofyear
     })
+    ds["hod_sin"], ds["hod_cos"] = calc_hod_trig(ds["hod"])
+    ds["doy_sin"], ds["doy_cos"] = calc_doy_trig(ds["doy"])
 
     return ds
 
@@ -201,16 +207,17 @@ def get_units_xr(ds):
 def retrieve_hrrr(start, end, all_features = True, forecast_step = 3, save_to_stash=True, read_to_memory=True):
     """
     Function called by user to retrieve hrrr data. Checks for existence of data in HRRR stash from project paths. If exists, reads it, if not calls the API retrieval function
-    
+    Assumes UTC inputs throughout, some redundancies to remove TZ info.
+
     Args:
         - save_to_stash: whether to save formatted HRRR data to stash directory set by paths.yaml project. NOTE: only implemented to always save to stash as of May 26 2025
         - read_to_memory: if true, return xarray ds to env that called it. if false, just retrieve and save to stash. NOTE: only makes sense to use read_to_memory False if save_to_stash is True
     """
     # Extract Time range as datetime objects 
     if type(start) is str:
-        start = str2time(start)
+        start = str2time(start).replace(tzinfo=None)
     if type(end) is str:
-        end = str2time(end) 
+        end = str2time(end).replace(tzinfo=None)
 
     print(f"Retrieving HRRR data from {start} to {end}")
 
@@ -255,6 +262,7 @@ def retrieve_hrrr(start, end, all_features = True, forecast_step = 3, save_to_st
         combined = xr.concat(datasets, dim="time", combine_attrs="drop_conflicts")
     # Filter to exact needed times. Data collection gets whole days, this can return partial hours
     dt = pd.to_datetime(combined.date_time.to_numpy(), utc=True)
+    dt = pd.to_datetime(combined.date_time.to_numpy())
     mask = (dt >= start) & (dt <= end)
     combined = combined.isel(time=mask)
 
@@ -330,12 +338,10 @@ def retrieve_hrrr_api(start, end, all_features = True, forecast_step = 3, save_t
         'grid_x' : ds.x,
         'grid_y' : ds.y
     })
-
     # Construct Other Predictors
-    if any(s in features_list for s in ["hod", "doy"]):
-        calc_eq(ds)
-    if any(s in features_list for s in ["hod", "doy"]):
-        ds = calc_times(ds)
+    calc_eq(ds)
+    ds = calc_times(ds)
+    
     # Add date_time col based on valid_time with UTC timezone
     times = ds["valid_time"].values
     ds["date_time"] = ("time", times)
@@ -405,11 +411,61 @@ def subset_hrrr2raws(ds, raws):
     return ds_pts
 
 
+def retrieve_hrrr_fcst(start, end, features_list=None, forecast_step=3):
+    """
+    Retrieve forecast window, used for operational forecast. 
+    """
+    fhours = time_range(start, end)
+    final_fhr = forecast_step+len(fhours)
 
-def format_hrrr_forecast():
-    pass
+    print(f"Retrieving HRRR forecast {start}, from f{forecast_step:02d} to f{final_fhr:02d}")
+    # Open Data Connection w Herbie
+    FH = FastHerbie(
+        [start],
+        model="hrrr",
+        product="prs",
+        fxx=range(forecast_step, final_fhr)
+    )
 
+    # Set up search strings
+    # Handle Features List
+    if features_list is None:
+        print(f"Using all features from hrrr_metadata.yaml")
+        # All top level keys from hrrr_meta file into a list
+        features_list = [*hrrr_meta.keys()]
+    
+    print(f"Target Features List: {features_list}")
+    search_strings = features_to_searchstr(features_list)
+    print("HRRR Search Strings:")
+    print_dict_summary(search_strings) 
 
+    # Read data, grouped by layer
+    ds_dict = {}
+    for layer in search_strings:
+        print(f"Reading HRRR data for layer: {layer}")
+        print(f"    search strings: {search_strings[layer]}")
+        ds_dict[layer] = FH.xarray(search_strings[layer], remove_grib=False) # Keep grib for easier re-use, delete later
+    ds = merge_datasets(ds_dict)
+
+    # Store Regular i,j grid coordinates
+    ds = ds.assign_coords({
+        'grid_x' : ds.x,
+        'grid_y' : ds.y
+    })
+    # Construct Other Predictors
+    calc_eq(ds)
+    ds = calc_times(ds)
+    
+    # Add date_time col based on valid_time with UTC timezone
+    # Convert step dimension into integer coord
+    ds = ds.assign_coords(step=ds.step / np.timedelta64(1, "h"))
+    ds["step"] = ds.step.astype(int)
+    times = ds["valid_time"].values
+    ds = ds.drop_vars("time") # drop f00 reference time to make a dim
+    #ds = ds.rename({"step": "time"})
+    #ds = ds.assign_coords(time=times)
+
+    return ds
 
 if __name__ == '__main__':
 

@@ -1,0 +1,10 @@
+# Config file used to set up hindcast
+# Model weights read from target model directory
+# Output sent to forecast dir
+# Currently all of CONUS, bbox arg not used
+
+f_start: "2026-01-01T00:00:00Z" 
+f_end: "2026-01-31T23:00:00Z" 
+bbox: '[37,-111,46,-95]' # spatial bounding box
+forecast_dir: "/storage/math/NSF1/hirschij/RNN_forecasts/rmcc_hindcast"
+target_model_dir: "/storage/math/NSF1/hirschij/FMDA/models/rocky23-24"
