@@ -78,6 +78,25 @@ def add_derived_features(ml_dict):
         df["doy_sin"], df["doy_cos"] = calc_doy_trig(df["doy"])
         df["lograin"] = np.log1p(df["rain"])
 
+def add_terrain(ds, terrain):
+    """
+    Helper to join static terrain data from a raster to a time series raster
+    """
+    import xarray as xr
+    
+    # Check that lon/lat coordinates match
+    if not (np.mean(terrain.longitude == ds.lon).values == 1) and (np.mean(terrain.latitude == ds.lat).values==1):
+        print("Mismatch lon/lat coordinates between HRRR terrain and weather")
+    # Join elevation, need to get times to line up
+    #ds["time"] = ds["valid_time"]
+    terrain = terrain.drop_vars(["step", "valid_time", "surface"])
+    terrain = terrain.broadcast_like(ds)
+    
+    terrain = terrain.drop_vars(["step", "valid_time", "surface"], errors="ignore")
+    ds = xr.merge([ds, terrain])
+    ds["elev"] = ds["orog"]
+    return ds
+
 
 ### Tools for Joining SMAP data
 from scipy.spatial import cKDTree
