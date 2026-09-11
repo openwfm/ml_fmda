@@ -66,8 +66,8 @@ if __name__ == '__main__':
     tend = str2time(conf['train_end'])
     tstring =  f"{tstart.strftime('%Y%m%d')}-{tend.strftime('%Y%m%d')}" # time parameters string for naming model directory
     t_dir = osp.join(conf['target_model_dir'], f"{region}_{tstring}")    
-    print("Creating directory {t_dir}", file=sys.stderr)
-    print(t_dir) # NOTE: this is captured by shell file and passed to a later process, all other print statements need to specify file=sys.stderr to avoid messing it up
+    print("Creating directory {t_dir}")
+    print(f"TARGET_DIR={t_dir}")
     os.makedirs(t_dir, exist_ok=True) 
     os.makedirs(osp.join(t_dir, "logs"), exist_ok=True)
     with open(osp.join(t_dir, "train_config.yaml"), 'w') as f:
@@ -76,26 +76,26 @@ if __name__ == '__main__':
         yaml.dump(params, f, default_flow_style=False, sort_keys=False)
     
     days = time_range(tstart, tend, freq="1d")
-    print("~"*75, file=sys.stderr)
-    print(f"Training RNN from {tstart} to {tend}", file=sys.stderr)
-    print(f"Saving trained model to {t_dir}", file=sys.stderr)
+    print("~"*75)
+    print(f"Training RNN from {tstart} to {tend}")
+    print(f"Saving trained model to {t_dir}")
     
     # Build / Read training data dictionary
     # NOTE: stashed data organized in days, so read the full days that bracket input train times
-    print(f"    Building Training Data", file=sys.stderr)
+    print(f"    Building Training Data")
     # Read and Format Data into monthly files, get set up for train and test.
     
     file_paths = [f"{data_dir}/{dt.strftime('%Y%m')}/fmda_{dt.strftime('%Y%m%d')}.pkl" for dt in days]
-    print("~"*75, file=sys.stderr)
+    print("~"*75)
     monthly_file_paths = [
         list(group)
         for _, group in groupby(file_paths, key=lambda p: Path(p).parent.name)
     ]
     if osp.exists(conf['valid_path']):
-        print(f"Using labeled valid data file: {conf['valid_path']}", file=sys.stderr)
+        print(f"Using labeled valid data file: {conf['valid_path']}")
         df_valid = pd.read_csv(osp.join(PROJECT_ROOT, conf['valid_path']))
     else:
-        print(f"No labeled valid data found at {conf['valid_path']}, proceeding with no filtering of bad RAWS", file=sys.stderr)
+        print(f"No labeled valid data found at {conf['valid_path']}, proceeding with no filtering of bad RAWS")
         df_valid = None
 
     # TEST STEP August 5: filter to specific GACCs
@@ -111,7 +111,7 @@ if __name__ == '__main__':
             for region_name, region in gacc["regions"].items()
             if region["code"] in conf.gaccs
         }
-        print(f"Filtering to regions: {[*regions.keys()]}", file=sys.stderr)
+        print(f"Filtering to regions: {[*regions.keys()]}")
     else:
         regions = None 
 
@@ -121,10 +121,10 @@ if __name__ == '__main__':
         mpath = osp.join(PROJECT_ROOT, t_dir, "ml_data")
         output_file = Path(mpath) / f"ml_data_{month}.pkl"
         if osp.exists(output_file):
-            print(f"Skipping {month}: output file already exists: {output_file}", file=sys.stderr)
+            print(f"Skipping {month}: output file already exists: {output_file}")
             continue
 
-        print(f"Processing {month}...", file=sys.stderr)
+        print(f"Processing {month}...")
         os.makedirs(mpath, exist_ok=True)
         data = data_funcs.combine_fmda_files(paths)
 
@@ -153,15 +153,15 @@ if __name__ == '__main__':
         # Add SMAP if in features list
         if "sm_surface" in conf.features_list:
             import xarray as xr
-            print(f"Adding SMAP data from {project_paths['smap_stash_path']}", file=sys.stderr)
+            print(f"Adding SMAP data from {project_paths['smap_stash_path']}")
             files = calc_smap_files(days)
-            print(f"Days of SMAP data needed: {len(files)}", file=sys.stderr)
+            print(f"Days of SMAP data needed: {len(files)}")
             assert np.all([osp.exists(fi) for fi in files]), f"Missing SMAP files, exiting"
             with xr.open_dataset(files[0]) as sm:
                 data_funcs.add_smap_grid_indices(ml_dict, sm)
             data_funcs.add_smap(ml_dict, files)
 
-        print(f"Writing data to {output_file}", file=sys.stderr)
+        print(f"Writing data to {output_file}")
         with open(output_file, "wb") as f:
             pickle.dump(ml_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -170,5 +170,5 @@ if __name__ == '__main__':
 
 
 
-    print(f"Training setup complete at directory: {t_dir}", file=sys.stderr)
+    print(f"Training setup complete at directory: {t_dir}")
 

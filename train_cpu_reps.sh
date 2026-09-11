@@ -6,7 +6,7 @@
 #SBATCH --output=logs/trep_%j.out
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 
 # This script is a *submitter* (runs on the login node).
 # It submits a SLURM job array where each task runs one replication.
@@ -54,9 +54,10 @@ echo "Activating conda env: ml_fmda_data"
 conda activate ml_fmda_data
 
 # Run Setup for formatting data
+# Extracts TARGET_DIR from stdout of setup script
 echo "Running data setup"
 echo "python src/train_setup.py $CONFIG_PATH"
-TARGET_DIR=$(python src/train_setup.py "$CONFIG_PATH")
+TARGET_DIR=$(python src/train_setup.py "$CONFIG_PATH" | sed -n 's/^TARGET_DIR=//p')
 
 printf 'TARGET_DIR=<%q>\n' "$TARGET_DIR"
 
