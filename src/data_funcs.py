@@ -95,6 +95,7 @@ def add_terrain(ds, terrain):
     terrain = terrain.drop_vars(["step", "valid_time", "surface"], errors="ignore")
     ds = xr.merge([ds, terrain])
     ds["elev"] = ds["orog"]
+    ds["lsm"] = terrain["lsm"]
     return ds
 
 
@@ -165,6 +166,36 @@ def add_smap(ml_dict, files):
                         continue
                     station["data"].loc[mask, "sm_surface"] = sm_surface[i, y, x]
 
+
+def ds_to_numpy(ds, features_list):
+    arr = (
+        ds[features_list]
+        .to_array("feature")
+        .transpose("y", "x", "time", "feature")
+        .values
+    )
+
+    ny, nx, nt, nf = arr.shape
+
+    return arr.reshape(ny * nx, nt, nf)
+
+def preds_to_ds(preds, ds):
+    """Convert (loc, time) predictions to (time, y, x) Dataset."""
+    import xarray as xr
+    ny = ds.sizes["y"]
+    nx = ds.sizes["x"]
+    nt = ds.sizes["time"]
+
+    fm10 = preds.reshape(ny, nx, nt).transpose(2, 0, 1)
+    return xr.Dataset(
+        {"fm10": (("time", "y", "x"), fm10)},
+        coords={
+            "time": ds["time"].values,
+            "y": ds["y"].values,
+            "x": ds["x"].values,
+            "gribfile_projection": ds["gribfile_projection"],
+        },
+    )
 
 # Data Retrieval Wrappers
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

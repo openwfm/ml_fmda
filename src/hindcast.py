@@ -28,9 +28,9 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from utils import read_yml, read_pkl, Dict, str2time, time_range, save_yaml
-from data_funcs import add_terrain
+from data_funcs import add_terrain, ds_to_numpy, preds_to_ds, calc_hod_trig, calc_doy_trig
 import reproducibility
-from models.moisture_rnn import RNN_Flexible,OperationalRNNPredictor
+from models.moisture_rnn import RNN_Flexible,OperationalRNNPredictor, scale_3d
 import ingest.HRRR as ih
 
 # Config and Params
@@ -56,8 +56,8 @@ def predict_auto_batch(model,
         try:
             if verbose:
                 print(f"Trying predict batch_size={bs}")
-            #preds = model.predict_cycle(X, batch_size=bs, verbose=verbose, reset_state=reset_state)
-            preds = model.predict(X, batch_size=bs, verbose=verbose)
+            preds = model.predict_cycle(X, batch_size=bs, verbose=verbose, reset_state=reset_state)
+            #preds = model.predict(X, batch_size=bs, verbose=verbose)
             if verbose:
                 print(f"Success with batch_size={bs}")
             return preds
@@ -96,93 +96,80 @@ if __name__ == '__main__':
     save_yaml(dict(params), outdir, "params.yaml")
     # bbox
 
-    # Read trained model
-    rnn = tf.keras.models.load_model(osp.join(t_dir, 'rnn.keras'))
+    # Static Data, elevation, land-sea-mask
+    terrain = xr.open_dataset(osp.join(paths.landfire_elev_dir, "hrrr_terrain.nc"))
+    lsm = terrain["lsm"]
+
+    # Read trained model weights
+    rnn = OperationalRNNPredictor.from_weights(params, osp.join(t_dir, "rnn.weights.h5"))
     rnn.save_weights(osp.join(outdir, "rnn.weights.h5"))
-    
     scaler = load(osp.join(t_dir, "scaler.joblib"))
     dump(scaler, osp.join(outdir, "scaler.joblib"))
 
-    rnn2 = OperationalRNNPredictor.from_weights(params, osp.join(t_dir, "rnn.weights.h5"))
+
     # Get HRRR data, check stash and retrieve if missing
     # Default to save to stash f03 model, treated as analysis data
     print("~"*75)
     print(f"Forecasting with RNN from {fstart} to {fend}")
     print(f"Saving gridded forecasts to {outdir}")
+    print(f"Loading HRRR data from stash {hrrr_dir}")
     print()
 
-    print(f"    Loading HRRR data from stash {hrrr_dir}")
-    ds = ih.retrieve_hrrr(fstart, fend)
-
-    # Static HRRR data, join to timeseries rasters
-    terrain = xr.open_dataset(osp.join(paths.landfire_elev_dir, "hrrr_terrain.nc"))
-    ds = ih.rename_ds(ds)
-    ds = add_terrain(ds, terrain)
-    
-    # Set valid time, f03 shifted, as dimension
-    ds = ds.assign_coords(time=ds.valid_time).drop_vars("valid_time")
-
-    #elev = xr.open_dataset(osp.join(paths.landfire_elev_dir, "lf_elevation_hrrrgrid.tif"))
-
-    # Format input dataframe for RNN predict
-    # Subset to features list used by rnn, some features are data_vars in xarray but some are coords
+    # Cycle over days of data, first period use None initial state,
+    # then save moving forward
+    # TODO: handle fend falling within a full cycle at end
+    cycle_length = conf.get("cycle_length", 12)  # number of hours to group together for cyclical prediction
+    cycles = time_range(fstart, fend, freq=f"{int(cycle_length)}h") 
+    print(f"Cycle length: {cycle_length}")
     features_list = params.features_list
-    if "lograin" in features_list:
-        ds["lograin"] = np.log1p(ds["rain"])
-    
-    print(f"    Subsetting HRRR data to features: {features_list}")
-    ds = ds[features_list]
-    coord_features = [name for name in features_list if name in ds.coords] # Features from list that exist in xarray coordinates rather than data_vars
-    ds = ds.reset_coords(coord_features, drop=False)
-    assert len(ds.data_vars) == len(features_list), f"Missing features from list, {features_list=}, data_vars= {(list(ds.data_vars))}"
-    ds_stacked = ds[features_list].stack(loc=("y", "x"))
-    ds_transposed = ds_stacked.transpose("loc", "time", ...)
-    X_gridded = ds_transposed.to_array().transpose("loc", "time", "variable").values
+    if len(features_list) != len(set(features_list)):
+        raise ValueError("features_list contains duplicate features")
+    for i, cycle in enumerate(cycles):
+        print(f"    Processing cycle start: {cycle}, {i} out of {len(cycles)}")
+        cycle_start = cycle
+        cycle_end = cycle + pd.Timedelta(cycle_length-1, unit="hours")
+        times = time_range(cycle_start, cycle_end, freq="1h")
+        ds = ih.retrieve_hrrr(cycle_start, cycle_end)
+        ds = ih.rename_ds(ds)
+        ds = add_terrain(ds, terrain)
+        # Set valid time, f03 shifted, as dimension
+        ds = ds.assign_coords(time=ds.valid_time).drop_vars("valid_time")
 
-    times = time_range(fstart, fend)
-    assert X_gridded.shape == (ds.x.shape[0] * ds.y.shape[0], len(times), len(features_list)), f"Unexpected X array shape: {X.shape=}, expected={(ds.x.shape[0] * ds.y.shape[0], len(times), len(features_list))}"
+        # Calculate Derived Features
+        if "lograin" in features_list:
+            ds["lograin"] = np.log1p(ds["rain"])
+        ds["hod_sin"], ds["hod_cos"] = calc_hod_trig(ds["hod"])
+        ds["doy_sin"], ds["doy_cos"] = calc_doy_trig(ds["doy"])
 
-    # Run prediction with RNN
-    # NOTE: batch size in predict is only a memory constraint and not related to batch_size used in training. 
-    # We want to make batch_size as large as possible while avoiding memory constraints
-    
-    ## Scale Data
-    # Reshape to 2d table to apply scaler, flatten (xy) dimensions
-    X_flat = X_gridded.reshape(-1, X_gridded.shape[-1])
-    X_scaled = scaler.transform(X_flat)
-    nbatch, ntimes, nfeatures = X_gridded.shape
-    assert X_scaled.shape[0] == nbatch * ntimes
-    assert X_scaled.shape[1] == nfeatures
-    X = X_scaled.reshape(nbatch, ntimes, nfeatures)
-  
-    # Predict, try large batch sizes for memory
-    preds = predict_auto_batch(rnn, X)
+        # Format as input array to RNN, (nbatch, ntime, nfeat) 
+        print(f"    Subsetting HRRR data to features: {features_list}")
+        ds = ds[features_list]
+        coord_features = [name for name in features_list if name in ds.coords] # Features from list that exist in xarray coordinates rather than data_vars
+        ds = ds.reset_coords(coord_features, drop=False)
+        ds["lon"] = ((ds["lon"] + 180) % 360) - 180 # fix longitude convention
+        assert set(ds.data_vars) == set(features_list), f"Feature mismatch: expected {features_list}, got {list(ds.data_vars)}"
+        print(f"    Converting xarray to numpy object")
+        X_gridded = ds_to_numpy(ds, features_list)
+        assert X_gridded.shape == (ds.x.shape[0] * ds.y.shape[0], len(times), len(features_list)), f"Unexpected X array shape: {X_gridded.shape=}, expected={(ds.x.shape[0] * ds.y.shape[0], len(times), len(features_list))}"
 
-    # Reshape preds and assign to an xarray object for save
-    preds = preds.squeeze() # NOTE: this only works with 1d prediction. If ever go to 2-d, break up preds and add each separately
-   
-    breakpoint()
-    preds2 = rnn2.predict_cycle(
-            X, 
-            reset_state=True,     # predicting from fresh start
-            initial_states=None,  # start from naive, zeros by default
-            return_states=True   # keep to use for cyclical
-            )
-    
-    pred_da = xr.DataArray(
-        preds,
-        dims=("loc", "time"),
-        coords={
-            "loc": ds_transposed["loc"],
-            "time": ds_transposed["time"]
-        },
-        name="predicted"
-    )
-    pred_da = pred_da.unstack("loc")  # dims: (y, x, time)
-    ds["fm10"] = pred_da.transpose("time", "y", "x")
-    ds["lsm"] = terrain.lsm
-    
-    # Write out
-    print(f"Writing predictions to netcdf: {osp.join(outdir, 'fm_preds_hrrr.nc')}")
-    ds.to_netcdf(osp.join(outdir, f"fm_rnn.nc"))
+        # Scale Data
+        X = scale_3d(X_gridded, scaler)
+
+        # Predict, try large batch sizes for memory. only reset states on initial cycle, 
+        # then reuse internally stored states
+        # batch size in predict is only a memory constraint and not related to training.
+        preds = predict_auto_batch(rnn, X, reset_state=(i==0))
+        assert preds.shape[-1] == 1, f"Expected one output feature, got shape {preds.shape}"
+        preds = preds.squeeze(axis=-1)
+        cycle_ds = preds_to_ds(preds, ds)
+        cycle_ds["fm10"] = cycle_ds["fm10"].where(lsm == 1)
+        cycle_ds = xr.merge([ds, cycle_ds])
+        cycle_ds["lsm"] = lsm
+
+
+        # Write out cycle
+        file_name = (f"fm_preds_"f"{cycle_start:%Y%m%d_%H}_"f"{cycle_end:%Y%m%d_%H}.nc")
+        file_path = osp.join(outdir, file_name)
+        print(f"Writing predictions to netcdf: {file_path}")
+        cycle_ds.to_netcdf(file_path)
     
