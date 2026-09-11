@@ -231,7 +231,7 @@ def scale_3d(X, scaler, fit=False):
     X_flat = X.reshape(-1, features)
     if fit:
         scaler.fit(X_flat)
-    X_scaled_flat = scaler.transform(X_flat)
+    X_scaled_flat = scaler.transform(X_flat, copy=False)
     X_scaled = X_scaled_flat.reshape(n_locs, timesteps, features)
 
     return X_scaled
