@@ -14,7 +14,7 @@ sys.path.append(osp.join(PROJECT_ROOT, "src"))
 
 # Read Project Module Code
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from models.moisture_rnn_operational import OperationalRNNPredictor
+from models.moisture_rnn import OperationalRNNPredictor
 
 
 def make_test_params(hidden_layers, hidden_units, hidden_activation):
