@@ -33,10 +33,32 @@ import reproducibility
 params_models = read_yml(osp.join(CONFIG_DIR, "params_models.yaml"))
 project_paths = Dict(read_yml(osp.join(CONFIG_DIR, "paths.yaml")))
 
-# Module Code
+# Module Functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def calc_smap_files(days):
+    """
+    Utility to get the right paths of smap given target dates
+    """
     return [osp.join(project_paths.smap_stash_path, "L4", day.strftime("%Y"), f"smap_L4_{day.strftime('%Y%m%d')}.nc") for day in days]
+
+def run_checks(fconf):
+    """
+    Check fields for config at the start
+    """
+    features_list = fconf["features_list"]
+
+    if len(features_list) != len(set(features_list)):
+        raise ValueError(
+            "features_list contains duplicate features"
+        )
+    if not (fconf["train_start"] < fconf["train_end"] < fconf["f_start"] < fconf["f_end"]):
+        raise ValueError(
+            "Expected train_start < train_end < f_start < f_end"
+        )
+    
+
+# Executed code
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if __name__ == '__main__':
 
@@ -51,6 +73,9 @@ if __name__ == '__main__':
     f_dir = sys.argv[1]
     conf_path = sys.argv[2]
     fconf = read_yml(conf_path)
+    # Check fconf for the right fields
+    run_checks(fconf)
+
     os.makedirs(osp.join(f_dir, 'forecast_outputs'), exist_ok=True)
     
     # Write copy of forecast config file to forecast directory
@@ -122,6 +147,22 @@ if __name__ == '__main__':
     else:
         print(f"No labeled valid data found at {fconf.valid_path}, proceeding with no filtering of bad RAWS")
         df_valid = None
+    
+    # Filter to specific GACCs if specified in config
+    regions=None # initialize to pass through filter later if missing
+    if fconf.get("gaccs") is not None:
+        with open('/data001/projects/hirschij/github/wrfxpy/etc/fmda_cycler_all.json') as f:
+            gacc = Dict(json.load(f))
+        regions = {
+            region_name: {
+                "code": region["code"],
+                "bbox": region["bbox"],
+            }
+            for region_name, region in gacc["regions"].items()
+            if region["code"] in fconf.gaccs
+        }
+        print(f"Filtering to regions: {[*regions.keys()]}")
+
     for paths in monthly_file_paths:
         month = Path(paths[0]).parent.name
         mpath = osp.join(PROJECT_ROOT, f_dir, "ml_data")
@@ -133,6 +174,20 @@ if __name__ == '__main__':
         print(f"Processing {month}...")
         os.makedirs(mpath, exist_ok=True)
         data = data_funcs.combine_fmda_files(paths)
+        # Filter GACCs, NOTE this is not an efficient way to do things, just test code. Proper implementation would require changing data_funcs modules
+        if regions:
+            for stid in list(data):
+                lat = data[stid]["loc"]["lat"]
+                lon = data[stid]["loc"]["lon"]
+                keep = False
+                for region in regions.values():
+                    min_lat, min_lon, max_lat, max_lon = region["bbox"]
+                    if min_lat <= lat <= max_lat and min_lon <= lon <= max_lon:
+                        keep = True
+                        break
+                if not keep:
+                    del data[stid]
+
         ml_dict = data_funcs.build_ml_data(data, verbose=False)
 
         if df_valid is not None:
