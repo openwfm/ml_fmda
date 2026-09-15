@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --job-name=hcast
-#SBATCH --output=logs/hindcast_%j.out
+#SBATCH --output=logs/hcast_%j.out
 #SBATCH --cpus-per-task=4
 #SBATCH --ntasks=1
 #SBATCH --partition=math-alderaan
@@ -12,7 +12,7 @@
 if [ "$#" -ne 1 ]; then
     echo "Error: Expected exactly 1 arguments, but got $#."
     echo "Usage: $0 <config_path>"
-    echo "Example: ./hindcast.sh etc/forecast_TEST.yaml"
+    echo "Example: ./hindcast.sh etc/hindcast_TEST.yaml"
     exit 1
 fi
 
