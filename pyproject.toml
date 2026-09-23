@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ml_fmda"
+version = "0.1.0"
+description = "RNN-based fuel moisture modeling"
+
+[tool.setuptools.packages.find]
+where = ["src"]
