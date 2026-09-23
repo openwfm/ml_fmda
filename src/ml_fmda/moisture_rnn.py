@@ -660,3 +660,54 @@ class OperationalRNNPredictor(Model):
             return predictions, self._cycle_states
         return predictions
 
+
+class TimeWarpedFuelClassPredictors:
+    """Build FM1, FM10, FM100, and FM1000 operational predictors from FM10 weights."""
+
+    FUEL_CLASSES = ("fm1", "fm10", "fm100", "fm1000")
+    WARPED_FUEL_CLASSES = ("fm1", "fm100", "fm1000")
+
+    def __init__(self, params, weights_path, warps):
+        """
+        Args:
+            params: Operational RNN architecture parameters for the FM10 model.
+            weights_path: Path to the pretrained FM10 weights file.
+            warps: Mapping from fm1, fm100, and fm1000 to (bi_warp, bf_warp).
+        """
+        expected_warp_classes = set(self.WARPED_FUEL_CLASSES)
+        supplied_warp_classes = set(warps)
+        if supplied_warp_classes != expected_warp_classes:
+            raise ValueError(
+                "warps must contain exactly fm1, fm100, and fm1000; "
+                f"got {sorted(supplied_warp_classes)}."
+            )
+
+        self.params = copy.deepcopy(dict(params))
+        self.warps = dict(warps)
+        self.predictors = {
+            "fm10": OperationalRNNPredictor.from_weights(
+                params=self.params,
+                weights_path=weights_path,
+            )
+        }
+
+        base_weights = self.predictors["fm10"].get_weights()
+        for fuel_class in self.WARPED_FUEL_CLASSES:
+            predictor = OperationalRNNPredictor(params=self.params)
+            predictor.set_weights(base_weights)
+
+            lstm_layers = [
+                layer for layer in predictor.layers
+                if isinstance(layer, layers.LSTM)
+            ]
+            if len(lstm_layers) != 1:
+                raise ValueError(
+                    "Time-warped predictors currently require exactly one LSTM layer."
+                )
+
+            bi_warp, bf_warp = self.warps[fuel_class]
+            lstm_layer = lstm_layers[0]
+            lstm_layer.set_weights(
+                warp_weights(lstm_layer.get_weights(), bi_warp, bf_warp)
+            )
+            self.predictors[fuel_class] = predictor
