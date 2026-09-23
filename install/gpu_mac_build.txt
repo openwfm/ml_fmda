@@ -9,3 +9,8 @@ pip install tensorflow-macos tensorflow-metal
 # Listing GPU devices will only work on GPU nodes in cluster
 python -c "import tensorflow as tf; info=tf.sysconfig.get_build_info(); print('TF:', tf.__version__); print('GPUs:', tf.config.list_physical_devices('GPU'))"
 
+# Additional Packages
+pip install pandas PyYAML scikit-learn netCDF4
+
+# Verify
+python -c "import pandas, yaml, sklearn, netCDF4; print('Core package dependencies import successfully')"
