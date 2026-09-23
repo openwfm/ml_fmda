@@ -1,16 +1,18 @@
-# Recipe to built conda environment with GPU compatible tensorflow
-# Building from yaml file has been too unstable
+# Recipe to build an Apple-silicon Metal environment with TensorFlow.
+# Build from commands so failures can be isolated and the resolved packages recorded.
 
-conda create -n ml_gpu python=3.12 -y
+conda create -n ml_gpu python=3.11 pip -y
 conda activate ml_gpu
-pip install tensorflow-macos tensorflow-metal
+python -m pip install --upgrade pip
 
-# Start python session and check that it worked
-# Listing GPU devices will only work on GPU nodes in cluster
-python -c "import tensorflow as tf; info=tf.sysconfig.get_build_info(); print('TF:', tf.__version__); print('GPUs:', tf.config.list_physical_devices('GPU'))"
+# Install in one resolver run so TensorFlow selects a compatible NumPy build.
+# tensorflow-macos is legacy for TensorFlow 2.13+; install tensorflow instead.
+python -m pip install tensorflow tensorflow-metal pandas PyYAML scikit-learn netCDF4
+python -m pip check
 
-# Additional Packages
-pip install pandas PyYAML scikit-learn netCDF4
-
-# Verify
+# Verify TensorFlow, Metal device discovery, and package imports.
+python -c "import tensorflow as tf; print('TF:', tf.__version__); print('GPUs:', tf.config.list_physical_devices('GPU')); print('Tensor check:', tf.reduce_sum(tf.random.normal([1000, 1000])))"
 python -c "import pandas, yaml, sklearn, netCDF4; print('Core package dependencies import successfully')"
+
+# After a successful build, record the exact resolved versions for reproduction.
+python -m pip freeze > install/ml_gpu_mac_requirements.lock.txt
