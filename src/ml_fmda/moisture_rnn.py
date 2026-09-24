@@ -627,6 +627,20 @@ class OperationalRNNPredictor(Model):
         """
         self._cycle_states = None
 
+    def predict(self, X, **kwargs):
+        """
+        Recreate default predict behavior by setting states to zeros, not returning states
+        """
+        x_array = np.asarray(X)
+        cycle_states = self._zero_cycle_states(
+            batch_size=x_array.shape[0],
+            dtype=x_array.dtype,
+        )
+        
+        outputs = super().predict([X] + cycle_states, **kwargs)
+        return outputs[0]
+
+    
     def predict_cycle(self, X, reset_state=False, initial_states=None, return_states=False, **kwargs):
         """
         Stores recurrent states after prediction and continues from stored states if they exist. Used for operational prediction where input data might come in cycles
