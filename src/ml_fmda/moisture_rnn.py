@@ -1,12 +1,9 @@
 import numpy as np
 import math
 import copy
-from sklearn.metrics import mean_squared_error
-import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import os.path as osp
 import sys
-from dateutil.relativedelta import relativedelta
 from tensorflow.keras.callbacks import Callback, EarlyStopping, TerminateOnNaN
 import tensorflow as tf
 from tensorflow.keras import layers, Model
@@ -352,28 +349,7 @@ class RNN_Flexible(Model):
                 # Epoch counting starts at 0, adding 1 for the count
                 return early_stop.best_epoch + 1        
 
-    def test_eval(self, X_test, y_test, verbose=False):
-        """
-        Runs predict and calculates accuracy metrics for given test set.
-        Can also be used on validation data in hyperparameter tuning runs
-        """
-        preds = self.predict(X_test)
-        # Overall MSE
-        mse = mean_squared_error(y_test.flatten(), preds.flatten())
-        
-        # Per loc MSE
-        batch_mse = np.array([
-            mean_squared_error(y_test[i].reshape(-1), preds[i].reshape(-1))
-            for i in range(y_test.shape[0])
-        ])
-        if verbose:
-            print(f"Overall Test MSE: {mse}")
-            print(f"Per-Location Mean Test MSE: {batch_mse.mean()}")
-        errs = {
-            'mse': mse,
-            'loc_mse': batch_mse
-        }
-        return preds, errs
+
         
 
 

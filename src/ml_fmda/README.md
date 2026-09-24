@@ -20,17 +20,57 @@ warp outputs from the `fmc_transfer` project. The warp mapping must provide
 `(bi_warp, bf_warp)` pairs for `fm1`, `fm100`, and `fm1000`; FM10 uses the
 unmodified pretrained weights.
 
-## Installation
+## Setup Instructions
 
-From the repository root, create and activate an environment with TensorFlow
-and the package dependencies, then install the package in editable mode:
+## 1. Clone the repository
 
-```bash
-python -m pip install --editable .
+Clone the `openwfm/ml_fmda` repository and navigate to its root directory.
+
+## 2. Create the Conda environment
+
+This is a **minimal** conda env. Core software tools for running the model. Does NOT include spatial (xarray/netcdf4), does not include data API packages
+
+```
+conda create -n ml_fmda_model -c conda-forge python=3.11 pip
+conda activate ml_fmda_model
+
+conda install -c conda-forge \
+    "numpy>=1.24,<1.27" \
+    pandas matplotlib scikit-learn \
+    jupyter jupyterlab xgboost \
+    "tables>=3.8"
+
+pip install "tensorflow==2.16.1"
+conda install pytest
 ```
 
-See `install/gpu_build.txt` for Linux CUDA setup or `install/gpu_mac_build.txt`
-for Apple-silicon Metal setup.
+
+## 3. Install the package
+
+From the project root:
+
+```
+pip install -e .
+```
+
+## 4. Verify the installation
+
+```
+python -c "import numpy, pandas, sklearn, xgboost, tables, tensorflow; print('numpy', numpy.__version__); print('tensorflow', tensorflow.__version__)"
+```
+
+## 5. Run the tests
+
+From project root:
+
+```
+pytest tests/test_rnn.py
+```
+
+## 6. Basic usage
+
+...
+
 
 ## Acknowledgements
 

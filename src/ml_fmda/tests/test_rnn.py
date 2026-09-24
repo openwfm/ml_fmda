@@ -1,13 +1,18 @@
+# Intended conda envs that should work with this: ml_fmda_model, ml_gpu
+
 import numpy as np
 import sys
 from pathlib import Path
 
-from ml_fmda.moisture_rnn import OperationalRNNPredictor
+from ml_fmda.moisture_rnn import OperationalRNNPredictor, predict_auto_batch
 from ml_fmda.utils import read_yml, Dict
 
 CONFIG_DIR = Path(__file__).parent / "configs"
 params = Dict(read_yml(CONFIG_DIR / "params_test.yaml"))
 
+# Some params to check
+
+lstm_units = params.hidden_units[params.hidden_layers.index("lstm")]
 
 # Time: hourly for one diurnal cycle
 t = np.arange(0, 24, 1)
@@ -75,8 +80,90 @@ def test_predict_is_stateless():
     assert np.allclose(preds1, preds2)
 
 
+# Test cycle
+def test_cycle_default():
+    """Test basic cyclical prediction with default state handling.
+    
+    Verifies predictions have the expected shape and type.
+    """
+    preds = rnn.predict_cycle(X)
 
-breakpoint()
+    assert isinstance(preds, np.ndarray)
+    assert preds.shape == expected_output_shape
 
 
+def test_cycle_reset_state():
+    """Test that reset_state=True starts prediction from zero recurrent state."""
+    preds1 = rnn.predict_cycle(X, reset_state=True)
+    preds2 = rnn.predict_cycle(X, reset_state=True)
 
+    assert np.allclose(preds1, preds2)
+
+
+def test_cycle_return_states():
+    """Test that cyclical prediction can return predictions and recurrent states."""
+    preds, states = rnn.predict_cycle(X, reset_state=True, return_states=True)
+
+    assert isinstance(preds, np.ndarray)
+    assert preds.shape == expected_output_shape
+    assert len(states) == 2
+
+def test_cycle_return_states():
+    """Test that cyclical prediction returns predictions and final LSTM states."""
+    preds, states = rnn.predict_cycle(
+        X, reset_state=True, return_states=True
+    )
+
+    assert isinstance(preds, np.ndarray)
+    assert preds.shape == expected_output_shape
+    assert len(states) == 2
+    assert states[0].shape == (nbatch, lstm_units)
+    assert states[1].shape == (nbatch, lstm_units)
+
+
+def test_cycle_continues_state():
+    """Test that sequential cycles reproduce a single continuous prediction."""
+    preds_full = rnn.predict_cycle(X, reset_state=True)
+
+    preds1 = rnn.predict_cycle(X[:, :2, :], reset_state=True)
+    preds2 = rnn.predict_cycle(X[:, 2:, :])
+
+    preds_cycle = np.concatenate([preds1, preds2], axis=1)
+
+    assert np.allclose(preds_cycle, preds_full)
+
+def test_cycle_initial_states():
+    """Test that explicitly passing recurrent states reproduces continuous prediction."""
+    preds_full = rnn.predict_cycle(X, reset_state=True)
+
+    preds1, states = rnn.predict_cycle(
+        X[:, :2, :],
+        reset_state=True,
+        return_states=True,
+    )
+    preds2 = rnn.predict_cycle(
+        X[:, 2:, :],
+        initial_states=states,
+    )
+
+    preds_cycle = np.concatenate([preds1, preds2], axis=1)
+
+    assert np.allclose(preds_cycle, preds_full)
+
+
+def test_cycle_batch_size():
+    """Test that Keras processing batch size does not change predictions."""
+    preds1 = rnn.predict_cycle(X, reset_state=True, batch_size=nbatch)
+    preds2 = rnn.predict_cycle(X, reset_state=True, batch_size=3)
+
+    assert np.allclose(preds1, preds2)
+
+
+def test_cycle_batch_size():
+    """Test that Keras processing batch size does not change predictions."""
+    preds1 = rnn.predict_cycle(X, reset_state=True, batch_size=nbatch)
+    preds2 = rnn.predict_cycle(X, reset_state=True, batch_size=3)
+    preds3 = predict_auto_batch(rnn, X, verbose=0)
+
+    assert np.allclose(preds1, preds2)
+    assert np.allclose(preds1, preds3)
