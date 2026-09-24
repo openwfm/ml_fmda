@@ -1,0 +1,17 @@
+# Minimal configuration file for constructing a test RNN
+# NOTE: not intended to be used with training, so params like learning rate omitted
+features_list: [Ed, Ew, rain]
+
+timesteps: null
+stateful: false
+return_sequences: true
+
+hidden_layers: [lstm]
+hidden_units: [2]
+hidden_activation: [tanh]
+dropout: 0.0
+recurrent_dropout: 0.0
+
+output_layer: dense
+output_dimension: 1
+output_activation: linear
