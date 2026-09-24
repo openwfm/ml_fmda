@@ -12,6 +12,10 @@ conda install -c conda-forge \
 
 pip install "tensorflow==2.16.1"
 
+conda install pytest
 
 # Verify
 python -c "import numpy, pandas, sklearn, xgboost, tables, tensorflow; print('numpy', numpy.__version__); print('tensorflow', tensorflow.__version__)"
+
+# Install local package, from ml_fmda root
+pip install -e .

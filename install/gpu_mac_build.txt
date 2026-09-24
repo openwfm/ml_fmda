@@ -14,5 +14,10 @@ python -m pip check
 python -c "import tensorflow as tf; print('TF:', tf.__version__); print('GPUs:', tf.config.list_physical_devices('GPU')); print('Tensor check:', tf.reduce_sum(tf.random.normal([1000, 1000])))"
 python -c "import pandas, yaml, sklearn, netCDF4; print('Core package dependencies import successfully')"
 
+# Install pytest and local package
+python -m pip install pytest
+python -m pip install -e . --no-deps
+python -m pip check
+
 # After a successful build, record the exact resolved versions for reproduction.
 python -m pip freeze > install/ml_gpu_mac_requirements.lock.txt
