@@ -7,7 +7,7 @@ from pathlib import Path
 from ml_fmda.moisture_rnn import OperationalRNNPredictor, predict_auto_batch
 from ml_fmda.utils import read_yml, Dict
 
-CONFIG_DIR = Path(__file__).parent / "configs"
+CONFIG_DIR = Path(__file__).parent 
 params = Dict(read_yml(CONFIG_DIR / "params_test.yaml"))
 
 # Some params to check

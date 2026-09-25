@@ -44,6 +44,7 @@ pip install "tensorflow==2.16.1"
 conda install pytest
 ```
 
+Other conda environment setups are described in `install/`, including those with support for data retrieval, model training, and GPU deployment. 
 
 ## 3. Install the package
 
@@ -70,6 +71,17 @@ pytest tests/test_rnn.py
 ## 6. Basic usage
 
 ...
+
+
+## Pretrained models
+
+The pretrained model weights and associated scalers/configuration are distributed separately from the source package as a ZIP archive. The archive contains model artifacts from the training and transfer-learning workflows described in the main openwfm/ml_fmda research project. Large training-data objects used to construct the training datasets are not included.
+
+After obtaining the model archive, extract it to a local directory:
+
+```bash
+unzip fm_transfer.zip
+```
 
 
 ## Acknowledgements
