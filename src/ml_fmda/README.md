@@ -4,6 +4,8 @@
 
 This README is located at `src/ml_fmda/README.md` within the `openwfm/ml_fmda` Git repository. The reproducibility notebooks are also included in the package directory at `src/ml_fmda/`, alongside the package source code.
 
+**Reproducibility version**: These instructions and the associated pretrained model artifacts correspond to Git tag v0.1.0.
+
 The intended use is within `wrfxpy`, where forcing data arrives one hour at a time and recurrent state is carried forward between prediction cycles.
 
 For access to pretrained models and any other information, contact the primary author Jonathon Hirschi at `jonathon.hirschi@ucdenver.edu`.
