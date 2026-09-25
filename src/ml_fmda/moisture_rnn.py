@@ -701,3 +701,61 @@ class TimeWarpedFuelClassPredictors:
                 warp_weights(lstm_layer.get_weights(), bi_warp, bf_warp)
             )
             self.predictors[fuel_class] = predictor
+    
+    def predict(self, X, verbose=True, **kwargs):
+        """Predict all fuel classes and stack along the final dimension."""
+        predictions = []
+    
+        for fuel_class in self.FUEL_CLASSES:
+            if verbose:
+                print(f"Predicting {fuel_class}")
+    
+            predictions.append(
+                self.predictors[fuel_class].predict(X, **kwargs)
+            )
+    
+        return np.concatenate(predictions, axis=-1)
+
+    def predict_cycle(
+        self,
+        X,
+        reset_state=False,
+        initial_states=None,
+        return_states=False,
+        verbose=True,
+        **kwargs,
+    ):
+        """Predict all fuel classes while maintaining independent recurrent states."""
+        predictions = []
+        states = {}
+    
+        for fuel_class in self.FUEL_CLASSES:
+            if verbose:
+                print(f"Predicting {fuel_class}")
+    
+            fuel_initial_states = None
+            if initial_states is not None:
+                fuel_initial_states = initial_states.get(fuel_class)
+    
+            result = self.predictors[fuel_class].predict_cycle(
+                X,
+                reset_state=reset_state,
+                initial_states=fuel_initial_states,
+                return_states=return_states,
+                **kwargs,
+            )
+    
+            if return_states:
+                fuel_predictions, fuel_states = result
+                states[fuel_class] = fuel_states
+            else:
+                fuel_predictions = result
+    
+            predictions.append(fuel_predictions)
+    
+        predictions = np.concatenate(predictions, axis=-1)
+    
+        if return_states:
+            return predictions, states
+    
+        return predictions
