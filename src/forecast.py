@@ -1,21 +1,20 @@
-# Script used to generate CONUS forecast with a trained RNN on HRRR grid
+# Script used to generate forecast with a trained RNN on HRRR grid
 # Intended for operational use, not for forecast analysis which
 # has it's own set of scripts
+# HRRR 48h forecast, starting from f03 so 45 forecast window
+# NOTE: the process src/hindcast.py is set up to run forecast model on a historical period using HRRR f03 as "analysis" data. 
 
 import sys
 import pickle
 import os.path as osp
 import os
 from datetime import datetime, timedelta, timezone
-from dateutil.relativedelta import relativedelta
 import json
 import pandas as pd
 import numpy as np
 import yaml
-from sklearn.metrics import mean_squared_error
 import tensorflow as tf
-import xarray as xr
-import shutil
+#import xarray as xr
 import warnings
 from joblib import dump, load
 
@@ -31,8 +30,8 @@ CONFIG_DIR = osp.join(PROJECT_ROOT, "etc")
 from utils import read_yml, read_pkl, Dict, str2time, time_range, save_yaml
 from data_funcs import add_terrain
 import reproducibility
-from models.moisture_rnn import RNN_Flexible, RNNData, scale_3d
-import ingest.HRRR as ih
+#from models.moisture_rnn import RNN_Flexible, RNNData, scale_3d
+#from ingest.HRRR import rename_ds, retrieve_hrrr, retrieve_hrrr_fcst
 
 # Config and Params
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -49,10 +48,10 @@ if __name__ == '__main__':
         print(('Usage: %s <config_path>' % sys.argv[0]))
         print("Example: python src/forecast.py etc/forecast_TEST.yaml")
         sys.exit(-1)
-
+    
     # Get input args
     conf_path = sys.argv[1]
-    
+    breakpoint() 
     # Extract config details, save to outdir
     conf = Dict(read_yml(conf_path))
     outdir = conf["forecast_dir"]
@@ -78,140 +77,53 @@ if __name__ == '__main__':
     fstart = str2time(conf.get("f_start", now)).replace(tzinfo=None, minute=0, second=0, microsecond=0)
     fcst_hours = conf.get("fcst_hours", 45)
     fend = fstart + timedelta(hours=fcst_hours)
-    if fstart > now: 
-        warnings.warn(f"Forecast start greater than now, check time input. {fstart=},   {now=}")
-        raise NotImplementedError("Future forecast start times are not currently supported.")
+    spinup_hours = conf.get("spinup", 0)
+    spinup_start = fstart - timedelta(hours=spinup_hours)
 
-    if fstart.hour not in (0, 6, 12, 18):
-        raise NotImplementedError("Forecast start must correspond to an extended HRRR cycle (00, 06, 12, or 18 UTC).")
 
-    print(f"{fstart=}"); print(f"{fcst_hours=}"); print(f"{fend=}")
-    if fend < now:
-        print(f"Forecast period all analysis times, using f03 HRRR for all hours")
-        astart = fstart
-        aend = fend
-        fstart = None
-        fend = None
+    # Build model from input model directory
+    rnn = OperationalRNNPredictor.from_weights(params, osp.join(t_dir, "rnn.weights.h5"))
+    rnn.save_weights(osp.join(outdir, "rnn.weights.h5"))
+    scaler = load(osp.join(t_dir, "scaler.joblib"))
+    dump(scaler, osp.join(outdir, "scaler.joblib"))
+    features_list = params.features_list
+    if len(features_list) != len(set(features_list)):
+        raise ValueError("features_list contains duplicate features")
+
+
+    # Static Data, elevation, land-sea-mask
+    if osp.exist(osp.join(paths.landfire_elev_dir, "hrrr_terrain.nc"))
+        terrain = xr.open_dataset(osp.join(paths.landfire_elev_dir, "hrrr_terrain.nc"))
+        lsm = terrain["lsm"]
     else:
-        astart = fstart
-        aend = now-timedelta(hours=1) # assume f03 from 3 hours in past exists, safe buffer
-        fstart = now
-        if fend > (now+timedelta(hours=(48-3))):
-            fend = now + timedelta(hours=48-3)
-            warnings.warn(f"Forecast end outside HRRR 45hr forecast window. Trimming fend to {fend}")
-        print(f"Analysis hours: {astart} to {aend}"); print(f"Forecast hours: {fstart} to {fend}")
+        print("No HRRR terrain stash found, attempting retrieval")
+        raise NotImplementedError("")
 
-    
-    # TODO: bbox?
-
-    # Read trained model
-    if osp.isfile(osp.join(t_dir, 'rnn.keras')):
-        rnn = tf.keras.models.load_model(osp.join(t_dir, 'rnn.keras'))
-        scaler = load(osp.join(t_dir, "scaler.joblib"))
-    elif osp.isfile(osp.join(t_dir, "median_seed.csv")):
-        med = pd.read_csv(osp.join(t_dir, 'median_seed.csv'))
-        print(f"Reading model from median fitting accuracy seed: seed_{med['seed'][0]}")
-        rnn = tf.keras.models.load_model(osp.join(t_dir, f"seed_{med['seed'][0]}", 'rnn.keras'))
-        scaler = load(osp.join(t_dir, f"seed_{med['seed'][0]}", "scaler.joblib"))
-    else:
-        raise RuntimeError(f"Required model file not found in {t_dir}")
-
+    # Get HRRR data, check stash and retrieve if missing
+    # Default to save to stash f03 model, treated as analysis data
     print("~"*75)
     print(f"Forecasting with RNN from {fstart} to {fend}")
     print(f"Saving gridded forecasts to {outdir}")
     print()
 
-    # Handle Weather Inputs
-    ## Split forecast period into analysis and forecast, use associated retrieval
-    ## By default, retrieve_hrrr saves f03 to stash. Config can turn off and just save to memory
-    print(f"    Loading HRRR data, Herbie API tool and/or stash {hrrr_dir}")
-    ds = ih.retrieve_hrrr(astart, aend, save_to_stash=conf.get("save_to_stash",True))
-    
-    if fstart is not None: 
-        dsf = ih.retrieve_hrrr_fcst(fstart, fend, features_list=params["features_list"])
-    else:
-        dsf = None
-
-
-    ## Static Data
-    terrain = xr.open_dataset(osp.join(paths.landfire_elev_dir, "hrrr_terrain.nc"))
-   
-    # Analysis Data
-    ds = ih.rename_ds(ds)
+    if spinup_hours>0:
+        ds0 = retrieve_hrrr(spinup_start, f_start) 
+    ds = retrieve_hrrr_fcst(fstart, fend)
+    ds = rename_ds(ds)
     ds = add_terrain(ds, terrain)
+    ds = ds.assign_coords(time=ds.valid_time).drop_vars("valid_time")
 
-    # Forecast Data
-    dsf = ih.rename_ds(dsf)
-    dsf = add_terrain(dsf, terrain)
-    #dsf['lon'] = xr.where(dsf.lon > 180, dsf.lon - 360, dsf.lon) # Fix lat/lon to match RAWS format
-    #elev = xr.open_dataset(osp.join(paths.landfire_elev_dir, "lf_elevation_hrrrgrid.tif"))
+    print(f"Subsetting HRRR data to features: {features_list}")
+    ds = ds[features_list]
+    #coord_features = [name for name in features_list if name in ds.coords] # Features from list that exist in xarray coordinates rather than data_vars
+    #ds = ds.reset_coords(coord_features, drop=False)
+    #ds["lon"] = ((ds["lon"] + 180) % 360) - 180 # fix longitude convention
+    assert set(ds.data_vars) == set(features_list), f"Feature mismatch: expected {features_list}, got {list(ds.data_vars)}"
+    print(f"Converting xarray to numpy object")
+    X_gridded = ds_to_numpy(ds, features_list)
+    assert X_gridded.shape == (ds.x.shape[0] * ds.y.shape[0], len(times), len(features_list)), f"Unexpected X array shape: {X_gridded.shape=}, expected={(ds.x.shape[0] * ds.y.shape[0], len(times), len(features_list))}"
 
-    # Format input dataframe for RNN predict
-    # Subset to features list used by rnn, some features are data_vars in xarray but some are coords
-    features_list = params.features_list
-    if "lograin" in features_list:
-        ds["lograin"] = np.log1p(ds["rain"])
-        dsf["lograin"] = np.log1p(dsf["rain"])
-    
-    print(f"    Subsetting HRRR data to features: {features_list}")
-    ds = ds[features_list] 
-    dsf = dsf[features_list]
-    
-    coord_features = [name for name in features_list if name in ds.coords] # Features from list that exist in xarray coordinates rather than data_vars
-    ds = ds.reset_coords(coord_features, drop=False)
-    dsf = dsf.reset_coords(coord_features, drop=False)
-    
-    assert len(ds.data_vars) == len(features_list), f"Missing features from list, {features_list=}, data_vars= {(list(ds.data_vars))}"
-    assert len(dsf.data_vars) == len(features_list), f"Missing features from list, {features_list=}, data_vars= {(list(dsf.data_vars))}"
-    
-    # Reshape to 2d input
-    ds_stacked = ds[features_list].stack(loc=("y", "x"))
-    dsf_stacked = dsf[features_list].stack(loc=("y", "x"))
-    
-    ds_transposed = ds_stacked.transpose("loc", "time", ...)
-    dsf_transposed = dsf_stacked.transpose("loc", "time", ...)
+    # Scale Data
+    X = scale_3d(X_gridded, scaler)
 
-    X_gridded = ds_transposed.to_array().transpose("loc", "time", "variable").values
-    Xf_gridded = dsf_transposed.to_array().transpose("loc", "time", "variable").values
-
-
-    times = time_range(fstart, fend)
-    assert X_gridded.shape == (ds.x.shape[0] * ds.y.shape[0], len(times), len(features_list)), f"Unexpected X array shape: {X.shape=}, expected={(ds.x.shape[0] * ds.y.shape[0], len(times), len(features_list))}"
-
-    # Run prediction with RNN
-    # NOTE: batch size in predict is only a memory constraint and not related to batch_size used in training. 
-    # We want to make batch_size as large as possible while avoiding memory constraints
-    
-    ## Scale Data
-    # Reshape to 2d table to apply scaler, flatten (xy) dimensions
-    X_flat = X_gridded.reshape(-1, X_gridded.shape[-1])
-    X_scaled = scaler.transform(X_flat)
-    nbatch, ntimes, nfeatures = X_gridded.shape
-    assert X_scaled.shape[0] == nbatch * ntimes
-    assert X_scaled.shape[1] == nfeatures
-    X = X_scaled.reshape(nbatch, ntimes, nfeatures)
-    
-    try:
-        preds = rnn.predict(X, batch_size=1024, verbose=1)
-    except (MemoryError, tf.errors.ResourceExhaustedError) as e:
-        print("Batch size 1024 failed due to memory limits. Falling back to batch size 32.")
-        preds = rnn.predict(X, batch_size=32, verbose=1)
-
-    # Reshape preds and assign to an xarray object for save
-    preds = preds.squeeze() # NOTE: this only works with 1d prediction. If ever go to 2-d, break up preds and add each separately
-    pred_da = xr.DataArray(
-        preds,
-        dims=("loc", "time"),
-        coords={
-            "loc": ds_transposed["loc"],
-            "time": ds_transposed["time"]
-        },
-        name="predicted"
-    )
-    pred_da = pred_da.unstack("loc")  # dims: (y, x, time)
-    ds["fm_preds"] = pred_da.transpose("time", "y", "x")
-    ds["lsm"] = terrain.lsm
-    # Write out
-    print(f"Writing predictions to netcdf: {osp.join(outdir, 'fm_preds_hrrr.nc')}")
-    ds.to_netcdf(osp.join(outdir, "fm_preds_hrrr.nc"))
-    
+    breakpoint()
