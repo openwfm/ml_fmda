@@ -3,7 +3,6 @@
 # When called, rounds "now" down to hrs with HRRR 48hr extension:
 # 00 06 12 18
 
-fcst_hours: 24 # number of hours to forecast
-bbox: '[37,-111,46,-95]' # spatial bounding box
-forecast_dir: "/storage/math/NSF1/hirschij/RNN_forecasts/TEST"
-target_model_dir: "/storage/math/NSF1/hirschij/FMDA/models/rocky23-24"
+weather_source: "HRRR" # number of hours to forecast
+forecast_dir: "/path/to/outputs/RNN_forecasts/TEST"
+target_model_dir: "/path/to/weights"
