@@ -5,5 +5,5 @@
 
 f_start: "2026-07-17T00:00:00Z" 
 f_end: "2026-07-17T06:00:00Z" 
-forecast_dir: "/path/to/output/hindcast_TEST"
-target_model_dir: "/path/to/weights"
+forecast_dir: "/path/to/output/hindcast_TEST" # where hindcast gets sent
+target_model_dir: "/path/to/weights"          # directory with weights.h5, config with model architecture, fitted scaler
