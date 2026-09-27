@@ -114,7 +114,7 @@ ml_fmda_test_data/
 Extract it with:
 
 ```bash
-unzip ml_fmda_test_data.zip
+unzip ml_fmda_test_data.zip -d ml_fmda_test_data
 ```
 
 Then open `tutorial_operational.ipynb`, and update the following cells to point to the two extracted directories.
