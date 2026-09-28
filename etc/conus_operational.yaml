@@ -1,0 +1,18 @@
+# Config file used to set up forecast analysis
+#
+region: "CONUS"
+target_model_dir: "/storage/math/NSF1/hirschij/FMDA/models/" # directory to save model object
+batch_size: 128
+hidden_layers: [lstm, dense, dense, dropout] # Sequential order of neural network hidden layers, one of 'dense', 'rnn', 'lstm', 'attention', 'dropout'
+hidden_units: [128, 64, 32, null] # Corresponding number of units for layers, attention & dropout layers should have None for this
+stride: 24 # number of time steps to shift window when building RNN data from single sequence, default 1 means heavy data
+n_reps: 100 # Number of replications to train/forecast, used to estimate uncertainty in forecast accuracy metrics
+val_hours: 96 # number of hours to use at end of training window (tstart, tend) to use for validation data
+learning_rate: 0.002
+space_test_frac: 0.1 # Percentage of data based on location for val and test
+train_start: "2023-01-01T00:00:00Z" # first time for training
+train_end: "2024-12-31T23:00:00Z" # last time for training
+bbox: '[24.94,-125,49.6,-66.93]' # spatial bounding box
+features_list: ['Ed', 'Ew', 'solar', 'wind', 'elev', 'lon', 'lat', 'lograin', 'hod_sin', 'hod_cos', 'doy_sin', 'doy_cos'] # inputs to ML models
+data_dir: "/storage/math/NSF1/hirschij/FMDA/CONUS/" # Directory for formatted FMDA data dictionaries
+valid_path: "/storage/math/NSF1/hirschij/FMDA/valid_data/fmc_valid_CONUS24.csv" # Path to manually constructed table for filtered invalid data. NOTE: as of June 25 2026, CONUS is incomplete, it is 4 combined GACCs for 2023-2024, not full continent

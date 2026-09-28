@@ -3,8 +3,9 @@
 # Output sent to forecast dir
 # Currently all of CONUS, bbox arg not used
 
-f_start: "2026-07-17T00:00:00Z" 
-f_end: "2026-07-17T06:00:00Z" 
+f_start: "2026-06-01T00:00:00Z" 
+f_end: "2026-06-14T23:00:00Z" # hard end time
+cycle_length: 24 # number of hours to cyle over
 bbox: '[37,-111,46,-95]' # spatial bounding box
-forecast_dir: "/storage/math/NSF1/hirschij/RNN_forecasts/hindcast_TEST"
+forecast_dir: "/storage/math/NSF1/hirschij/RNN_forecasts/hindcast_TEST_longcycle"
 target_model_dir: "/storage/math/NSF1/hirschij/FMDA/models/rocky23-24"
