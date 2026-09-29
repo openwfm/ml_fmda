@@ -5,7 +5,7 @@
 
 f_start: "2026-06-01T00:00:00Z" 
 f_end: "2026-06-14T23:00:00Z" # hard end time
-cycle_length: 24 # number of hours to cyle over
+cycle_length: 9 # number of hours to cyle over
 bbox: '[37,-111,46,-95]' # spatial bounding box
 forecast_dir: "/storage/math/NSF1/hirschij/RNN_forecasts/hindcast_TEST_longcycle"
 target_model_dir: "/storage/math/NSF1/hirschij/FMDA/models/rocky23-24"

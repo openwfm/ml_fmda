@@ -1,0 +1,28 @@
+# Recipe to build an Apple-silicon Metal environment with TensorFlow.
+# Build from commands so failures can be isolated and the resolved packages recorded.
+
+conda create -n rnn_cpu -c conda-forge python=3.12 pip -y
+conda activate rnn_cpu
+
+# Install the scientific stack together from conda-forge
+conda install -c conda-forge \
+    pandas PyYAML scikit-learn xarray dask netcdf4 -y
+
+python -m pip install tensorflow==2.18.1
+
+python -m pip check
+
+conda install -c conda-forge herbie-data
+
+# Verify
+python -c "import tensorflow as tf; print(tf.__version__); print(tf.config.list_physical_devices())"
+
+python -c "import numpy, pandas, xarray, netCDF4, sklearn, herbie; print('imports OK')"
+
+# Install pytest and local package
+python -m pip install pytest
+python -m pip install -e . --no-deps
+python -m pip check
+
+# After a successful build, record the exact resolved versions for reproduction.
+python -m pip freeze > install/rnn_cpu_requirements.lock.txt

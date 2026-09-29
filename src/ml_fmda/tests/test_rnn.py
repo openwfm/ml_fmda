@@ -92,17 +92,17 @@ def test_cycle_default():
     assert preds.shape == expected_output_shape
 
 
-def test_cycle_reset_state():
-    """Test that reset_state=True starts prediction from zero recurrent state."""
-    preds1 = rnn.predict_cycle(X, reset_state=True)
-    preds2 = rnn.predict_cycle(X, reset_state=True)
+def test_cycle_reset_states():
+    """Test that reset_states=True starts prediction from zero recurrent state."""
+    preds1 = rnn.predict_cycle(X, reset_states=True)
+    preds2 = rnn.predict_cycle(X, reset_states=True)
 
     assert np.allclose(preds1, preds2)
 
 
 def test_cycle_return_states():
     """Test that cyclical prediction can return predictions and recurrent states."""
-    preds, states = rnn.predict_cycle(X, reset_state=True, return_states=True)
+    preds, states = rnn.predict_cycle(X, reset_states=True, return_states=True)
 
     assert isinstance(preds, np.ndarray)
     assert preds.shape == expected_output_shape
@@ -111,7 +111,7 @@ def test_cycle_return_states():
 def test_cycle_return_states():
     """Test that cyclical prediction returns predictions and final LSTM states."""
     preds, states = rnn.predict_cycle(
-        X, reset_state=True, return_states=True
+        X, reset_states=True, return_states=True
     )
 
     assert isinstance(preds, np.ndarray)
@@ -123,9 +123,9 @@ def test_cycle_return_states():
 
 def test_cycle_continues_state():
     """Test that sequential cycles reproduce a single continuous prediction."""
-    preds_full = rnn.predict_cycle(X, reset_state=True)
+    preds_full = rnn.predict_cycle(X, reset_states=True)
 
-    preds1 = rnn.predict_cycle(X[:, :2, :], reset_state=True)
+    preds1 = rnn.predict_cycle(X[:, :2, :], reset_states=True)
     preds2 = rnn.predict_cycle(X[:, 2:, :])
 
     preds_cycle = np.concatenate([preds1, preds2], axis=1)
@@ -134,11 +134,11 @@ def test_cycle_continues_state():
 
 def test_cycle_initial_states():
     """Test that explicitly passing recurrent states reproduces continuous prediction."""
-    preds_full = rnn.predict_cycle(X, reset_state=True)
+    preds_full = rnn.predict_cycle(X, reset_states=True)
 
     preds1, states = rnn.predict_cycle(
         X[:, :2, :],
-        reset_state=True,
+        reset_states=True,
         return_states=True,
     )
     preds2 = rnn.predict_cycle(
@@ -153,16 +153,16 @@ def test_cycle_initial_states():
 
 def test_cycle_batch_size():
     """Test that Keras processing batch size does not change predictions."""
-    preds1 = rnn.predict_cycle(X, reset_state=True, batch_size=nbatch)
-    preds2 = rnn.predict_cycle(X, reset_state=True, batch_size=3)
+    preds1 = rnn.predict_cycle(X, reset_states=True, batch_size=nbatch)
+    preds2 = rnn.predict_cycle(X, reset_states=True, batch_size=3)
 
     assert np.allclose(preds1, preds2)
 
 
 def test_cycle_batch_size():
     """Test that Keras processing batch size does not change predictions."""
-    preds1 = rnn.predict_cycle(X, reset_state=True, batch_size=nbatch)
-    preds2 = rnn.predict_cycle(X, reset_state=True, batch_size=3)
+    preds1 = rnn.predict_cycle(X, reset_states=True, batch_size=nbatch)
+    preds2 = rnn.predict_cycle(X, reset_states=True, batch_size=3)
     preds3 = predict_auto_batch(rnn, X, verbose=0)
 
     assert np.allclose(preds1, preds2)

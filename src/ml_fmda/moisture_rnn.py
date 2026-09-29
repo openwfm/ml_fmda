@@ -35,7 +35,7 @@ params_models = read_yml(osp.join(CONFIG_DIR, "params_models.yaml"))
 def predict_auto_batch(model,
                        X,
                        batch_sizes=(16384, 8192, 4096, 2048, 1024, 512, 256, 128, 32),
-                       verbose=1, reset_state=True):
+                       verbose=1, reset_states=True):
     """
     Predict using the largest batch size that fits in memory.
 
@@ -46,7 +46,7 @@ def predict_auto_batch(model,
         try:
             if verbose:
                 print(f"Trying predict batch_size={bs}")
-            preds = model.predict_cycle(X, batch_size=bs, verbose=verbose, reset_state=reset_state)
+            preds = model.predict_cycle(X, batch_size=bs, verbose=verbose, reset_states=reset_states)
             if verbose:
                 print(f"Success with batch_size={bs}")
             return preds
@@ -617,14 +617,14 @@ class OperationalRNNPredictor(Model):
         return outputs[0]
 
     
-    def predict_cycle(self, X, reset_state=False, initial_states=None, return_states=False, **kwargs):
+    def predict_cycle(self, X, reset_states=False, initial_states=None, return_states=False, **kwargs):
         """
         Stores recurrent states after prediction and continues from stored states if they exist. Used for operational prediction where input data might come in cycles
 
         Args
         =========
         X: ndarray, input data (nbatch, ntime, nfeatures)
-        reset_state: bool, whether to reset recurrent states (to zeros by default). Use if predicting at a new location or time
+        reset_states: bool, whether to reset recurrent states (to zeros by default). Use if predicting at a new location or time
         initial_states: list, optional flat list of recurrent states. If None,
             use stored states when available.
         return_states: bool, whether to return final recurrent states as a flat
@@ -633,7 +633,7 @@ class OperationalRNNPredictor(Model):
         """
         if initial_states is not None:
             cycle_states = self._validate_cycle_states(initial_states)
-        elif reset_state or self._cycle_states is None:
+        elif reset_states or self._cycle_states is None:
             x_array = np.asarray(X)
             cycle_states = self._zero_cycle_states(batch_size=x_array.shape[0], dtype=x_array.dtype)
         else:
@@ -719,7 +719,7 @@ class TimeWarpedFuelClassPredictors:
     def predict_cycle(
         self,
         X,
-        reset_state=False,
+        reset_states=False,
         initial_states=None,
         return_states=False,
         verbose=True,
@@ -739,7 +739,7 @@ class TimeWarpedFuelClassPredictors:
     
             result = self.predictors[fuel_class].predict_cycle(
                 X,
-                reset_state=reset_state,
+                reset_states=reset_states,
                 initial_states=fuel_initial_states,
                 return_states=return_states,
                 **kwargs,
