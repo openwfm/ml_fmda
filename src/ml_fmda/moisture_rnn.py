@@ -759,3 +759,11 @@ class TimeWarpedFuelClassPredictors:
             return predictions, states
     
         return predictions
+
+    def get_states(self):
+        """
+        Return dict of recurrent states for each fuel class
+        """
+        return {fuel_class: self.predictors[fuel_class]._cycle_states for fuel_class in self.FUEL_CLASSES}
+
+
