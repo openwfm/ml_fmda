@@ -597,6 +597,18 @@ class OperationalRNNPredictor(Model):
             raise ValueError(f"Expected {n_expected} recurrent state arrays, got {len(states)}.")
         return states
 
+    def get_states(self):
+        """Return the current recurrent states."""
+        return self._cycle_states
+
+    def set_states(self, states):
+        """
+        Directly set recurrent states.
+        
+        Typical use is upon reading recurrent states from file and constructing a model object
+        """
+        self._cycle_states = states
+
     def reset_cycle_states(self):
         """
         Clear stored recurrent states.
@@ -674,6 +686,7 @@ class TimeWarpedFuelClassPredictors:
 
         self.params = copy.deepcopy(dict(params))
         self.warps = dict(warps)
+        self.weights_path = weights_path
         self.predictors = {
             "fm10": OperationalRNNPredictor.from_weights(
                 params=self.params,
@@ -764,6 +777,16 @@ class TimeWarpedFuelClassPredictors:
         """
         Return dict of recurrent states for each fuel class
         """
-        return {fuel_class: self.predictors[fuel_class]._cycle_states for fuel_class in self.FUEL_CLASSES}
+        return {
+            fuel_class: self.predictors[fuel_class].get_states()
+            for fuel_class in self.FUEL_CLASSES
+        }
+
+    def set_states(self, states):
+        """
+        Directly set recurrent states for each fuel class.
+        """
+        for fuel_class in self.FUEL_CLASSES:
+            self.predictors[fuel_class].set_states(states[fuel_class])
 
 
